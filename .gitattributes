@@ -1,0 +1,15 @@
+# すべてのテキストファイルはLFで統一（Docker/Linux環境との互換性のため）
+* text=auto eol=lf
+
+# WindowsのPowerShell・バッチはCRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# バイナリは変換しない
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg binary
+*.ico binary
+*.pyc binary
