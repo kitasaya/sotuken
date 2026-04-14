@@ -1,0 +1,14 @@
+version: '3'
+services:
+  graphhopper:
+    image: israelhikingmap/graphhopper:latest
+    ports:
+      - "8989:8989"
+    volumes:
+      - ./graphhopper:/data
+    environment:
+      - JAVA_OPTS=-Xmx4g -Xms1g
+    command: >
+      --url https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf
+      --host 0.0.0.0
+      -c /data/config.yml

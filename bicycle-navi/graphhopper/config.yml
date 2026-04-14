@@ -1,0 +1,24 @@
+graphhopper:
+  datareader.file: /data/data.pbf
+  graph.location: /data/graph-cache
+  graph.encoded_values: car_access, car_average_speed, country, road_class, roundabout, max_speed, foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed, road_environment
+  import.osm.ignored_highways: motor, trunk
+  profiles:
+    - name: bike
+      custom_model:
+        speed:
+          - if: "true"
+            limit_to: "bike_average_speed"
+        priority:
+          - if: "!bike_access"
+            multiply_by: "0"
+
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: 0.0.0.0
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: 0.0.0.0
