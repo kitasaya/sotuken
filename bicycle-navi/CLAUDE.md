@@ -271,7 +271,7 @@ python -m uvicorn main:app --reload --port 8000
 
 ---
 
-## 現在の進捗（2026-04-23時点）
+## 現在の進捗（2026-04-29時点）
 
 ### 完了済み ✅
 
@@ -304,17 +304,40 @@ python -m uvicorn main:app --reload --port 8000
   - `POST /api/experiment/batch/csv`（CSVダウンロード）
 - **ジオコーディング**: 住所・地名入力対応（Nominatim API）実装・動作確認済み（2026-04-13）
 - **Overpass高速化**: バルク化・並列化により約60秒 → 3.4秒に改善済み（2026-04-14）
+- **STEP 5 フェーズ5-1**: UIモード分離（走行中モード・出発前/停車中モード）実装済み（2026-04-28）
+  - `ModeSwitcher.jsx`・`RidingView.jsx` 新規作成
+  - 矢印コンポーネント・距離表示・ミニ地図・デモ用「次の案内へ」ボタン実装済み
+- **STEP 5 フェーズ5-2**: 音声案内実装済み（2026-04-29）
+  - `frontend/src/services/voiceGuide.js` 新規作成（Web Speech API ラッパー）
+  - instruction変更時の自動発話・リルート案内・二段階右折案内実装済み
+  - 音声ON/OFFボタン・再読み上げボタン追加済み
+  - 事前通知ロジック（`buildApproachText`）実装済み、フェーズ5-3でGPSと連携済み
+- **STEP 5 フェーズ5-3**: GPS自動モード切り替え・事前通知GPS統合済み（2026-04-29）
 
 ### 次に取り組むタスク
 
-- [ ] **STEP 5: UIモード分離（走行中モード・出発前/停車中モード）の実装** ← 次フェーズ最優先
+- [x] **STEP 5 フェーズ5-3**: モード自動切り替え（GPS速度判定）実装済み（2026-04-29）
+  - `frontend/src/services/geoTracker.js` 新規作成（Geolocation watchPosition ラッパー）
+  - `frontend/src/hooks/useGeoAutoMode.js` 新規作成（速度5km/h以上→riding、停止5秒→preparing）
+  - 手動切り替え後2分間は自動切り替え無効（設計判断ポイント1：暫定N=2分）
+  - `App.jsx` に GPS 状態インジケーター（GPS自動/GPS手動/GPS待機/GPS×）追加
+  - `RidingView.jsx` に GPS 位置マーカー・速度表示・事前通知（100m/30m）追加
+  - `speed == null` の場合（iOS等でデバイスが速度を提供しない）は自動切り替えをスキップ
+- [x] **STEP 5 フェーズ5-4**: UIの細部調整・スマートフォン対応実装済み（2026-04-29）
+  - `frontend/vite.config.js` に `/api` プロキシ設定追加（スマホ LAN アクセス対応）
+  - `frontend/src/api/route.js` の API ベース URL を相対パス `/api` に変更（CORS 問題解消）
+  - `frontend/index.html`: `lang="ja"` 修正、`maximum-scale=1.0`、iOS メタタグ追加
+  - `RidingView.jsx`: 警告バナーを全幅デザインに改善、二段階右折手順パネル追加
+  - タッチ操作対応: `touch-action: manipulation`、`user-select: none`、最小タッチターゲット 48px
+  - iOS Safari ホームバー対応: `safe-area-inset-bottom` を padding に適用
+  - `README.md` にスマートフォン確認手順を追記
 - [ ] 法規チェックの追加（一時停止・左側通行等）
 - [ ] バッチ実験エンドポイントのテストケース拡充
 - [ ] 精度検証・デバッグ
 
 ---
 
-## STEP 5: UIモード分離の実装（次フェーズ・最優先）
+## STEP 5: UIモード分離の実装（実装完了）
 
 ### 背景：先生の指摘と調査結果
 
@@ -384,38 +407,51 @@ GPS速度による自動切り替えと手動切り替えを併用する。
 
 ### 実装タスク（フェーズ分け）
 
-#### フェーズ5-1：UIモードの基本実装（優先度：高）
+#### フェーズ5-1：UIモードの基本実装（優先度：高）✅ 完了（2026-04-28）
 
-- [ ] `frontend/src/App.jsx` に `mode` state（`riding` / `preparing`）を追加
-- [ ] `frontend/src/components/ModeSwitcher.jsx` を新規作成（モード切り替えボタン）
-- [ ] 走行中モード画面 `frontend/src/components/RidingView.jsx` を新規作成
-  - [ ] 大きな矢印コンポーネント（直進・左折・右折・二段階右折アイコン）
-  - [ ] 次の交差点までの距離表示
-  - [ ] 地図表示の最小化（現在地周辺のみ）
-- [ ] 出発前・停車中モード画面：既存の `MapView.jsx` / `ViolationAlert.jsx` をこのモードに集約
-- [ ] バックエンドのレスポンスから「次の交差点情報」を取得するロジックを追加
-  - [ ] GraphHopperの `instructions` レスポンス（ターンバイターンデータ）を活用
+- [x] `frontend/src/App.jsx` に `mode` state（`riding` / `preparing`）を追加
+- [x] `frontend/src/components/ModeSwitcher.jsx` を新規作成（モード切り替えボタン）
+- [x] 走行中モード画面 `frontend/src/components/RidingView.jsx` を新規作成
+  - [x] 大きな矢印コンポーネント（直進・左折・右折・二段階右折アイコン）
+  - [x] 次の交差点までの距離表示
+  - [x] 地図表示の最小化（現在地周辺のみ）
+- [x] 出発前・停車中モード画面：既存の `MapView.jsx` / `ViolationAlert.jsx` をこのモードに集約
+- [x] バックエンドのレスポンスから「次の交差点情報」を取得するロジックを追加
+  - [x] GraphHopperの `instructions` レスポンス（ターンバイターンデータ）を活用
 
-#### フェーズ5-2：音声案内の実装（優先度：高）
+#### フェーズ5-2：音声案内の実装（優先度：高）✅ 完了（2026-04-29）
 
-- [ ] `frontend/src/services/voiceGuide.js` を新規作成（Web Speech API ラッパー）
-- [ ] 交差点手前での事前通知ロジック（GPS位置と次の交差点距離で判定）
-- [ ] 二段階右折手順の音声ガイド文言を確定
-- [ ] 一方通行回避・歩道回避時の理由説明（バックエンドから理由文字列を返すよう調整）
-- [ ] 音声案内のON/OFF切り替え
+- [x] `frontend/src/services/voiceGuide.js` を新規作成（Web Speech API ラッパー）
+  - `VoiceGuide` シングルトン（`speak` / `cancel` / `setEnabled`）
+  - `buildAnnouncementText(instruction, isTwoStep)` - instruction → 音声文言生成
+  - `buildApproachText(distanceRemaining, nextInstruction, isTwoStep)` - 事前通知文言（フェーズ5-3のGPS統合で使用予定）
+  - `buildRerouteText(violations)` - リルート理由文言生成
+- [x] 交差点手前での事前通知ロジック（`buildApproachText` として実装済み、GPS統合はフェーズ5-3）
+- [x] 二段階右折手順の音声ガイド文言（暫定：「一度左端に寄り、交差点を直進してから右折」）
+- [x] 一方通行回避時の理由説明（`buildRerouteText` でリルート時に自動発話）
+- [x] 音声案内のON/OFF切り替え（走行中モード画面の「音声ON/OFF」ボタン）
+- [x] 再読み上げボタン（「再読み上げ」ボタンで現在のinstructionを再発話）
+- [x] `App.jsx` に `voiceEnabled` state 追加、`RidingView` に props として渡す
 
-#### フェーズ5-3：モード自動切り替え（優先度：中）
+#### フェーズ5-3：モード自動切り替え（優先度：中）✅ 完了（2026-04-29）
 
-- [ ] Geolocation API で現在地と速度を取得（`position.coords.speed`）
-- [ ] しきい値判定ロジック（5km/h以上で走行中モード、停止5秒以上で停車中モード）
-- [ ] 手動切り替えとの優先順位ルール（手動切り替え後はN分間自動切り替え無効）
+- [x] Geolocation API で現在地と速度を取得（`position.coords.speed`）
+  - `frontend/src/services/geoTracker.js` 新規作成（watchPosition ラッパー）
+- [x] しきい値判定ロジック（5km/h以上で走行中モード、停止5秒以上で停車中モード）
+  - `frontend/src/hooks/useGeoAutoMode.js` 新規作成
+- [x] 手動切り替えとの優先順位ルール（手動切り替え後は2分間自動切り替え無効）
+- [x] `speed == null` の場合（iOS等でデバイスが速度を提供しない）は自動切り替えをスキップ
+- [x] `App.jsx` に GPS 状態インジケーター（GPS自動/GPS手動/GPS待機/GPS×）追加
+- [x] `RidingView.jsx` に GPS 位置マーカー・速度表示・事前通知（100m/30m）追加
 
-#### フェーズ5-4：UIの細部調整（優先度：中）
+#### フェーズ5-4：UIの細部調整（優先度：中）✅ 完了（2026-04-29）
 
-- [ ] 走行中モードのアイコン・配色設計（視認性重視）
-- [ ] 警告マークのデザイン（法規違反リスク箇所）
-- [ ] フォントサイズ調整（走行中モードは大きく）
-- [ ] スマートフォン対応UI（既存タスクと統合）
+- [x] 走行中モードのアイコン・配色設計（視認性重視）
+- [x] 警告マークのデザイン（法規違反リスク箇所）
+- [x] フォントサイズ調整（走行中モードは大きく）
+- [x] スマートフォン対応UI（既存タスクと統合）
+- [x] `@vitejs/plugin-basic-ssl` を `vite.config.js` に追加（スマホGPS取得にHTTPS必須のため）
+  - `npm run dev -- --host` 起動時、スマホから `https://<PCのIP>:5173` でアクセス可能
 
 ### 設計判断が必要なポイント（要相談）
 
@@ -439,7 +475,13 @@ GPS速度による自動切り替えと手動切り替えを併用する。
 
 ## Claude Code への指示
 
-STEP 1〜4 は**実装・動作確認済み**。次回からは **STEP 5（UIモード分離）** に取り組むこと。
+STEP 1〜5 は**実装・動作確認済み**。次回からは以下の残タスクに取り組むこと。
+
+**残タスク（優先度順）:**
+1. バッチ実験エンドポイントのテストケース拡充（`POST /api/experiment/batch`）
+2. 精度検証・デバッグ（Overpass タグ取得精度、リルートルートの妥当性確認）
+3. 法規チェックの追加（一時停止・左側通行等、研究スコープと要相談）
+
 各タスクを実装する前に必ず現在のファイルを読み、既存の実装を把握してから変更すること。
 エラーが発生した場合は、エラーメッセージを解析して自律的に修正すること。
 
@@ -447,9 +489,9 @@ STEP 1〜4 は**実装・動作確認済み**。次回からは **STEP 5（UIモ
 研究スコープ除外のため `route.py` および `experiment.py` から呼び出してはならない。
 誤って呼び出しを復活させないよう注意すること。
 
-**STEP 5 実装時の注意**:
+**STEP 5 実装済み構成（変更時の注意）:**
 
-- 既存の `MapView.jsx` / `ViolationAlert.jsx` は削除せず、出発前・停車中モードのコンポーネントとして再配置すること
-- 走行中モードは新規コンポーネント（`RidingView.jsx`）として作成し、既存UIと共存させること
-- モード切り替えはあくまでフロントエンド側の表示制御。バックエンドAPIへの影響はない
-- 音声案内の文言は、設計判断ポイント2が確定するまで暫定文言で実装してよい
+- `MapView.jsx` / `ViolationAlert.jsx` は出発前・停車中モード（`preparing`）専用
+- `RidingView.jsx` は走行中モード（`riding`）専用。既存UIと `App.jsx` で切り替え
+- モード切り替えはフロントエンド側のみ。バックエンドAPIへの影響はない
+- 音声案内文言（二段階右折）は暫定。`voiceGuide.js` の `buildAnnouncementText` を修正すること

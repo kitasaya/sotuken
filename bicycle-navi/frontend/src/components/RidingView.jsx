@@ -1,41 +1,44 @@
-import { MapContainer, TileLayer, Polyline, CircleMarker } from "react-leaflet";
+import { useEffect, useRef } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Polyline,
+  CircleMarker,
+  useMap,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import voiceGuide, {
+  buildAnnouncementText,
+  buildRerouteText,
+  buildApproachText,
+} from "../services/voiceGuide";
 
 /**
- * GraphHopper instruction sign の値と矢印の対応
- * -3: 鋭く左折, -2: 左折, -1: やや左, 0: 直進
- * 1: やや右, 2: 右折, 3: 鋭く右折, 4: 目的地到着, 5: Uターン
- * 6: ラウンドアバウト(左回り), -6: ラウンドアバウト(右回り)
+ * GraphHopper instruction sign → 表示設定
  */
 const DIRECTION_CONFIG = {
-  "-3": { arrow: "↰", label: "鋭く左折", rotate: -135 },
-  "-2": { arrow: "←", label: "左折", rotate: -90 },
-  "-1": { arrow: "↖", label: "やや左", rotate: -45 },
-  0: { arrow: "↑", label: "直進", rotate: 0 },
-  1: { arrow: "↗", label: "やや右", rotate: 45 },
-  2: { arrow: "→", label: "右折", rotate: 90 },
-  3: { arrow: "↱", label: "鋭く右折", rotate: 135 },
-  4: { arrow: "◎", label: "目的地", rotate: 0 },
-  5: { arrow: "↩", label: "Uターン", rotate: 180 },
-  6: { arrow: "↻", label: "ロータリー", rotate: 0 },
-  "-6": { arrow: "↺", label: "ロータリー", rotate: 0 },
+  "-3": { arrow: "↰", label: "鋭く左折" },
+  "-2": { arrow: "←", label: "左折" },
+  "-1": { arrow: "↖", label: "やや左" },
+  0:    { arrow: "↑", label: "直進" },
+  1:    { arrow: "↗", label: "やや右" },
+  2:    { arrow: "→", label: "右折" },
+  3:    { arrow: "↱", label: "鋭く右折" },
+  4:    { arrow: "◎", label: "目的地" },
+  5:    { arrow: "↩", label: "Uターン" },
+  6:    { arrow: "↻", label: "ロータリー" },
+  "-6": { arrow: "↺", label: "ロータリー" },
 };
 
-// 距離のフォーマット（m → km変換含む）
 const formatDistance = (meters) => {
   if (meters == null) return "-";
-  if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(1)} km`;
-  }
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
   return `${Math.round(meters)} m`;
 };
 
-// 座標配列を [lat, lng] 形式に変換
 const toPositions = (route) =>
   route?.points?.coordinates?.map(([lng, lat]) => [lat, lng]) || [];
 
-// GraphHopperのinstructionからLeaflet形式 [lat, lng] の座標を取得
-// instructionはpointsフィールドを持たず、interval[0]がrouteCoords配列のインデックス
 const getInstructionCoord = (instruction, routeCoords) => {
   const idx = instruction?.interval?.[0];
   if (idx == null || !routeCoords?.[idx]) return null;
@@ -43,84 +46,220 @@ const getInstructionCoord = (instruction, routeCoords) => {
   return [lat, lng];
 };
 
-// 法規違反が次のinstructionに関係するか判定
 const hasViolationNearby = (instruction, violations, routeCoords) => {
   if (!instruction || !violations?.length) return false;
   const coord = getInstructionCoord(instruction, routeCoords);
   if (!coord) return false;
   const [lat, lng] = coord;
-  return violations.some((v) => {
-    return Math.abs(v.lat - lat) < 0.001 && Math.abs(v.lng - lng) < 0.001;
-  });
+  return violations.some(
+    (v) => Math.abs(v.lat - lat) < 0.001 && Math.abs(v.lng - lng) < 0.001
+  );
 };
 
-// 二段階右折が必要か判定
 const needsTwoStepTurn = (instruction, violations, routeCoords) => {
   if (instruction?.sign !== 2) return false;
   return violations?.some(
-    (v) => v.rule === "two_step_turn" && hasViolationNearby(instruction, [v], routeCoords)
+    (v) =>
+      v.rule === "two_step_turn" &&
+      hasViolationNearby(instruction, [v], routeCoords)
   );
 };
+
+const distanceBetween = (lat1, lng1, lat2, lng2) => {
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+/** GPS位置変化時に地図の中心を更新するLeaflet内部コンポーネント */
+function MapCenter({ center }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom(), { animate: true });
+  }, [center, map]);
+  return null;
+}
+
+/** 二段階右折の手順説明パネル */
+function TwoStepGuide() {
+  return (
+    <div style={styles.twoStepGuide}>
+      <div style={styles.twoStepGuideTitle}>二段階右折の手順</div>
+      <div style={styles.twoStepSteps}>
+        <div style={styles.twoStepStep}>
+          <span style={styles.stepNum}>1</span>
+          <span>交差点を左端で直進する</span>
+        </div>
+        <div style={styles.twoStepStep}>
+          <span style={styles.stepNum}>2</span>
+          <span>右方向を向いて停止する</span>
+        </div>
+        <div style={styles.twoStepStep}>
+          <span style={styles.stepNum}>3</span>
+          <span>信号が青になったら進む</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function RidingView({
   routeData,
   currentInstructionIndex,
   onNextInstruction,
   violations,
+  voiceEnabled,
+  onVoiceToggle,
+  currentPosition,
 }) {
   const instructions = routeData?.compliant_route?.instructions || [];
   const currentInstruction = instructions[currentInstructionIndex];
   const nextInstruction = instructions[currentInstructionIndex + 1];
   const route = routeData?.compliant_route;
+  const routeCoords = route?.points?.coordinates || [];
 
-  // 現在のinstructionがない場合
+  const rerouteAnnouncedRef = useRef(false);
+  const prevRouteDataRef = useRef(null);
+  const approachNotifiedRef = useRef({ m100: false, m30: false });
+
+  useEffect(() => {
+    voiceGuide.setEnabled(voiceEnabled);
+  }, [voiceEnabled]);
+
+  useEffect(() => {
+    if (!routeData || routeData === prevRouteDataRef.current) return;
+    prevRouteDataRef.current = routeData;
+    rerouteAnnouncedRef.current = false;
+    if (routeData.rerouted) {
+      const text = buildRerouteText(routeData.violations);
+      if (text) {
+        voiceGuide.speak(text);
+        rerouteAnnouncedRef.current = true;
+      }
+    }
+  }, [routeData]);
+
+  useEffect(() => {
+    if (!currentInstruction) return;
+    approachNotifiedRef.current = { m100: false, m30: false };
+    const isTwoStep = needsTwoStepTurn(currentInstruction, violations, routeCoords);
+    const text = buildAnnouncementText(currentInstruction, isTwoStep);
+    if (currentInstructionIndex === 0 && rerouteAnnouncedRef.current) {
+      const timer = setTimeout(() => voiceGuide.speak(text), 2500);
+      return () => clearTimeout(timer);
+    }
+    voiceGuide.speak(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentInstructionIndex, routeData]);
+
+  useEffect(() => {
+    if (!currentPosition || !currentInstruction) return;
+    const targetInstruction = nextInstruction || currentInstruction;
+    const targetCoord = getInstructionCoord(targetInstruction, routeCoords);
+    if (!targetCoord) return;
+    const dist = distanceBetween(
+      currentPosition.lat, currentPosition.lng,
+      targetCoord[0], targetCoord[1]
+    );
+    const isTwoStep = needsTwoStepTurn(currentInstruction, violations, routeCoords);
+    if (dist <= 30 && !approachNotifiedRef.current.m30) {
+      approachNotifiedRef.current.m30 = true;
+      const text = buildApproachText(dist, currentInstruction, isTwoStep);
+      if (text) voiceGuide.speak(text);
+    } else if (dist <= 100 && !approachNotifiedRef.current.m100 && !approachNotifiedRef.current.m30) {
+      approachNotifiedRef.current.m100 = true;
+      const text = buildApproachText(dist, currentInstruction, isTwoStep);
+      if (text) voiceGuide.speak(text);
+    }
+  }, [currentPosition]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    return () => voiceGuide.cancel();
+  }, []);
+
   if (!currentInstruction) {
     return (
       <div style={styles.container}>
-        <div style={styles.noRouteMessage}>
-          ルートを検索してください
-        </div>
+        <div style={styles.noRouteMessage}>ルートを検索してください</div>
       </div>
     );
   }
 
-  const routeCoords = route?.points?.coordinates || [];
   const sign = currentInstruction.sign ?? 0;
   const config = DIRECTION_CONFIG[sign] || DIRECTION_CONFIG[0];
-  const distance = currentInstruction.distance;
   const streetName = currentInstruction.street_name || "";
   const hasWarning = hasViolationNearby(currentInstruction, violations, routeCoords);
   const isTwoStepTurn = needsTwoStepTurn(currentInstruction, violations, routeCoords);
 
-  // 地図の中心座標: interval[0]のインデックスでrouteCoords配列を参照
-  const mapCenter = getInstructionCoord(currentInstruction, routeCoords) || [35.6762, 139.6503];
+  let displayDistance = currentInstruction.distance;
+  if (currentPosition && nextInstruction) {
+    const targetCoord = getInstructionCoord(nextInstruction, routeCoords);
+    if (targetCoord) {
+      displayDistance = distanceBetween(
+        currentPosition.lat, currentPosition.lng,
+        targetCoord[0], targetCoord[1]
+      );
+    }
+  }
+
+  const handleRepeat = () => {
+    voiceGuide.speak(buildAnnouncementText(currentInstruction, isTwoStepTurn));
+  };
+
+  const gpsCenter = currentPosition
+    ? [currentPosition.lat, currentPosition.lng]
+    : null;
+  const instructionCenter =
+    getInstructionCoord(currentInstruction, routeCoords) || [35.6762, 139.6503];
+  const mapCenter = gpsCenter || instructionCenter;
 
   return (
     <div style={styles.container}>
       {/* 矢印表示エリア */}
       <div style={{
         ...styles.arrowContainer,
-        ...(hasWarning ? styles.warningBorder : {}),
+        ...(isTwoStepTurn ? styles.twoStepBorder : hasWarning ? styles.warningBorder : {}),
       }}>
-        {isTwoStepTurn && (
-          <div style={styles.twoStepBadge}>二段階右折</div>
-        )}
         <div style={styles.arrow}>{config.arrow}</div>
         <div style={styles.directionLabel}>{config.label}</div>
-        {hasWarning && !isTwoStepTurn && (
-          <div style={styles.warningBadge}>注意</div>
-        )}
       </div>
+
+      {/* 警告バナー（法規違反リスク箇所） */}
+      {isTwoStepTurn && (
+        <div style={styles.twoStepBanner}>
+          ⚠ この交差点は二段階右折が必要です
+        </div>
+      )}
+      {hasWarning && !isTwoStepTurn && (
+        <div style={styles.warningBanner}>
+          ⚠ この先に法規注意箇所があります
+        </div>
+      )}
 
       {/* 距離表示 */}
       <div style={styles.distanceContainer}>
-        <div style={styles.distanceValue}>{formatDistance(distance)}</div>
-        {streetName && (
-          <div style={styles.streetName}>{streetName}</div>
+        <div style={styles.distanceValue}>{formatDistance(displayDistance)}</div>
+        {streetName && <div style={styles.streetName}>{streetName}</div>}
+        {currentPosition && (
+          <div style={styles.gpsIndicator}>
+            GPS取得中
+            {currentPosition.speed != null && (
+              <span> · {(currentPosition.speed * 3.6).toFixed(1)} km/h</span>
+            )}
+          </div>
         )}
       </div>
 
-      {/* ミニ地図（現在地周辺のみ） */}
+      {/* 二段階右折の手順説明 */}
+      {isTwoStepTurn && <TwoStepGuide />}
+
+      {/* ミニ地図 */}
       <div style={styles.miniMapContainer}>
         <MapContainer
           center={mapCenter}
@@ -134,41 +273,84 @@ export default function RidingView({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="© OSM"
           />
-          {/* ルート線 */}
+          {/* instructionが変わった時 or GPS更新時に地図中心を追従させる */}
+          <MapCenter center={mapCenter} />
           {route && (
-            <Polyline
-              positions={toPositions(route)}
-              color="blue"
-              weight={5}
-            />
+            <Polyline positions={toPositions(route)} color="#2196F3" weight={6} />
           )}
-          {/* 現在位置マーカー */}
+          {/* ターンポイントマーカー */}
           <CircleMarker
-            center={mapCenter}
-            radius={10}
-            color="#2196F3"
-            fillColor="#2196F3"
+            center={instructionCenter}
+            radius={9}
+            color="#ff9800"
+            fillColor="#ff9800"
             fillOpacity={0.8}
           />
+          {/* 現在GPS位置マーカー */}
+          {gpsCenter ? (
+            <CircleMarker
+              center={gpsCenter}
+              radius={11}
+              color="white"
+              fillColor="#2196F3"
+              fillOpacity={1}
+              weight={3}
+            />
+          ) : (
+            <CircleMarker
+              center={instructionCenter}
+              radius={11}
+              color="white"
+              fillColor="#2196F3"
+              fillOpacity={1}
+              weight={3}
+            />
+          )}
         </MapContainer>
       </div>
 
-      {/* 次の案内へ（デモ用ボタン） */}
+      {/* コントロールエリア */}
       <div style={styles.controls}>
+        {/* 音声案内ボタン行 */}
+        <div style={styles.voiceRow}>
+          <button
+            onClick={onVoiceToggle}
+            style={{
+              ...styles.voiceButton,
+              backgroundColor: voiceEnabled ? "#388e3c" : "#555",
+            }}
+            disabled={!voiceGuide.isSupported}
+            title={voiceGuide.isSupported ? undefined : "このブラウザは音声案内非対応"}
+          >
+            {voiceEnabled ? "🔊 音声ON" : "🔇 音声OFF"}
+          </button>
+          <button
+            onClick={handleRepeat}
+            style={{
+              ...styles.repeatButton,
+              opacity: voiceEnabled && voiceGuide.isSupported ? 1 : 0.4,
+            }}
+            disabled={!voiceEnabled || !voiceGuide.isSupported}
+          >
+            再読み上げ
+          </button>
+        </div>
+
+        {/* 次の案内へ（デモ用） */}
         <button
           onClick={onNextInstruction}
           disabled={currentInstructionIndex >= instructions.length - 1}
           style={{
             ...styles.nextButton,
-            opacity: currentInstructionIndex >= instructions.length - 1 ? 0.5 : 1,
+            opacity: currentInstructionIndex >= instructions.length - 1 ? 0.4 : 1,
           }}
         >
-          次の案内へ ({currentInstructionIndex + 1}/{instructions.length})
+          次の案内へ ({currentInstructionIndex + 1} / {instructions.length})
         </button>
         {nextInstruction && (
           <div style={styles.nextPreview}>
             次: {DIRECTION_CONFIG[nextInstruction.sign]?.label || "直進"}
-            {nextInstruction.street_name && ` - ${nextInstruction.street_name}`}
+            {nextInstruction.street_name && ` — ${nextInstruction.street_name}`}
           </div>
         )}
       </div>
@@ -180,17 +362,20 @@ const styles = {
   container: {
     display: "flex",
     flexDirection: "column",
-    height: "calc(100vh - 60px)", // ヘッダー分を引く
-    backgroundColor: "#1a1a2e",
+    height: "calc(100vh - 60px)",
+    backgroundColor: "#0d0d1a",
     color: "white",
+    // スマホでの文字選択を無効化（矢印などを誤タップ選択しない）
+    userSelect: "none",
+    WebkitUserSelect: "none",
   },
   noRouteMessage: {
     flex: 1,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "1.5rem",
-    color: "#888",
+    fontSize: "1.4rem",
+    color: "#666",
   },
   arrowContainer: {
     flex: "0 0 auto",
@@ -198,88 +383,177 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    padding: "24px",
+    padding: "20px 24px 16px",
     backgroundColor: "#16213e",
-    position: "relative",
-    borderBottom: "2px solid #0f3460",
+    borderBottom: "3px solid #1a3a6e",
   },
   warningBorder: {
-    borderColor: "#f9a825",
-    backgroundColor: "#2c2c1e",
+    borderBottomColor: "#f9a825",
+    backgroundColor: "#1e1a00",
+  },
+  twoStepBorder: {
+    borderBottomColor: "#ff5722",
+    backgroundColor: "#1e0e00",
   },
   arrow: {
     fontSize: "8rem",
     lineHeight: 1,
     color: "#4fc3f7",
-    textShadow: "0 0 20px rgba(79, 195, 247, 0.5)",
+    // フォント指定でプラットフォーム間の矢印表示差異を抑制
+    fontFamily: "system-ui, -apple-system, sans-serif",
   },
   directionLabel: {
-    fontSize: "1.5rem",
-    marginTop: "8px",
-    color: "#aaa",
+    fontSize: "1.6rem",
+    fontWeight: "bold",
+    marginTop: "6px",
+    color: "#90caf9",
+    letterSpacing: "0.05em",
   },
-  twoStepBadge: {
-    position: "absolute",
-    top: "12px",
-    right: "12px",
-    backgroundColor: "#ff5722",
-    color: "white",
-    padding: "6px 12px",
-    borderRadius: "4px",
+  // 警告バナー（全幅）
+  warningBanner: {
+    flex: "0 0 auto",
+    padding: "10px 16px",
+    backgroundColor: "#f9a825",
+    color: "#1a1200",
     fontSize: "1rem",
     fontWeight: "bold",
+    textAlign: "center",
+    letterSpacing: "0.03em",
   },
-  warningBadge: {
-    position: "absolute",
-    top: "12px",
-    right: "12px",
-    backgroundColor: "#f9a825",
-    color: "#1a1a2e",
-    padding: "6px 12px",
-    borderRadius: "4px",
-    fontSize: "0.9rem",
+  twoStepBanner: {
+    flex: "0 0 auto",
+    padding: "10px 16px",
+    backgroundColor: "#ff5722",
+    color: "white",
+    fontSize: "1rem",
     fontWeight: "bold",
+    textAlign: "center",
+    letterSpacing: "0.03em",
   },
   distanceContainer: {
     flex: "0 0 auto",
     textAlign: "center",
-    padding: "16px",
-    backgroundColor: "#0f3460",
+    padding: "14px 16px",
+    backgroundColor: "#0a1f44",
+    borderBottom: "1px solid #1a3a6e",
   },
   distanceValue: {
-    fontSize: "3rem",
+    fontSize: "3.5rem",
     fontWeight: "bold",
     color: "#4fc3f7",
+    lineHeight: 1,
+    fontVariantNumeric: "tabular-nums",
   },
   streetName: {
-    fontSize: "1.2rem",
-    color: "#aaa",
+    fontSize: "1.1rem",
+    color: "#90a4ae",
     marginTop: "4px",
+  },
+  gpsIndicator: {
+    fontSize: "0.8rem",
+    color: "#66bb6a",
+    marginTop: "4px",
+  },
+  // 二段階右折手順パネル
+  twoStepGuide: {
+    flex: "0 0 auto",
+    backgroundColor: "#1a0a00",
+    borderBottom: "1px solid #ff5722",
+    padding: "10px 16px",
+  },
+  twoStepGuideTitle: {
+    fontSize: "0.85rem",
+    color: "#ff8a65",
+    fontWeight: "bold",
+    marginBottom: "6px",
+  },
+  twoStepSteps: {
+    display: "flex",
+    gap: "8px",
+  },
+  twoStepStep: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "4px",
+    fontSize: "0.78rem",
+    color: "#ffccbc",
+    textAlign: "center",
+  },
+  stepNum: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "22px",
+    height: "22px",
+    borderRadius: "50%",
+    backgroundColor: "#ff5722",
+    color: "white",
+    fontWeight: "bold",
+    fontSize: "0.85rem",
   },
   miniMapContainer: {
     flex: 1,
-    minHeight: "150px",
+    minHeight: "120px",
   },
   controls: {
     flex: "0 0 auto",
-    padding: "12px",
+    padding: "10px 12px",
     backgroundColor: "#16213e",
-    borderTop: "1px solid #0f3460",
+    borderTop: "1px solid #1a3a6e",
+    // iOS Safari のホームバー対応
+    paddingBottom: "max(10px, env(safe-area-inset-bottom))",
   },
-  nextButton: {
-    width: "100%",
-    padding: "12px",
-    fontSize: "1.1rem",
-    backgroundColor: "#4CAF50",
+  voiceRow: {
+    display: "flex",
+    gap: "8px",
+    marginBottom: "8px",
+  },
+  voiceButton: {
+    flex: 1,
+    // スマホタッチターゲット最小 48px
+    minHeight: "48px",
+    padding: "10px",
+    fontSize: "1rem",
     color: "white",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
+    // ダブルタップズームを防止
+    touchAction: "manipulation",
+    transition: "opacity 0.15s",
+  },
+  repeatButton: {
+    flex: 1,
+    minHeight: "48px",
+    padding: "10px",
+    fontSize: "1rem",
+    backgroundColor: "#0a2a5e",
+    color: "#4fc3f7",
+    border: "1.5px solid #4fc3f7",
+    borderRadius: "8px",
+    cursor: "pointer",
+    touchAction: "manipulation",
+  },
+  nextButton: {
+    width: "100%",
+    minHeight: "52px",
+    padding: "12px",
+    fontSize: "1.1rem",
+    fontWeight: "bold",
+    backgroundColor: "#2e7d32",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    touchAction: "manipulation",
+    letterSpacing: "0.03em",
   },
   nextPreview: {
     marginTop: "8px",
-    fontSize: "0.9rem",
-    color: "#888",
+    fontSize: "0.85rem",
+    color: "#78909c",
     textAlign: "center",
   },
 };

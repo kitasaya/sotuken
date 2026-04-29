@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const BASE = "http://localhost:8000/api";
+// Vite の proxy 設定により /api → http://localhost:8000/api に中継される
+// スマホ等の別端末から LAN 経由でアクセスした場合も同じ相対パスで動作する
+const BASE = "/api";
 
 export const fetchRoute = async (originLat, originLng, destLat, destLng) => {
   const res = await axios.post(`${BASE}/route`, {

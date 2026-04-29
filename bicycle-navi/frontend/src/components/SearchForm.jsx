@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 
-const BASE = "http://localhost:8000/api";
+const BASE = "/api";
 
 async function fetchGeocode(query) {
   const res = await axios.get(`${BASE}/geocode`, { params: { q: query } });

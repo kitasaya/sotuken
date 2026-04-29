@@ -27,9 +27,9 @@ export default function MapView({ originalRoute, compliantRoute, violations }) {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="© OpenStreetMap contributors"
       />
-      {/* 元の最短ルート（グレー・細線） */}
+      {/* 元の最短ルート（オレンジ・中太線） */}
       {originalPositions.length > 0 && (
-        <Polyline positions={originalPositions} color="gray" weight={3} opacity={0.6} />
+        <Polyline positions={originalPositions} color="#e65100" weight={4} opacity={0.8} />
       )}
       {/* 法規準拠ルート（青・太線） */}
       {compliantPositions.length > 0 && (
@@ -65,7 +65,7 @@ export default function MapView({ originalRoute, compliantRoute, violations }) {
         }}
       >
         <div><span style={{ color: "blue", fontWeight: "bold" }}>━━</span> 法規準拠ルート</div>
-        <div><span style={{ color: "gray" }}>━━</span> 最短ルート</div>
+        <div><span style={{ color: "#e65100", fontWeight: "bold" }}>━━</span> 最短ルート</div>
         <div><span style={{ color: "red" }}>●</span> 法規違反箇所</div>
       </div>
     </MapContainer>

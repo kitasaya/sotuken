@@ -130,6 +130,94 @@ npm run dev
 
 ---
 
+## スマートフォンで動作確認する方法
+
+PC と同じルーターに接続しているスマートフォンからアクセスする手順。
+GPS 自動モード切り替えや走行中 UI の確認に使用する。
+
+### 手順1: PC の IP アドレスを確認する
+
+PowerShell または コマンドプロンプトで実行:
+
+```powershell
+ipconfig
+```
+
+「イーサネット アダプター」または「Wi-Fi アダプター」の
+`IPv4 アドレス` を確認する（例: `192.168.1.5`）。
+
+### 手順2: バックエンドを LAN に公開して起動
+
+```bash
+cd bicycle-navi/backend
+uvicorn main:app --reload --port 8000 --host 0.0.0.0
+```
+
+> `--host 0.0.0.0` をつけることで、PC 以外からもアクセスできるようになる。
+
+### 手順3: フロントエンドを LAN に公開して起動
+
+```bash
+cd bicycle-navi/frontend
+npm run dev -- --host
+```
+
+起動すると以下のような表示が出る:
+
+```
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.1.5:5173/
+```
+
+スマートフォンのブラウザで `Network:` に表示された URL（例: `http://192.168.1.5:5173`）を開く。
+
+> **仕組み**: フロントエンドの API リクエストは Vite の proxy 機能を通じて
+> `http://localhost:8000` へ転送される。スマートフォン側でバックエンドの IP を
+> 直接指定する必要はなく、CORS の問題も発生しない。
+
+### 手順4: GPS（Geolocation）を使えるようにする
+
+Geolocation API は **HTTPS 接続のみ**で動作する（localhost は例外）。
+LAN の HTTP 接続でスマートフォンから使う場合は、以下のいずれかの方法で対処する。
+
+#### 方法A: Android Chrome（簡易設定・推奨）
+
+Android の Chrome で以下の手順を行う:
+
+1. Chrome のアドレスバーに `chrome://flags` と入力して開く
+2. `Insecure origins treated as secure` を検索する
+3. テキストボックスにアクセスするURLを入力（例: `http://192.168.1.5:5173`）
+4. フラグを **Enabled** に変更し、「Relaunch」を押す
+
+これで HTTP でも Geolocation が動作するようになる。
+
+#### 方法B: HTTPS を有効化（iOS Safari 含む全デバイス対応）
+
+```bash
+cd bicycle-navi/frontend
+npm install -D @vitejs/plugin-basic-ssl
+```
+
+`frontend/vite.config.js` を以下のように更新:
+
+```js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
+
+export default defineConfig({
+  plugins: [react(), basicSsl()],
+  server: {
+    proxy: { '/api': 'http://localhost:8000' },
+  },
+})
+```
+
+`npm run dev -- --host` で起動すると `https://192.168.1.5:5173` が使える。
+ブラウザのセキュリティ警告が出た場合は「詳細設定 → 続行」で進める。
+
+---
+
 ## 起動コマンド まとめ（2回目以降）
 
 ターミナルを**3つ**開き、それぞれ以下を実行:
