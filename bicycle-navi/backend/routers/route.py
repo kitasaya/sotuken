@@ -8,7 +8,6 @@ from services.overpass import get_bulk_way_tags
 from services.law_checker import (
     _sample,
     check_oneway_violation,
-    check_sidewalk_violation,
     check_cycleway_recommendation,
     check_two_step_turn,
 )
@@ -44,18 +43,17 @@ async def calculate_route(req: RouteRequest):
     # タグ取得済みなので各チェックは同期的に即完了する
     (
         oneway_violations,
-        sidewalk_violations,
         two_step_violations,
         recommendations,
     ) = await asyncio.gather(
         check_oneway_violation(sampled, tags_list),
-        check_sidewalk_violation(sampled, tags_list),
+        # check_sidewalk_violation はスコープ除外のためコメントアウト
         check_two_step_turn(sampled, tags_list),
         check_cycleway_recommendation(sampled, tags_list),
     )
-    logger.info("法規チェック完了: oneway=%d sidewalk=%d two_step=%d",
-                len(oneway_violations), len(sidewalk_violations), len(two_step_violations))
-    violations = oneway_violations + sidewalk_violations + two_step_violations
+    logger.info("法規チェック完了: oneway=%d two_step=%d",
+                len(oneway_violations), len(two_step_violations))
+    violations = oneway_violations + two_step_violations
 
     # ③ 違反がある場合は法規準拠リルート
     original_route = route_data["paths"][0]

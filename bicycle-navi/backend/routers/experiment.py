@@ -1,16 +1,22 @@
+import asyncio
 import csv
 import io
+import logging
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from services.graphhopper import get_route
+from services.overpass import get_bulk_way_tags
 from services.law_checker import (
+    _sample,
     check_oneway_violation,
-    check_sidewalk_violation,
+    # check_sidewalk_violation はスコープ除外のためコメントアウト
     check_cycleway_recommendation,
     check_two_step_turn,
 )
 from services.rerouter import get_compliant_route
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -36,11 +42,19 @@ async def batch_experiment(req: BatchRequest):
         try:
             route_data = await get_route(r.origin_lat, r.origin_lng, r.dest_lat, r.dest_lng)
             points = route_data["paths"][0]["points"]["coordinates"]
+            sampled = _sample(points)
+            try:
+                tags_list = await get_bulk_way_tags(sampled)
+            except Exception as e:
+                logger.warning("Overpass一括取得失敗（チェックをスキップ）: %s", e)
+                tags_list = [{} for _ in sampled]
 
-            oneway_v = await check_oneway_violation(points)
-            sidewalk_v = await check_sidewalk_violation(points)
-            two_step_v = await check_two_step_turn(points)
-            violations = oneway_v + sidewalk_v + two_step_v
+            (oneway_v, two_step_v, _) = await asyncio.gather(
+                check_oneway_violation(sampled, tags_list),
+                check_two_step_turn(sampled, tags_list),
+                check_cycleway_recommendation(sampled, tags_list),
+            )
+            violations = oneway_v + two_step_v
 
             original_route = route_data["paths"][0]
             if violations:
