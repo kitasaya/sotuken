@@ -2,6 +2,7 @@ import asyncio
 import csv
 import io
 import logging
+from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -20,9 +21,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# アルゴリズムバージョン（適用前後の比較用）
+ALGO_VERSION = "v3-edge_id+direction+instruction+confidence"
+OD_PAIRS_CSV = Path(__file__).parent.parent / "data" / "od_pairs.csv"
+
 
 class RoutePoint(BaseModel):
     label: str
+    road_type: str = ""
     origin_lat: float
     origin_lng: float
     dest_lat: float
@@ -55,6 +61,7 @@ async def batch_experiment(req: BatchRequest):
                 check_cycleway_recommendation(sampled, tags_list),
             )
             violations = oneway_v + two_step_v
+            high_conf = sum(1 for v in violations if v.get("confidence", 0.4) >= 0.7)
 
             original_route = route_data["paths"][0]
             if violations:
@@ -76,6 +83,8 @@ async def batch_experiment(req: BatchRequest):
 
             results.append({
                 "label": r.label,
+                "road_type": r.road_type,
+                "algo_version": ALGO_VERSION,
                 "origin_lat": r.origin_lat,
                 "origin_lng": r.origin_lng,
                 "dest_lat": r.dest_lat,
@@ -85,6 +94,8 @@ async def batch_experiment(req: BatchRequest):
                 "distance_diff_m": round(diff_m, 1),
                 "distance_diff_pct": diff_pct,
                 "violation_count": len(violations),
+                "violation_count_high_conf": high_conf,
+                "violation_count_low_conf": len(violations) - high_conf,
                 "violation_types": ",".join(sorted({v["rule"] for v in violations})),
                 "rerouted": rerouted,
                 "error": "",
@@ -92,6 +103,8 @@ async def batch_experiment(req: BatchRequest):
         except Exception as e:
             results.append({
                 "label": r.label,
+                "road_type": r.road_type,
+                "algo_version": ALGO_VERSION,
                 "origin_lat": r.origin_lat,
                 "origin_lng": r.origin_lng,
                 "dest_lat": r.dest_lat,
@@ -101,6 +114,8 @@ async def batch_experiment(req: BatchRequest):
                 "distance_diff_m": "",
                 "distance_diff_pct": "",
                 "violation_count": "",
+                "violation_count_high_conf": "",
+                "violation_count_low_conf": "",
                 "violation_types": "",
                 "rerouted": "",
                 "error": str(e),
@@ -118,6 +133,8 @@ async def batch_experiment_csv(req: BatchRequest):
 
     fieldnames = [
         "label",
+        "road_type",
+        "algo_version",
         "origin_lat", "origin_lng",
         "dest_lat", "dest_lng",
         "original_distance_m",
@@ -125,6 +142,8 @@ async def batch_experiment_csv(req: BatchRequest):
         "distance_diff_m",
         "distance_diff_pct",
         "violation_count",
+        "violation_count_high_conf",
+        "violation_count_low_conf",
         "violation_types",
         "rerouted",
         "error",
@@ -141,3 +160,33 @@ async def batch_experiment_csv(req: BatchRequest):
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=experiment_results.csv"},
     )
+
+
+def _load_od_pairs() -> list[RoutePoint]:
+    """backend/data/od_pairs.csv からプリセット O-D ペアを読み込む"""
+    routes = []
+    with open(OD_PAIRS_CSV, encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            routes.append(RoutePoint(
+                label=row["label"],
+                road_type=row.get("road_type", ""),
+                origin_lat=float(row["origin_lat"]),
+                origin_lng=float(row["origin_lng"]),
+                dest_lat=float(row["dest_lat"]),
+                dest_lng=float(row["dest_lng"]),
+            ))
+    return routes
+
+
+@router.post("/experiment/batch/od-pairs")
+async def batch_od_pairs():
+    """od_pairs.csv のプリセット O-D ペアを一括実行して JSON で返す"""
+    routes = _load_od_pairs()
+    return await batch_experiment(BatchRequest(routes=routes))
+
+
+@router.post("/experiment/batch/od-pairs/csv")
+async def batch_od_pairs_csv():
+    """od_pairs.csv のプリセット O-D ペアを一括実行して CSV でダウンロードする"""
+    routes = _load_od_pairs()
+    return await batch_experiment_csv(BatchRequest(routes=routes))

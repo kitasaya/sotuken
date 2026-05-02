@@ -52,6 +52,30 @@ async def _post_with_retry(query: str) -> list:
     return []
 
 
+async def get_way_tags_by_ids(way_ids: list[int]) -> dict[int, dict]:
+    """
+    OSM way ID リストから直接タグと geometry を取得する（edge_id ベース判定用）。
+
+    戻り値: {way_id: {"tags": tags_dict, "geometry": [[lon, lat], ...]}}
+    """
+    if not way_ids:
+        return {}
+    ids_str = ",".join(str(i) for i in way_ids)
+    query = f"""[out:json][timeout:30];
+way(id:{ids_str});
+out tags geom;
+"""
+    elements = await _post_with_retry(query)
+    result = {}
+    for elem in elements:
+        if "id" not in elem:
+            continue
+        tags = elem.get("tags", {})
+        geometry = [[n["lon"], n["lat"]] for n in elem.get("geometry", [])]
+        result[elem["id"]] = {"tags": tags, "geometry": geometry}
+    return result
+
+
 async def get_bulk_way_tags(points: list, radius: int = 20) -> list[dict]:
     """
     複数座標を1回のOverpassクエリでまとめて取得する。

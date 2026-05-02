@@ -35,20 +35,23 @@ export default function MapView({ originalRoute, compliantRoute, violations }) {
       {compliantPositions.length > 0 && (
         <Polyline positions={compliantPositions} color="blue" weight={5} />
       )}
-      {/* 違反マーカー */}
+      {/* 違反マーカー（confidence >= 0.7: 赤、< 0.7: 橙） */}
       {violations &&
-        violations.map((v, i) => (
-          <CircleMarker
-            key={i}
-            center={[v.lat, v.lng]}
-            radius={8}
-            color="red"
-            fillColor="red"
-            fillOpacity={0.7}
-          >
-            <Popup>{v.message}</Popup>
-          </CircleMarker>
-        ))}
+        violations.map((v, i) => {
+          const color = (v.confidence ?? 0.4) >= 0.7 ? "red" : "#e65100";
+          return (
+            <CircleMarker
+              key={i}
+              center={[v.lat, v.lng]}
+              radius={8}
+              color={color}
+              fillColor={color}
+              fillOpacity={0.7}
+            >
+              <Popup>{v.message}</Popup>
+            </CircleMarker>
+          );
+        })}
       {/* 凡例 */}
       <div
         style={{
@@ -66,7 +69,8 @@ export default function MapView({ originalRoute, compliantRoute, violations }) {
       >
         <div><span style={{ color: "blue", fontWeight: "bold" }}>━━</span> 法規準拠ルート</div>
         <div><span style={{ color: "#e65100", fontWeight: "bold" }}>━━</span> 最短ルート</div>
-        <div><span style={{ color: "red" }}>●</span> 法規違反箇所</div>
+        <div><span style={{ color: "red" }}>●</span> 違反（確実）</div>
+        <div><span style={{ color: "#e65100" }}>●</span> 違反（要確認）</div>
       </div>
     </MapContainer>
   );

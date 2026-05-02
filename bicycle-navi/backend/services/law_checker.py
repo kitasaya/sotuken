@@ -8,9 +8,19 @@ def _sample(points: list) -> list:
     return points[::step]
 
 
-async def check_oneway_violation(points: list, tags_list: list[dict] | None = None) -> list:
+def _dot2d(v1: list, v2: list) -> float:
+    return v1[0] * v2[0] + v1[1] * v2[1]
+
+
+async def check_oneway_violation(
+    points: list,
+    tags_list: list[dict] | None = None,
+    geometries: list[list] | None = None,
+    travel_vectors: list[list] | None = None,
+) -> list:
     """onewayタグによる逆走チェック。
     tags_list が与えられた場合は Overpass 呼び出しを省略する（points はサンプリング済みとみなす）。
+    geometries と travel_vectors が与えられた場合は進行方向照合を行い偽陽性を排除する。
     """
     violations = []
     if tags_list is None:
@@ -23,15 +33,45 @@ async def check_oneway_violation(points: list, tags_list: list[dict] | None = No
     else:
         iter_points = points
 
+    # geometries/travel_vectors が提供されていれば edge_id ベース（最低 0.7）
+    base_confidence = 0.4 if (geometries is None or travel_vectors is None) else 0.7
+
     for i, point in enumerate(iter_points):
         lng, lat = point[0], point[1]
         tags = tags_list[i] if i < len(tags_list) else {}
-        if tags.get("oneway", "no") in ("yes", "true", "1"):
-            violations.append({
-                "lat": lat, "lng": lng,
-                "rule": "oneway",
-                "message": "一方通行のため逆走の可能性があります",
-            })
+        oneway = tags.get("oneway", "no")
+
+        if oneway not in ("yes", "true", "1", "-1"):
+            continue
+
+        # 自転車除外タグの確認
+        if tags.get("oneway:bicycle") == "no":
+            continue
+        cycleway = tags.get("cycleway", "")
+        if cycleway in ("opposite", "opposite_lane", "opposite_track"):
+            continue
+
+        # 進行方向照合（geometry と travel_vector が利用可能な場合）
+        confidence = base_confidence
+        if (geometries is not None and travel_vectors is not None
+                and i < len(geometries) and i < len(travel_vectors)):
+            geom = geometries[i]
+            tv = travel_vectors[i]
+            if len(geom) >= 2 and (tv[0] != 0 or tv[1] != 0):
+                way_vec = [geom[-1][0] - geom[0][0], geom[-1][1] - geom[0][1]]
+                dot = _dot2d(way_vec, tv)
+                # oneway=-1 は始点→終点方向が「逆」を意味する
+                going_wrong_way = (dot > 0) if oneway == "-1" else (dot < 0)
+                if not going_wrong_way:
+                    continue  # 順方向走行、違反なし
+                confidence = 1.0  # 進行方向照合済み
+
+        violations.append({
+            "lat": lat, "lng": lng,
+            "rule": "oneway",
+            "message": "一方通行のため逆走の可能性があります",
+            "confidence": confidence,
+        })
     return violations
 
 
@@ -70,8 +110,10 @@ async def check_cycleway_recommendation(points: list, tags_list: list[dict] | No
         except (httpx.HTTPError, httpx.TimeoutException):
             return recommendations
         iter_points = sampled
+        confidence = 0.4
     else:
         iter_points = points
+        confidence = 0.7
 
     for i, point in enumerate(iter_points):
         lng, lat = point[0], point[1]
@@ -82,12 +124,15 @@ async def check_cycleway_recommendation(points: list, tags_list: list[dict] | No
                 "lat": lat, "lng": lng,
                 "rule": "cycleway_available",
                 "message": f"自転車レーンあり（{cycleway}）",
+                "confidence": confidence,
             })
     return recommendations
 
 
 async def check_two_step_turn(points: list, tags_list: list[dict] | None = None) -> list:
-    """二段階右折要否の判定（幹線道路 or 3車線以上）。"""
+    """二段階右折要否の判定（幹線道路 or 3車線以上）。
+    右折 instruction 地点の座標リストを受け取ることを前提とする。
+    """
     violations = []
     if tags_list is None:
         sampled = _sample(points)
@@ -96,8 +141,10 @@ async def check_two_step_turn(points: list, tags_list: list[dict] | None = None)
         except (httpx.HTTPError, httpx.TimeoutException):
             return violations
         iter_points = sampled
+        confidence = 0.4
     else:
         iter_points = points
+        confidence = 0.7
 
     for i, point in enumerate(iter_points):
         lng, lat = point[0], point[1]
@@ -113,5 +160,6 @@ async def check_two_step_turn(points: list, tags_list: list[dict] | None = None)
                 "lat": lat, "lng": lng,
                 "rule": "two_step_turn",
                 "message": "二段階右折が必要な交差点です",
+                "confidence": confidence,
             })
     return violations
