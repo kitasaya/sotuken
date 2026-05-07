@@ -41,6 +41,7 @@ bicycle-navi/
 │   │   ├── graphhopper.py       # GraphHopper API クライアント
 │   │   ├── overpass.py          # Overpass API クライアント（バルク化・リトライ済み）
 │   │   ├── law_checker.py       # 法規判定ロジック（4関数）
+│   │   ├── route_analyzer.py    # ルート解析コア（v1/v3 切替対応・route.py と experiment.py から共用）
 │   │   ├── rerouter.py          # 違反エッジ除外による再ルーティング
 │   │   └── geocoder.py          # Nominatim クライアント
 │   └── requirements.txt
@@ -83,7 +84,10 @@ bicycle-navi/
 | `check_cycleway_recommendation` | 推奨 | `cycleway=lane/track` の way 上の点 | `cycleway` |
 | `check_two_step_turn` | 違反 | 右折 instruction 地点で `highway=primary/secondary` または `lanes>=3` | `highway`, `lanes` |
 
-**現在の挙動（2026-05-02）：**
+**現在の挙動（2026-05-07）：**
+
+判定ロジックは `services/route_analyzer.py` の `analyze_route` に集約されており、`route.py` と `experiment.py` の両方から呼ばれる。
+
 - GraphHopper の `details.osm_way_id` からルートが通った way の ID を取得（edge_id ベース判定）
 - `get_way_tags_by_ids` で way ID から直接タグ + geometry を取得（並行 way 問題を解消）
 - `check_oneway_violation` は way geometry の始点→終点ベクトルとルート進行方向の内積で逆走を判定
@@ -91,6 +95,7 @@ bicycle-navi/
 - `check_two_step_turn` は GraphHopper の `instructions` から `sign=2/3`（右折系）の地点のみを対象とする
 - `osm_way_id` が取得できない場合のみ従来の点ベース判定（`_sample` + `get_bulk_way_tags`）にフォールバック
 - `route.py` レスポンスの `comparison.using_edge_ids` で判定方式を確認できる
+- `comparison.algo_version` に `"v1"` または `"v3"` が含まれる
 
 **confidence スコア（2026-05-02）：**
 
@@ -101,9 +106,6 @@ bicycle-navi/
 | 近傍 way 推定（フォールバック） | 0.4 |
 
 各 violation / recommendation の辞書に `confidence` フィールドが含まれる。
-
-**残存する限界：**
-- `experiment.py`（バッチ評価エンドポイント）は edge_id ベース判定・instruction 連動が未適用（フォールバックモードのため confidence は常に 0.4）
 
 ### `services/overpass.py`
 
@@ -130,8 +132,9 @@ bicycle-navi/
 | POST | `/api/geocode` | 住所/地名 → 座標変換 |
 | POST | `/api/experiment/batch` | バッチ比較実験（JSON 出力） |
 | POST | `/api/experiment/batch/csv` | バッチ比較実験（CSV 出力） |
-| POST | `/api/experiment/batch/od-pairs` | od_pairs.csv のプリセット O-D 一括実行（JSON） |
-| POST | `/api/experiment/batch/od-pairs/csv` | od_pairs.csv のプリセット O-D 一括実行（CSV 出力） |
+| POST | `/api/experiment/batch/od-pairs` | od_pairs.csv のプリセット O-D 一括実行（JSON、v3 固定） |
+| POST | `/api/experiment/batch/od-pairs/csv` | od_pairs.csv のプリセット O-D 一括実行（CSV 出力、v3 固定） |
+| POST | `/api/experiment/batch/od-pairs/compare/csv` | 同じ O-D ペアを v1 と v3 の両方で実行し 30行 CSV を返す（論文比較用） |
 
 Swagger UI: `http://localhost:8000/docs`
 

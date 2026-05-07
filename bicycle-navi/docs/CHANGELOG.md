@@ -326,3 +326,57 @@ edge_id ベース判定に移行した後も、`oneway=yes` の way であれば
 |---|---|---|
 | POST | `/api/experiment/batch/od-pairs` | od_pairs.csv の全 O-D を一括実行（JSON） |
 | POST | `/api/experiment/batch/od-pairs/csv` | od_pairs.csv の全 O-D を一括実行（CSV 出力） |
+
+---
+
+## タスクA: experiment.py の v3 判定ロジック統一 + v1/v3 比較エンドポイント（2026-05-07）
+
+### 背景
+
+`experiment.py` の `batch_experiment` が点ベース判定（v1）のままで動いていた。
+一方 `route.py` は edge_id ベース判定 + 進行方向照合 + 右折 instruction 連動（v3）に更新済み。
+レスポンスに `algo_version="v3-edge_id+direction+instruction+confidence"` と表示されながら実態は v1 という乖離があり、論文の評価データとして提出すると主張と実装が一致しない問題があった。
+
+### 変更内容
+
+**`backend/services/route_analyzer.py`（新規作成）**
+- `analyze_route(origin_lat, origin_lng, dest_lat, dest_lng, *, algo_version="v3") -> dict` を定義
+- v3 ロジック（`_analyze_v3`）：`route.py` から移植。edge_id ベース判定 + 進行方向照合 + 右折 instruction 連動。フォールバック（点ベース）も含む
+- v1 ロジック（`_analyze_v1`）：点ベース10点サンプリング + 全点に対して二段階右折判定（右折 instruction 限定なし）+ 全 violations の confidence を 0.4 に上書き
+- `_build_response` 共通ヘルパーでリルートとレスポンス組み立てを共通化
+- `comparison` dict に `algo_version` フィールドを追加
+
+**`backend/routers/route.py`**
+- 181行 → 22行に削減
+- `calculate_route` は `analyze_route(..., algo_version="v3")` を呼ぶだけに変更
+- ロジックの重複を完全に排除（移動、コピーではない）
+
+**`backend/routers/experiment.py`**
+- `BatchRequest` に `algo_version: str = "v3"` フィールドを追加
+- `batch_experiment` は `analyze_route` を呼ぶ形に変更（v1/v3 切替対応）
+- `ALGO_VERSION` 定数を削除し、`comparison.algo_version` から動的に取得
+- `_results_to_csv_response(results, filename)` ヘルパーを追加（CSV 生成の共通化）
+- 新エンドポイント `POST /api/experiment/batch/od-pairs/compare/csv` を追加
+
+### 新規エンドポイント
+
+| メソッド | パス | 用途 |
+|---|---|---|
+| POST | `/api/experiment/batch/od-pairs/compare/csv` | 同じ O-D ペアを v1 と v3 の両方で実行し 30行 CSV を返す（論文比較用） |
+
+### v1/v3 の違い（experiment.py での挙動）
+
+| 項目 | v1 | v3 |
+|---|---|---|
+| Overpass 取得方式 | 点ベース（`_sample` 10点 + `get_bulk_way_tags`） | edge_id ベース（`get_way_tags_by_ids`）、失敗時のみ点ベースにフォールバック |
+| 進行方向照合 | なし | あり（way geometry とルート進行方向の内積） |
+| 二段階右折判定 | 全サンプル点を対象（過検出） | 右折 instruction 地点のみ（`sign=2/3`） |
+| confidence | 全件 0.4 に上書き | 0.4 / 0.7 / 1.0 の3段階 |
+| `comparison.using_edge_ids` | 常に False | True / False（フォールバック時） |
+
+### 完了条件の確認
+
+- `POST /api/route` の挙動が変更前と同じ（リグレッションなし） ✅
+- `POST /api/experiment/batch/od-pairs/csv` が v3 判定を反映 ✅
+- `POST /api/experiment/batch/od-pairs/compare/csv` が 15×2=30行の CSV を返す ✅
+- v1 行は `violation_count_high_conf=0`、v3 行は high/low に分かれる ✅

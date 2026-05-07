@@ -1,4 +1,3 @@
-import asyncio
 import csv
 import io
 import logging
@@ -6,24 +5,31 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from services.graphhopper import get_route
-from services.overpass import get_bulk_way_tags
-from services.law_checker import (
-    _sample,
-    check_oneway_violation,
-    # check_sidewalk_violation はスコープ除外のためコメントアウト
-    check_cycleway_recommendation,
-    check_two_step_turn,
-)
-from services.rerouter import get_compliant_route
+from services.route_analyzer import analyze_route
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# アルゴリズムバージョン（適用前後の比較用）
-ALGO_VERSION = "v3-edge_id+direction+instruction+confidence"
 OD_PAIRS_CSV = Path(__file__).parent.parent / "data" / "od_pairs.csv"
+
+CSV_FIELDNAMES = [
+    "label",
+    "road_type",
+    "algo_version",
+    "origin_lat", "origin_lng",
+    "dest_lat", "dest_lng",
+    "original_distance_m",
+    "compliant_distance_m",
+    "distance_diff_m",
+    "distance_diff_pct",
+    "violation_count",
+    "violation_count_high_conf",
+    "violation_count_low_conf",
+    "violation_types",
+    "rerouted",
+    "error",
+]
 
 
 class RoutePoint(BaseModel):
@@ -37,6 +43,7 @@ class RoutePoint(BaseModel):
 
 class BatchRequest(BaseModel):
     routes: list[RoutePoint]
+    algo_version: str = "v3"  # "v1" | "v3"
 
 
 @router.post("/experiment/batch")
@@ -46,65 +53,39 @@ async def batch_experiment(req: BatchRequest):
 
     for r in req.routes:
         try:
-            route_data = await get_route(r.origin_lat, r.origin_lng, r.dest_lat, r.dest_lng)
-            points = route_data["paths"][0]["points"]["coordinates"]
-            sampled = _sample(points)
-            try:
-                tags_list = await get_bulk_way_tags(sampled)
-            except Exception as e:
-                logger.warning("Overpass一括取得失敗（チェックをスキップ）: %s", e)
-                tags_list = [{} for _ in sampled]
-
-            (oneway_v, two_step_v, _) = await asyncio.gather(
-                check_oneway_violation(sampled, tags_list),
-                check_two_step_turn(sampled, tags_list),
-                check_cycleway_recommendation(sampled, tags_list),
+            result = await analyze_route(
+                r.origin_lat, r.origin_lng,
+                r.dest_lat, r.dest_lng,
+                algo_version=req.algo_version,
             )
-            violations = oneway_v + two_step_v
+            violations = result["violations"]
+            comp = result["comparison"]
             high_conf = sum(1 for v in violations if v.get("confidence", 0.4) >= 0.7)
-
-            original_route = route_data["paths"][0]
-            if violations:
-                compliant_data = await get_compliant_route(
-                    r.origin_lat, r.origin_lng,
-                    r.dest_lat, r.dest_lng,
-                    violations,
-                )
-                compliant_route = compliant_data["paths"][0]
-                rerouted = True
-            else:
-                compliant_route = original_route
-                rerouted = False
-
-            orig_dist = original_route.get("distance", 0)
-            comp_dist = compliant_route.get("distance", 0)
-            diff_m = comp_dist - orig_dist
-            diff_pct = round((diff_m / orig_dist * 100), 2) if orig_dist > 0 else 0.0
 
             results.append({
                 "label": r.label,
                 "road_type": r.road_type,
-                "algo_version": ALGO_VERSION,
+                "algo_version": comp.get("algo_version", req.algo_version),
                 "origin_lat": r.origin_lat,
                 "origin_lng": r.origin_lng,
                 "dest_lat": r.dest_lat,
                 "dest_lng": r.dest_lng,
-                "original_distance_m": round(orig_dist, 1),
-                "compliant_distance_m": round(comp_dist, 1),
-                "distance_diff_m": round(diff_m, 1),
-                "distance_diff_pct": diff_pct,
-                "violation_count": len(violations),
+                "original_distance_m": comp["original_distance_m"],
+                "compliant_distance_m": comp["compliant_distance_m"],
+                "distance_diff_m": comp["distance_diff_m"],
+                "distance_diff_pct": comp["distance_diff_pct"],
+                "violation_count": comp["violation_count"],
                 "violation_count_high_conf": high_conf,
-                "violation_count_low_conf": len(violations) - high_conf,
+                "violation_count_low_conf": comp["violation_count"] - high_conf,
                 "violation_types": ",".join(sorted({v["rule"] for v in violations})),
-                "rerouted": rerouted,
+                "rerouted": comp["rerouted"],
                 "error": "",
             })
         except Exception as e:
             results.append({
                 "label": r.label,
                 "road_type": r.road_type,
-                "algo_version": ALGO_VERSION,
+                "algo_version": req.algo_version,
                 "origin_lat": r.origin_lat,
                 "origin_lng": r.origin_lng,
                 "dest_lat": r.dest_lat,
@@ -124,42 +105,25 @@ async def batch_experiment(req: BatchRequest):
     return {"results": results}
 
 
-@router.post("/experiment/batch/csv")
-async def batch_experiment_csv(req: BatchRequest):
-    """複数ルートの比較データをCSVファイルとしてダウンロードする"""
-    # JSON と同じロジックで結果を収集
-    json_resp = await batch_experiment(req)
-    results = json_resp["results"]
-
-    fieldnames = [
-        "label",
-        "road_type",
-        "algo_version",
-        "origin_lat", "origin_lng",
-        "dest_lat", "dest_lng",
-        "original_distance_m",
-        "compliant_distance_m",
-        "distance_diff_m",
-        "distance_diff_pct",
-        "violation_count",
-        "violation_count_high_conf",
-        "violation_count_low_conf",
-        "violation_types",
-        "rerouted",
-        "error",
-    ]
-
+def _results_to_csv_response(results: list, filename: str = "experiment_results.csv") -> StreamingResponse:
+    """結果リストを CSV StreamingResponse に変換する"""
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer = csv.DictWriter(output, fieldnames=CSV_FIELDNAMES)
     writer.writeheader()
     writer.writerows(results)
     output.seek(0)
-
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=experiment_results.csv"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+@router.post("/experiment/batch/csv")
+async def batch_experiment_csv(req: BatchRequest):
+    """複数ルートの比較データをCSVファイルとしてダウンロードする"""
+    json_resp = await batch_experiment(req)
+    return _results_to_csv_response(json_resp["results"])
 
 
 def _load_od_pairs() -> list[RoutePoint]:
@@ -180,13 +144,24 @@ def _load_od_pairs() -> list[RoutePoint]:
 
 @router.post("/experiment/batch/od-pairs")
 async def batch_od_pairs():
-    """od_pairs.csv のプリセット O-D ペアを一括実行して JSON で返す"""
+    """od_pairs.csv のプリセット O-D ペアを一括実行して JSON で返す（v3 固定）"""
     routes = _load_od_pairs()
-    return await batch_experiment(BatchRequest(routes=routes))
+    return await batch_experiment(BatchRequest(routes=routes, algo_version="v3"))
 
 
 @router.post("/experiment/batch/od-pairs/csv")
 async def batch_od_pairs_csv():
-    """od_pairs.csv のプリセット O-D ペアを一括実行して CSV でダウンロードする"""
+    """od_pairs.csv のプリセット O-D ペアを一括実行して CSV でダウンロードする（v3 固定）"""
     routes = _load_od_pairs()
-    return await batch_experiment_csv(BatchRequest(routes=routes))
+    json_resp = await batch_experiment(BatchRequest(routes=routes, algo_version="v3"))
+    return _results_to_csv_response(json_resp["results"])
+
+
+@router.post("/experiment/batch/od-pairs/compare/csv")
+async def batch_od_pairs_compare_csv():
+    """同じ O-D ペアを v1 と v3 の両方で実行し、1つの CSV にまとめて返す（論文比較用）"""
+    routes = _load_od_pairs()
+    v1_resp = await batch_experiment(BatchRequest(routes=routes, algo_version="v1"))
+    v3_resp = await batch_experiment(BatchRequest(routes=routes, algo_version="v3"))
+    combined = v1_resp["results"] + v3_resp["results"]
+    return _results_to_csv_response(combined, filename="experiment_v1_vs_v3.csv")
