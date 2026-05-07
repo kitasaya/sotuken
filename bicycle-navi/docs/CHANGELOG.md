@@ -380,3 +380,29 @@ edge_id ベース判定に移行した後も、`oneway=yes` の way であれば
 - `POST /api/experiment/batch/od-pairs/csv` が v3 判定を反映 ✅
 - `POST /api/experiment/batch/od-pairs/compare/csv` が 15×2=30行の CSV を返す ✅
 - v1 行は `violation_count_high_conf=0`、v3 行は high/low に分かれる ✅
+
+---
+
+## タスクB: GraphHopper の osm_way_id 有効化（2026-05-07）
+
+### 背景
+
+タスクA 実装後に `POST /api/experiment/batch/od-pairs/compare/csv` を実行したところ、v3 判定の全 15件で `edge_id=False`（点ベースフォールバック）になっていた。原因は `graphhopper/config.yml` の `graph.encoded_values` に `osm_way_id` が含まれておらず、グラフビルド時に way_id が encoded value として保存されていなかったこと。
+
+加えて、`graph.location: /data/graph-cache` と設定していたが GraphHopper v12 は実際に `/data/default-gh` に保存しており、キャッシュ場所の設定も不一致だった。
+
+### 変更内容
+
+**`graphhopper/config.yml`**
+- `graph.encoded_values` の末尾に `osm_way_id` を追加
+- `graph.location` を `/data/graph-cache` → `/data/default-gh` に修正（実際の保存先に合わせる）
+
+**`graphhopper/default-gh/`（グラフキャッシュ）**
+- 旧キャッシュを削除して再ビルド
+- 再ビルド後のログで `"name\":\"osm_way_id\"` が encoded values に含まれることを確認
+
+### 完了条件の確認
+
+- `graph.encoded_values` に `osm_way_id` が含まれている ✅
+- GraphHopper 再起動後に `details=osm_way_id` リクエストで 63件の way_id が返る（400 エラーなし） ✅
+- `POST /api/route` のレスポンスで `comparison.using_edge_ids: true` を確認 ✅

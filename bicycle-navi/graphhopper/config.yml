@@ -1,7 +1,7 @@
 graphhopper:
   datareader.file: /data/data.pbf
-  graph.location: /data/graph-cache
-  graph.encoded_values: car_access, car_average_speed, country, road_class, roundabout, max_speed, foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed, road_environment
+  graph.location: /data/default-gh
+  graph.encoded_values: car_access, car_average_speed, country, road_class, roundabout, max_speed, foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed, road_environment, osm_way_id
   import.osm.ignored_highways: motor, trunk
   path_details: osm_way_id
   profiles:

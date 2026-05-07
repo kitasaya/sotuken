@@ -62,9 +62,8 @@ bicycle-navi/
 │       └── api/
 │           └── route.js             # バックエンド API クライアント（相対パス /api）
 ├── graphhopper/
-│   ├── config.yml                   # bike プロファイル設定
-│   ├── kanto-latest.osm.pbf         # OSM 関東データ（約700MB）
-│   └── graph-cache/                 # ビルド済みグラフキャッシュ（自動生成）
+│   ├── config.yml                   # bike プロファイル設定（osm_way_id を encoded_values に含む）
+│   └── default-gh/                  # ビルド済みグラフキャッシュ（自動生成・GH v12 のデフォルト保存先）
 └── docker-compose.yml
 ```
 

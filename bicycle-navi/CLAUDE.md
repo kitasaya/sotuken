@@ -10,8 +10,9 @@
 STEP 1〜5（環境構築・MVP実装・走行中UI）はすべて完了済み。
 法規チェック精度向上フェーズのタスク1〜4もすべて完了。
 タスクA（experiment.py の v3 判定ロジック統一 + v1/v3 比較エンドポイント追加）も完了。
+タスクB（GraphHopper の osm_way_id 有効化・グラフ再ビルド）も完了。
 
-**現在は評価実験の実施フェーズ。**
+**現在は評価実験の実施フェーズ。v3 判定で edge_id ベース判定が正常に動作する。**
 完了タスクの履歴は `docs/CHANGELOG.md` を参照。
 システム構成と既存実装の説明は `docs/ARCHITECTURE.md` を参照。
 環境構築手順は `docs/SETUP.md` を参照（再構築時のみ）。
@@ -43,6 +44,7 @@ edge_id ベース判定 + 進行方向照合 + instruction連動判定 で解決
 - **タスク3（完了）**: 違反判定に confidence スコア（0.4/0.7/1.0）を導入
 - **タスク4（完了）**: バッチ実験テストケース拡充（関東圏 15 O-D ペア・`od_pairs.csv`）
 - **タスクA（完了）**: `experiment.py` を route.py と同じ v3 判定ロジックに統一 + v1/v3 比較エンドポイント追加
+- **タスクB（完了）**: GraphHopper の `osm_way_id` encoded value を有効化・グラフ再ビルド（`comparison.using_edge_ids=true` を確認）
 
 ---
 
@@ -291,6 +293,144 @@ route_analyzer の v1 分岐内で、`check_oneway_violation` と `check_two_ste
 - `check_sidewalk_violation` は呼び出さない（研究スコープ除外）
 - フロントエンドの変更は不要（バックエンド API のレスポンス構造は変わらない）
 - `comparison.using_edge_ids` フィールドは v3 では従来通り True/False を返す。v1 では常に False。
+
+---
+
+## ~~タスクB: GraphHopper の osm_way_id 取得を有効化する【完了】~~
+
+### 背景
+
+`POST /api/experiment/batch/od-pairs/compare/csv` のサーバログを確認したところ、**v3 判定の全 O-D ペア（15件）で edge_id ベース判定に入れず、点ベース判定にフォールバックしている**ことが判明した。具体的には以下の現象：
+
+```
+GET http://localhost:8989/route?...&details=osm_way_id "HTTP/1.1 400 Bad Request"
+WARNING:services.graphhopper:details=osm_way_id が拒否されました。details なしで再試行します
+INFO:services.route_analyzer:点ベース判定（フォールバック）: ...
+INFO:services.route_analyzer:法規チェック完了(v3): ... (edge_id=False)
+```
+
+これは GraphHopper が `osm_way_id` を path_details として返せない状態にあることを意味する。原因は `graphhopper/config.yml` の `graph.encoded_values` に `osm_way_id` が含まれていないこと。グラフビルド時に way_id を encoded value として保存していないため、ランタイムで `details=osm_way_id` を要求しても 400 になる。
+
+このまま放置すると、v3 判定が機能しない状態で論文の評価実験データを作ることになり、研究の主張（edge_id ベース判定による並行 way 問題の解消）が実装で支えられなくなる。**最優先で修正する必要がある。**
+
+### 変更対象ファイル
+
+- `graphhopper/config.yml`
+- `graphhopper/graph-cache/`（既存キャッシュを削除して再ビルドさせる）
+- `backend/services/route_analyzer.py`（ログ出力の確認のみ・基本変更不要）
+
+### 実装手順
+
+#### 手順1: `graphhopper/config.yml` を修正
+
+`graph.encoded_values` の末尾に `osm_way_id` を追加する。例：
+
+```yaml
+graphhopper:
+  datareader.file: /data/data.pbf
+  graph.location: /data/graph-cache
+  graph.encoded_values: car_access, car_average_speed, country, road_class, roundabout, max_speed, foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed, road_environment, osm_way_id
+  import.osm.ignored_highways: motor, trunk
+  path_details: osm_way_id
+  ...
+```
+
+`path_details: osm_way_id` の行は既に存在するのでそのまま残す（実害はない）。
+
+#### 手順2: 既存グラフキャッシュを削除
+
+`osm_way_id` を encoded value に追加した場合、**既存の graph-cache を削除しないと再ビルドされない**。GraphHopper は graph-cache が存在するとそれを再利用する仕様なので、削除が必須。
+
+```powershell
+# Windows PowerShell
+docker-compose down
+Remove-Item -Recurse -Force C:\Users\masa2\Desktop\卒研\bicycle-navi\graphhopper\graph-cache
+```
+
+または bash 環境：
+
+```bash
+docker-compose down
+rm -rf graphhopper/graph-cache
+```
+
+#### 手順3: GraphHopper を再起動してグラフを再ビルド
+
+```bash
+docker-compose up -d
+```
+
+**初回ビルドは 30分〜1時間かかる**。`docker-compose logs -f graphhopper` でログを確認し、以下のメッセージが出るまで待つ：
+
+```
+Started server at HTTP 0.0.0.0/0.0.0.0:8989
+```
+
+ビルド中は `/route` エンドポイントが 503 を返す。
+
+#### 手順4: edge_id 取得が動くことを確認
+
+GraphHopper 起動完了後、curl で確認：
+
+```bash
+curl "http://localhost:8989/route?point=35.6580,139.7016&point=35.6895,139.7006&profile=bike&locale=ja&points_encoded=false&details=osm_way_id"
+```
+
+期待結果：レスポンス JSON の `paths[0].details.osm_way_id` に `[[start_idx, end_idx, way_id], ...]` 形式の配列が含まれている。
+
+400 Bad Request が返る場合は config の修正が反映されていない、または graph-cache の削除が不完全。
+
+#### 手順5: `POST /api/route` で edge_id 判定が動くことを確認
+
+バックエンドが起動していることを確認した上で：
+
+```bash
+curl -X POST http://localhost:8000/api/route \
+  -H "Content-Type: application/json" \
+  -d '{"origin_lat":35.658,"origin_lng":139.7016,"dest_lat":35.6895,"dest_lng":139.7006}'
+```
+
+期待結果：レスポンス JSON の `comparison.using_edge_ids` が **true** であること。
+
+サーバログで以下が出ることを確認：
+
+```
+INFO:services.route_analyzer:edge_idベース判定: N ways, X.X秒
+INFO:services.route_analyzer:法規チェック完了(v3): oneway=N two_step=N (edge_id=True)
+```
+
+`(edge_id=True)` が出ていれば成功。`(edge_id=False)` のままなら失敗なので config / graph-cache を再確認。
+
+#### 手順6: 比較実験の再実行
+
+edge_id 判定が動くことを確認したら、再度比較 CSV を取得する：
+
+```bash
+curl -X POST http://localhost:8000/api/experiment/batch/od-pairs/compare/csv \
+  -o experiment_v1_vs_v3_with_edge_id.csv
+```
+
+サーバログで v3 のペアすべてに `(edge_id=True)` が出ていることを確認する。**1件でも `(edge_id=False)` がある場合は、その O-D ペアの座標が GraphHopper の対応範囲外（kanto-latest.osm.pbf のカバー外）か、その他の障害がある**。ログにエラーが出ていないか確認すること。
+
+### 完了条件
+
+1. `graphhopper/config.yml` の `graph.encoded_values` に `osm_way_id` が含まれている。
+2. `graphhopper/graph-cache/` が再生成され、GraphHopper が起動完了している。
+3. `curl http://localhost:8989/route?...&details=osm_way_id` が 200 を返し、レスポンスに `paths[0].details.osm_way_id` が含まれている。
+4. `POST /api/route` のレスポンスで `comparison.using_edge_ids` が **true** になっている。
+5. `POST /api/experiment/batch/od-pairs/compare/csv` を実行したサーバログで、v3 ペアの大半に `法規チェック完了(v3): ... (edge_id=True)` が出ている。
+6. 取得した新 CSV を `experiment_v1_vs_v3_with_edge_id.csv` として保存する。
+
+### 注意事項
+
+- `osm_way_id` は GraphHopper の標準 encoded value として最近のバージョンでサポートされている。`israelhikingmap/graphhopper:latest` のバージョンで対応していなければ、エラーメッセージが出るので、その場合は報告すること（その場合は別の取得方法を検討する必要がある）。
+- グラフ再ビルドは時間がかかるので、ビルド中に他の作業を進める際は注意。バックエンドや フロントエンドは GraphHopper が起動完了するまで動作しない。
+- 既存の `POST /api/experiment/batch/od-pairs/compare/csv` などのエンドポイントは変更不要。問題は GraphHopper 側の設定のみ。
+- `route_analyzer.py` の挙動は正しい。edge_id details が取得できれば自動的に edge_id 判定に入り、できなければ点ベースにフォールバックする設計になっている。今回の修正でフォールバック側ではなく本来の edge_id 側が動くようになる。
+
+### 副次的に確認すべき点（解決後）
+
+サーバログを見ると、v1 実行時に Overpass の `kumi.systems` がタイムアウトする頻度が高い（特に 1km 未満の短いルートで発生）。これは Overpass 側の負荷状況による一時的な問題なので、edge_id 判定が動くようになれば Overpass への負荷自体が減り（way_id 直指定のクエリは点ベース広範囲検索より軽量）、改善する可能性がある。
 
 ---
 
