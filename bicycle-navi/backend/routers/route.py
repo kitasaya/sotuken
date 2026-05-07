@@ -4,7 +4,7 @@ import time
 from fastapi import APIRouter
 from pydantic import BaseModel
 from services.graphhopper import get_route
-from services.overpass import get_bulk_way_tags, get_way_tags_by_ids
+from services.overpass import get_bulk_way_data, get_bulk_way_tags, get_way_tags_by_ids
 from services.law_checker import (
     _sample,
     check_oneway_violation,
@@ -33,10 +33,26 @@ async def calculate_route(req: RouteRequest):
     way_id_details = route_data["paths"][0].get("details", {}).get("osm_way_id", [])
     using_edge_ids = bool(way_id_details)
 
+    # ② b) 二段階右折チェック用：右折 instruction の地点を先に抽出（Overpass 呼び出し前）
+    instructions = route_data["paths"][0].get("instructions", [])
+    two_step_pts: list = []
+    two_step_idxs: list = []
+    for instr in instructions:
+        if instr.get("sign") not in (2, 3):  # TURN_RIGHT / TURN_SHARP_RIGHT のみ
+            continue
+        interval = instr.get("interval", [])
+        if not interval:
+            continue
+        idx = interval[0]
+        two_step_pts.append(points[min(idx, len(points) - 1)])
+        two_step_idxs.append(idx)
+
     t0 = time.perf_counter()
     geometries: list[list] | None = None
     travel_vectors: list[list] | None = None
     way_id_to_data: dict = {}
+    two_step_tags_arg: list = []
+
     if using_edge_ids:
         # osm_way_id details: [[start_idx, end_idx, way_id], ...]
         # way_id ごとにルート上の代表座標（区間中点）と区間端点インデックスを記録
@@ -63,48 +79,47 @@ async def calculate_route(req: RouteRequest):
                 p_start = points[info["start_idx"]]
                 p_end = points[min(info["end_idx"], len(points) - 1)]
                 travel_vectors.append([p_end[0] - p_start[0], p_end[1] - p_start[1]])
+            # 右折地点のタグを way_id_to_data から解決
+            for idx in two_step_idxs:
+                wid = None
+                for seg in way_id_details:
+                    s, e, w = int(seg[0]), int(seg[1]), int(seg[2])
+                    if s <= idx <= e:
+                        wid = w
+                        break
+                two_step_tags_arg.append(way_id_to_data.get(wid, {}).get("tags", {}) if wid else {})
             logger.info("edge_idベース判定: %d ways, %.1f秒", len(unique_way_ids), time.perf_counter() - t0)
         except Exception as e:
             logger.warning("Overpass by-ID取得失敗（点ベースにフォールバック）: %s", e)
             using_edge_ids = False
             geometries = None
             travel_vectors = None
+            two_step_tags_arg = []
 
     if not using_edge_ids:
         sampled = _sample(points)
+        # sampled + two_step_pts を1回のクエリでまとめて取得（ジオメトリ付き）
+        combined_pts = sampled + two_step_pts
         try:
-            tags_list = await get_bulk_way_tags(sampled)
+            combined_data = await get_bulk_way_data(combined_pts)
         except Exception as e:
             logger.warning("Overpass一括取得失敗（チェックをスキップ）: %s", e)
-            tags_list = [{} for _ in sampled]
+            combined_data = [{"tags": {}, "geometry": []} for _ in combined_pts]
+        sampled_data = combined_data[:len(sampled)]
+        tags_list = [d["tags"] for d in sampled_data]
+        two_step_tags_arg = [d["tags"] for d in combined_data[len(sampled):]]
+        # サンプル点ごとの進行方向ベクトルを隣接点から近似（方向照合を有効化）
+        geometries = [d["geometry"] for d in sampled_data]
+        travel_vectors = []
+        for k in range(len(sampled)):
+            if k + 1 < len(sampled):
+                tv = [sampled[k + 1][0] - sampled[k][0], sampled[k + 1][1] - sampled[k][1]]
+            else:
+                tv = [sampled[k][0] - sampled[k - 1][0], sampled[k][1] - sampled[k - 1][1]]
+            travel_vectors.append(tv)
         check_points = sampled
-        logger.info("点ベース判定（フォールバック）: %d点, %.1f秒", len(sampled), time.perf_counter() - t0)
-
-    # ② b) 二段階右折チェック用：右折 instruction の地点（進入先 way）に限定
-    instructions = route_data["paths"][0].get("instructions", [])
-    two_step_pts: list = []
-    two_step_tags_arg: list | None = []
-    for instr in instructions:
-        if instr.get("sign") not in (2, 3):  # TURN_RIGHT / TURN_SHARP_RIGHT のみ
-            continue
-        interval = instr.get("interval", [])
-        if not interval:
-            continue
-        idx = interval[0]
-        pt = points[min(idx, len(points) - 1)]
-        two_step_pts.append(pt)
-        if using_edge_ids:
-            # 進入先 way_id を特定して tags を即時解決
-            wid = None
-            for seg in way_id_details:
-                s, e, w = int(seg[0]), int(seg[1]), int(seg[2])
-                if s <= idx <= e:
-                    wid = w
-                    break
-            tags = way_id_to_data.get(wid, {}).get("tags", {}) if wid else {}
-            two_step_tags_arg.append(tags)  # type: ignore[union-attr]
-        else:
-            two_step_tags_arg = None  # Overpass に再取得させる
+        logger.info("点ベース判定（フォールバック）: %d点+右折%d点, %.1f秒",
+                    len(sampled), len(two_step_pts), time.perf_counter() - t0)
 
     # ③ 法規チェック（タグ取得済みなので各チェックは即完了する）
     (

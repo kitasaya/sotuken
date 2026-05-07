@@ -76,19 +76,20 @@ out tags geom;
     return result
 
 
-async def get_bulk_way_tags(points: list, radius: int = 20) -> list[dict]:
+async def get_bulk_way_data(points: list, radius: int = 20) -> list[dict]:
     """
-    複数座標を1回のOverpassクエリでまとめて取得する。
+    複数座標を1回のOverpassクエリでまとめて取得する（タグ＋ジオメトリ付き）。
 
     points: [[lng, lat], ...] 形式（GeoJSON座標順）
-    戻り値: 各座標に対応するタグのリスト（points と同順）
+    戻り値: 各座標に対応する {"tags": {...}, "geometry": [[lon, lat], ...]} のリスト
 
-    Union構文で全座標を一括取得し、各座標に最も中心が近い way のタグを返す。
+    Union構文で全座標を一括取得し、各座標に最も近いノードを持つ way を選択する。
+    中心点ではなく実ジオメトリの最近傍ノードで選択するため、
+    並行する対向車線 way の誤選択を低減できる。
     """
     if not points:
         return []
 
-    # Union クエリを構築（各座標を中心とした around クエリを結合）
     parts = "\n".join(
         f"  way(around:{radius},{lat},{lng})[highway];"
         for lng, lat in points
@@ -97,26 +98,37 @@ async def get_bulk_way_tags(points: list, radius: int = 20) -> list[dict]:
 (
 {parts}
 );
-out center tags;
+out geom tags;
 """
 
     elements = await _post_with_retry(query)
 
-    # 各座標に対して、返ってきた way の中から center が最も近いものを対応付ける
     result = []
     for lng, lat in points:
-        best_tags: dict = {}
+        best: dict = {"tags": {}, "geometry": []}
         best_dist = float("inf")
         for elem in elements:
-            center = elem.get("center", {})
-            clat = center.get("lat")
-            clng = center.get("lon")
-            if clat is None or clng is None:
-                continue
-            dist = (clat - lat) ** 2 + (clng - lng) ** 2
-            if dist < best_dist:
-                best_dist = dist
-                best_tags = elem.get("tags", {})
-        result.append(best_tags)
+            geom_nodes = elem.get("geometry", [])
+            # 実ジオメトリの各ノードまでの最短距離で最近傍 way を選択
+            for node in geom_nodes:
+                d = (node["lat"] - lat) ** 2 + (node["lon"] - lng) ** 2
+                if d < best_dist:
+                    best_dist = d
+                    best = {
+                        "tags": elem.get("tags", {}),
+                        "geometry": [[n["lon"], n["lat"]] for n in geom_nodes],
+                    }
+        result.append(best)
 
     return result
+
+
+async def get_bulk_way_tags(points: list, radius: int = 20) -> list[dict]:
+    """
+    複数座標を1回のOverpassクエリでまとめて取得する（タグのみ・後方互換）。
+
+    points: [[lng, lat], ...] 形式（GeoJSON座標順）
+    戻り値: 各座標に対応するタグのリスト（points と同順）
+    """
+    data = await get_bulk_way_data(points, radius)
+    return [d["tags"] for d in data]
