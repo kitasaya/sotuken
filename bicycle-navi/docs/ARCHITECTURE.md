@@ -83,7 +83,7 @@ bicycle-navi/
 | `check_cycleway_recommendation` | 推奨 | `cycleway=lane/track` の way 上の点 | `cycleway` |
 | `check_two_step_turn` | 違反 | 右折 instruction 地点で `highway=primary/secondary` または `lanes>=3` | `highway`, `lanes` |
 
-**現在の挙動（2026-05-07）：**
+**現在の挙動（2026-05-12）：**
 
 判定ロジックは `services/route_analyzer.py` の `analyze_route` に集約されており、`route.py` と `experiment.py` の両方から呼ばれる。
 
@@ -92,6 +92,9 @@ bicycle-navi/
 - `check_oneway_violation` は way geometry の始点→終点ベクトルとルート進行方向の内積で逆走を判定
   - `oneway:bicycle=no` / `cycleway=opposite/opposite_lane/opposite_track` の場合は違反としない
 - `check_two_step_turn` は GraphHopper の `instructions` から `sign=2/3`（右折系）の地点のみを対象とする
+  - `interval[0]` は右折交差点ノードのインデックス。`details.osm_way_id` では **approach road の `end_idx`** かつ **departure road の `start_idx`** として共有される
+  - `bisect_right(start_indices, idx) - 1` による二分探索で `start_idx == interval[0]` の departure road を取得（設計意図通り）
+  - GraphHopper v12（israelhikingmap/graphhopper:latest、2026-05-12確認）での動作を渋谷→新宿ルートの全 6 右折箇所で確認済み
 - `osm_way_id` が取得できない場合のみ従来の点ベース判定（`_sample` + `get_bulk_way_tags`）にフォールバック
 - `route.py` レスポンスの `comparison.using_edge_ids` で判定方式を確認できる
 - `comparison.algo_version` に `"v1"` または `"v3"` が含まれる

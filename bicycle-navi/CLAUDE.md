@@ -5,445 +5,356 @@
 
 ---
 
-## プロジェクト現状（2026-05-07）
+## プロジェクト現状（2026-05-12）
 
-STEP 1〜5（環境構築・MVP実装・走行中UI）はすべて完了済み。
-法規チェック精度向上フェーズのタスク1〜4もすべて完了。
-タスクA（experiment.py の v3 判定ロジック統一 + v1/v3 比較エンドポイント追加）も完了。
-タスクB（GraphHopper の osm_way_id 有効化・グラフ再ビルド）も完了。
+STEP 1〜5（環境構築・MVP 実装・走行中 UI）はすべて完了済み。
+法規チェック精度向上フェーズのタスク 1〜4 もすべて完了。
+タスク A（experiment.py の v3 統一 + v1/v3 比較エンドポイント）も完了。
+タスク B（GraphHopper の osm_way_id 有効化）も完了。
 
-**現在は評価実験の実施フェーズ。v3 判定で edge_id ベース判定が正常に動作する。**
+**現在はコード品質完成度の向上と評価実験データ確保のフェーズ。**
 完了タスクの履歴は `docs/CHANGELOG.md` を参照。
 システム構成と既存実装の説明は `docs/ARCHITECTURE.md` を参照。
-環境構築手順は `docs/SETUP.md` を参照（再構築時のみ）。
+環境構築手順は `docs/SETUP.md` を参照。
 
 ---
 
-## 研究上の最重要課題：法規チェックの偽陽性削減
+## このフェーズの方針
 
-現状の `backend/services/law_checker.py` は、ルート上の点を最大10点サンプリングし、
-各点の最寄り way の OSM タグだけで違反判定している。
-このため、以下の偽陽性が発生する：
+**研究上の現状認識：**
 
-1. **並行way問題**：脇道や上下分離した一方通行ペアの反対側 way のタグを誤って拾う
-2. **進行方向未照合問題**：`oneway=yes` の道路を順方向に走っていても「逆走」と判定される
-3. **二段階右折の過検出問題**：幹線道路を直進・左折しているだけでも「二段階右折違反」と判定される
-4. **サンプリング粒度問題**：10点固定では短い違反区間を見逃すか、無関係な区間を誤検出する
+v3 ロジック（edge_id ベース判定 + 進行方向照合 + 右折 instruction 連動）と confidence
+スコア導入により、v1 比で偽陽性が削減されたという定量結果は得られている。
+ただし、宮治先生の「成果の難易度が低い」指摘に対する直接的反論材料としては、
+「v1 比で違反検出が減った」だけでは弱い。
 
-これらは「成果の難易度が低い」という宮治先生の指摘に対する直接的な改善材料でもある。
-edge_id ベース判定 + 進行方向照合 + instruction連動判定 で解決する。
+**必要な追加データ：**
 
----
+1. **Ground truth との比較**：v1/v3 の検出が本物の違反かどうかの混同行列
+2. **既存ナビとの比較**：Google Maps 自転車モードのルートとの違反検出数比較
 
-## 完了済みタスク（2026-05-07）
+これらを揃えることで「単に検出を減らしただけ」ではなく「正確性を高めた」
+「既存ナビでは検出されていないリスクを定量的に示した」と主張できるようになる。
 
-タスク1〜4およびタスクAはすべて実装完了。詳細は `docs/CHANGELOG.md` を参照。
+**フェーズ分け：**
 
-- **タスク1（完了）**: oneway 判定に進行方向照合 + 自転車除外タグ対応
-- **タスク2（完了）**: 二段階右折判定を右折 instruction に限定
-- **タスク3（完了）**: 違反判定に confidence スコア（0.4/0.7/1.0）を導入
-- **タスク4（完了）**: バッチ実験テストケース拡充（関東圏 15 O-D ペア・`od_pairs.csv`）
-- **タスクA（完了）**: `experiment.py` を route.py と同じ v3 判定ロジックに統一 + v1/v3 比較エンドポイント追加
-- **タスクB（完了）**: GraphHopper の `osm_way_id` encoded value を有効化・グラフ再ビルド（`comparison.using_edge_ids=true` を確認）
+- **フェーズ1（コード品質完成度）**：タスク C1〜C3。秋以降の論文執筆中にコード側で
+  突っ込まれて手戻りしないよう、システム実装を本確定させる
+- **フェーズ2（研究データ確保）**：タスク R1〜R2。フェーズ1完了後、または並行して
+  着手。論文の主張を補強する実験データを揃える
 
----
-
-## 現役タスク（優先度順）
-
-実装着手前に **必ず** 対象ファイルを `view` で読み、既存実装を把握すること。
-
-### ~~タスク1: oneway 判定に進行方向照合を追加【完了】~~
-
-`oneway=yes` の道路でも順方向に走っていれば違反ではない。
-way の進行方向とルートの進行方向の内積を取って判定する。
-
-**変更対象ファイル：**
-
-- `backend/services/overpass.py`
-- `backend/services/law_checker.py`
-
-**手順：**
-
-1. `overpass.py` で way 取得時に `out geom;` または `out body geom;` で node 列（geometry）を取得
-2. `law_checker.py` の `check_oneway_violation` を以下のロジックに変更：
-   - way の geometry の始点→終点ベクトルを計算
-   - ルート上の該当区間の進行方向ベクトルを計算
-   - 内積が負なら逆走候補
-   - `oneway=-1` の場合は判定を反転
-   - `oneway:bicycle=no`、`cycleway=opposite`、`cycleway=opposite_lane`、`cycleway=opposite_track` のいずれかがあれば違反としない
-3. ベクトル計算は単純な2次元内積でよい（測地線補正は不要）
-
-**完了条件：**
-
-- `oneway=yes` の道路を順方向に走った場合、違反として検出されない
-- 逆方向に走った場合のみ違反として検出される
+フェーズ1を先行させる理由は、コード側の変更が研究データに影響する可能性があるため。
+（例：二分探索化前後で結果が変わるはずはないが、interval[0] の解釈が誤っていた場合は
+評価実験のやり直しが必要になる）
 
 ---
 
-### ~~タスク2: 二段階右折判定を右折 instruction に限定【完了】~~
+## フェーズ1：コード品質完成度
 
-二段階右折は「右折時のみ」の義務。直進・左折・通過時には判定しない。
+### タスク C1：way_id → 右折地点解決の二分探索化【優先度：中】
 
-**変更対象ファイル：**
+#### 背景
 
-- `backend/services/law_checker.py`
-- `backend/routers/route.py`
-
-**手順：**
-
-1. GraphHopper の `instructions` 配列から `sign=2`（TURN_RIGHT）または `sign=3`（TURN_SHARP_RIGHT）の地点を抽出
-2. `check_two_step_turn` を「右折 instruction の地点で、かつ進入する道路が `highway=primary/secondary` または `lanes>=3` の場合のみ違反フラグ」に変更
-3. instruction の地点座標から、進入元 way ではなく **進入先 way** のタグを参照する点に注意
-
-**完了条件：**
-
-- 幹線道路を直進・左折するだけのルートで二段階右折違反が検出されない
-- 幹線道路で右折するルートでのみ違反として検出される
-
----
-
-### ~~タスク3: 違反判定に confidence スコアを導入【完了】~~
-
-判定の確実性に応じてスコアを付け、UI と評価実験で活用する。
-
-**変更対象ファイル：**
-
-- `backend/services/law_checker.py`
-- `backend/routers/route.py`
-- `backend/routers/experiment.py`
-- `frontend/src/components/ViolationAlert.jsx`
-- `frontend/src/components/MapView.jsx`
-
-**スコア定義：**
-| 条件 | confidence |
-|---|---|
-| edge_id 一致 + 進行方向照合済み + 自転車除外タグ確認済み | 1.0 |
-| edge_id 一致のみ | 0.7 |
-| 近傍 way 推定（フォールバック） | 0.4 |
-
-**手順：**
-
-1. `law_checker.py` の各違反辞書に `confidence: float` フィールドを追加
-2. UI 側で confidence ≥ 0.7 と < 0.7 を色分け（確実な違反は赤、疑わしい違反は橙など）
-3. バッチ実験では confidence 別の集計列を CSV に追加
-4. 論文ではこのスコア体系自体を「タグベース近似判定の限界を定量化する手法」として位置付ける
-
-**完了条件：**
-
-- レスポンスの violations / recommendations に confidence が含まれる
-- フロントエンドで confidence による表示分けが動作する
-- バッチ CSV に confidence 別カウントが出力される
-
----
-
-### ~~タスク4: バッチ実験エンドポイントのテストケース拡充【完了】~~
-
-タスク1〜4の効果を定量比較するために、O-D ペアの拡充を行う。
-
-**変更対象ファイル：**
-
-- `backend/routers/experiment.py`
-- 新規 CSV：`backend/data/od_pairs.csv`（関東圏の複数 O-D ペア）
-
-**手順：**
-
-1. 関東圏で道路環境の異なる 10〜20 ペアの O-D を選定（幹線道路中心・住宅街中心・混在型）
-2. `od_pairs.csv` として保存
-3. バッチエンドポイントで CSV を読み込んで一括実行できるようにする
-4. 出力 CSV に「タスク1〜4 適用前後の違反数差分」を残せる構造にする
-
----
-
-## ~~タスクA: `experiment.py` を route.py と同じ v3 判定ロジックに揃える【完了】~~
-
-### 背景
-
-現状の `backend/routers/experiment.py` の `batch_experiment` は、点ベース判定（v1）のままで動いている。一方、`backend/routers/route.py` の `calculate_route` は edge_id ベース判定 + 進行方向照合 + 右折 instruction 連動（v3）に更新済み。
-
-このため、バッチ実験エンドポイントが返す結果には `algo_version="v3-edge_id+direction+instruction+confidence"` というラベルが付いているにもかかわらず、実際には v1 のロジックで判定されている。論文の評価実験データとして提出すると主張と実装の乖離になるため、最優先で修正する必要がある。
-
-加えて、論文では v1 と v3 の比較を示したいので、**両バージョンを CSV 上で切り替えて実行できる構造**にする。
-
-### 変更方針
-
-ロジックの重複を避けるため、`route.py` の判定ロジックを `services/route_analyzer.py` に新規抽出し、`route.py` と `experiment.py` の両方から呼ぶ構造にする。`route_analyzer.py` には判定方式を切り替えるフラグを持たせる。
-
-### 変更対象ファイル
-
-- `backend/services/route_analyzer.py`（新規作成）
-- `backend/routers/route.py`（既存ロジックを route_analyzer に委譲）
-- `backend/routers/experiment.py`（v1/v3 切替対応 + route_analyzer 利用）
-- `backend/data/od_pairs.csv`（変更なし、再利用）
-
-### 実装手順
-
-#### 手順1: `services/route_analyzer.py` を新規作成
-
-`route.py` の `calculate_route` 関数のうち、GraphHopper 呼び出し以降の「way_id 取得 → Overpass 取得 → 進行方向ベクトル計算 → 右折 instruction 抽出 → 法規チェック呼び出し → リルート」までのロジックを、以下のシグネチャの関数として抽出する：
+`route_analyzer.py` の `_analyze_v3` で、二段階右折判定のために
+「右折 instruction の `interval[0]` インデックスから進入先 way_id を解決する」
+処理が、外側ループ × 内側ループの線形探索（O(N×M)）になっている。
 
 ```python
-async def analyze_route(
-    origin_lat: float,
-    origin_lng: float,
-    dest_lat: float,
-    dest_lng: float,
-    *,
-    algo_version: str = "v3",  # "v1" | "v3"
-) -> dict
+for idx in two_step_idxs:
+    wid = None
+    for seg in way_id_details:
+        s, e, w = int(seg[0]), int(seg[1]), int(seg[2])
+        if s <= idx <= e:
+            wid = w
+            break
+    two_step_tags_arg.append(...)
 ```
 
-戻り値の dict 構造は `route.py` の現在のレスポンスと同じ（`original_route`, `compliant_route`, `route`, `violations`, `compliant`, `recommendations`, `rerouted`, `comparison`）にする。
+現状の 15 O-D ペアでは問題ないが、論文の評価実験規模を拡大した場合や、
+ground truth 評価で同一ルートを繰り返し評価する場合にボトルネックになる可能性がある。
+`way_id_details` は `start_idx` 昇順の構造なので二分探索化が可能。
 
-`algo_version` による分岐ロジック：
+#### 変更対象ファイル
 
-- **`algo_version == "v3"`**: 現在の `route.py` の挙動と完全に同じ。edge_id ベースで取得できれば edge_id 判定、取れなければ点ベースにフォールバック。`check_oneway_violation` には geometries / travel_vectors を渡す。`check_two_step_turn` には右折 instruction の地点と進入先 way のタグのみを渡す。
-- **`algo_version == "v1"`**: v3 改善前の挙動を再現する。具体的には：
-  - GraphHopper の details は使わず、ルート座標から `_sample(points)` で最大10点を抽出
-  - `get_bulk_way_tags` で点ベースに Overpass 一括取得
-  - `check_oneway_violation` には `tags_list` のみを渡す（geometries / travel_vectors は渡さない → 進行方向照合がスキップされ confidence=0.4 になる）
-  - `check_two_step_turn` には**全サンプル点と tags_list** を渡す（右折 instruction 限定をしない＝過検出する旧挙動を再現）
-  - `comparison` の `using_edge_ids` は False で固定
+- `backend/services/route_analyzer.py`
 
-`comparison` dict には新たに `algo_version: str` フィールドを追加する。
+#### 手順
 
-#### 手順2: `routers/route.py` を route_analyzer 経由に書き換え
+1. `_analyze_v3` の冒頭近くで、`way_id_details` をソート済みとみなして
+   `start_indices = [int(seg[0]) for seg in way_id_details]` を一度だけ構築
+2. 線形探索ループを `bisect_right(start_indices, idx) - 1` による二分探索に置き換え
+3. 戻ってきたインデックスから `way_id_details[k]` の `end_idx` と
+   `idx` の包含関係をチェック（`start <= idx <= end`）
+4. インデックスが範囲外、または end_idx を超えている場合は `wid = None`
 
-`calculate_route` の中身を `analyze_route(req.origin_lat, req.origin_lng, req.dest_lat, req.dest_lng, algo_version="v3")` の呼び出しと結果返却だけにする。フォールバックや右折抽出のロジックは route_analyzer に移る。
+#### 完了条件
 
-リクエスト側で algo_version を選べるようにする必要はない（`route.py` は常に v3 固定）。
-
-#### 手順3: `routers/experiment.py` を route_analyzer 経由に書き換え
-
-##### 3-1: `RoutePoint` モデル
-
-変更なし。
-
-##### 3-2: `BatchRequest` モデル
-
-オプションフィールドを追加：
-
-```python
-class BatchRequest(BaseModel):
-    routes: list[RoutePoint]
-    algo_version: str = "v3"  # "v1" | "v3"
-```
-
-##### 3-3: `batch_experiment` 関数を書き換え
-
-各ルートに対して `analyze_route(..., algo_version=req.algo_version)` を呼び、その戻り値の `comparison` と `violations` から既存の CSV 列を埋める。`ALGO_VERSION` 定数は削除し、リクエストの `algo_version` を CSV の `algo_version` 列に記録する。
-
-エラーハンドリングは既存通り、例外時は `error` 列に文字列を記録。
-
-##### 3-4: `_load_od_pairs` ヘルパー
-
-変更なし。
-
-##### 3-5: 新規エンドポイント `POST /api/experiment/batch/od-pairs/compare/csv` を追加
-
-v1 と v3 を**続けて両方実行し、1つの CSV に並べて出力**する比較用エンドポイント。論文の表作成で直接使う。
-
-```python
-@router.post("/experiment/batch/od-pairs/compare/csv")
-async def batch_od_pairs_compare_csv():
-    """同じ O-D ペアを v1 と v3 の両方で実行し、1つの CSV にまとめて返す"""
-    routes = _load_od_pairs()
-    v1_results = (await batch_experiment(BatchRequest(routes=routes, algo_version="v1")))["results"]
-    v3_results = (await batch_experiment(BatchRequest(routes=routes, algo_version="v3")))["results"]
-    combined = v1_results + v3_results
-    # 既存の CSV 出力ロジックを使い、combined を渡す
-    ...
-```
-
-CSV のフィールド構成は既存と同じ（`algo_version` 列で v1 と v3 を区別）。実装としては `batch_experiment_csv` のロジックを `_results_to_csv_response(results)` ヘルパーに切り出して、新エンドポイントから再利用する形が綺麗。
-
-##### 3-6: 既存エンドポイントのデフォルト動作
-
-- `POST /api/experiment/batch` / `POST /api/experiment/batch/csv`: リクエストの `algo_version` を尊重（指定なしなら v3）
-- `POST /api/experiment/batch/od-pairs` / `POST /api/experiment/batch/od-pairs/csv`: v3 で実行（既存の挙動を維持）
-
-#### 手順4: `services/law_checker.py` の確認
-
-変更不要なはず。現在のシグネチャで v1 / v3 両対応が可能：
-
-- `check_oneway_violation(points, tags_list)` のみで呼ぶ → confidence=0.4 になる（v1 相当）
-- `check_oneway_violation(points, tags_list, geometries=..., travel_vectors=...)` で呼ぶ → confidence=0.7 or 1.0（v3 相当）
-- `check_two_step_turn(points, tags_list)` で全点を渡す → 過検出する v1 相当
-- `check_two_step_turn(two_step_pts, two_step_tags)` で右折点のみ渡す → v3 相当
-
-ただし、現状の `check_two_step_turn` は `tags_list is None` で confidence=0.4、提供済みなら 0.7 という分岐になっており、v1 で点ベース全件渡す場合も confidence=0.7 が付いてしまう。**v1 の挙動を正確に再現するため**、v1 ではあえて `tags_list=None` を渡して関数内で Overpass 再取得させるか、または `algo_version="v1"` の場合は判定後に violations の confidence を全件 0.4 で上書きするのが簡単。**後者を採用する**。
-
-route_analyzer の v1 分岐内で、`check_oneway_violation` と `check_two_step_turn` の戻り値の各 violation の `confidence` を 0.4 に上書きする処理を入れる。
-
-### 完了条件
-
-1. `POST /api/route` の挙動が変更前と完全に同じ（リグレッションなし）。渋谷→新宿で従来と同じ違反数・距離が返る。
-2. `POST /api/experiment/batch/od-pairs/csv` のレスポンスが、`route.py` 側と同じ v3 判定を反映している。具体的には、渋谷→新宿の `using_edge_ids=True` 相当の挙動になり、low confidence の違反数が変更前 CSV から減るはず。
-3. `POST /api/experiment/batch/od-pairs/compare/csv` を叩くと、15 O-D × 2 algo_version = 30行の CSV が返る。各行は `algo_version` 列で区別できる。
-4. v1 行の violations はすべて confidence < 0.7（low_conf 列に集計される）。v3 行は high_conf と low_conf に分かれる。
-5. 既存の `POST /api/experiment/batch` JSON 出力も同様に動く。
-
-### 実装着手前の確認事項
-
-- 実装前に必ず `backend/routers/route.py` と `backend/services/law_checker.py` を `view` で読み、現在の v3 判定ロジックを完全に把握すること
-- `route_analyzer.py` への抽出は、ロジックを**コピーするのではなく移動する**こと（route.py に同じコードが二重に残らないようにする）
-- 動作確認シナリオ：渋谷→新宿、東京駅→渋谷で `POST /api/route` を叩いて変更前と違反数が一致することを確認してから、バッチエンドポイントを叩く
-
-### 注意事項（不変の制約）
-
-- `check_sidewalk_violation` は呼び出さない（研究スコープ除外）
-- フロントエンドの変更は不要（バックエンド API のレスポンス構造は変わらない）
-- `comparison.using_edge_ids` フィールドは v3 では従来通り True/False を返す。v1 では常に False。
+- 15 O-D ペアでの実行結果（violations / comparison）が変更前と完全に一致する
+- `_analyze_v3` の右折地点解決部分の計算量が O(N log M) になる
+- 既存の動作確認シナリオ（渋谷→新宿、東京駅→渋谷）でリグレッションが起きない
 
 ---
 
-## ~~タスクB: GraphHopper の osm_way_id 取得を有効化する【完了】~~
+### タスク C2：二段階右折 interval[0] の妥当性確認【優先度：高】
 
-### 背景
+#### 背景
 
-`POST /api/experiment/batch/od-pairs/compare/csv` のサーバログを確認したところ、**v3 判定の全 O-D ペア（15件）で edge_id ベース判定に入れず、点ベース判定にフォールバックしている**ことが判明した。具体的には以下の現象：
+`_analyze_v3` では、右折 instruction の `interval[0]` インデックスを使い、
+そのインデックスを含む way_id 区間のタグを「進入先 way のタグ」として
+`check_two_step_turn` に渡している。
 
-```
-GET http://localhost:8989/route?...&details=osm_way_id "HTTP/1.1 400 Bad Request"
-WARNING:services.graphhopper:details=osm_way_id が拒否されました。details なしで再試行します
-INFO:services.route_analyzer:点ベース判定（フォールバック）: ...
-INFO:services.route_analyzer:法規チェック完了(v3): ... (edge_id=False)
-```
+しかし GraphHopper の `instructions` における `sign=2/3` の地点が、
 
-これは GraphHopper が `osm_way_id` を path_details として返せない状態にあることを意味する。原因は `graphhopper/config.yml` の `graph.encoded_values` に `osm_way_id` が含まれていないこと。グラフビルド時に way_id を encoded value として保存していないため、ランタイムで `details=osm_way_id` を要求しても 400 になる。
+- 「曲がる**前**の交差点に到達した時点」なのか
+- 「曲がった**後**の道路に入った時点」なのか
 
-このまま放置すると、v3 判定が機能しない状態で論文の評価実験データを作ることになり、研究の主張（edge_id ベース判定による並行 way 問題の解消）が実装で支えられなくなる。**最優先で修正する必要がある。**
+はバージョンによって挙動が異なるケースが報告されている。
+現在使用している `israelhikingmap/graphhopper:latest` のバージョンで、
+本当に「進入先 way」のタグを取得できているのかを目視確認する必要がある。
 
-### 変更対象ファイル
+論文で「進入先 way のタグで二段階右折を判定する」と主張する以上、
+ここの検証を済ませておかないと、評価実験データの妥当性が揺らぐ。
 
-- `graphhopper/config.yml`
-- `graphhopper/graph-cache/`（既存キャッシュを削除して再ビルドさせる）
-- `backend/services/route_analyzer.py`（ログ出力の確認のみ・基本変更不要）
+#### 変更対象ファイル
 
-### 実装手順
+- `backend/services/route_analyzer.py`（必要なら修正）
+- 検証用の一時スクリプト（リポジトリには残さなくてよい）
 
-#### 手順1: `graphhopper/config.yml` を修正
+#### 手順
 
-`graph.encoded_values` の末尾に `osm_way_id` を追加する。例：
+1. 渋谷→新宿のルートで実際に `POST /api/route` を実行し、レスポンスの
+   `original_route.instructions` から `sign=2` または `sign=3` の地点を抽出
+2. 抽出した `interval[0]` の値と、`details.osm_way_id` の各区間の
+   `[start_idx, end_idx, way_id]` を突き合わせる
+3. その `interval[0]` を含む way_id について、OpenStreetMap で実際にその way を
+   検索し、地図上の位置が「右折先の道路」になっているかを目視確認する
+   - 右折先の道路と一致 → 現状ロジック OK
+   - 右折前の道路と一致 → `interval[0]` を `interval[1]` に変える、または
+     `way_id_details` で `start_idx` が `interval[1]` より大きい最初の way を
+     取得するロジックに変更する必要あり
+4. 確認結果を `docs/ARCHITECTURE.md` の `route_analyzer.py` セクションに
+   1〜2行追記する（「GraphHopper v12 では interval[0] が進入先 way の
+   先頭インデックスを指すことを確認済み」など）
 
-```yaml
-graphhopper:
-  datareader.file: /data/data.pbf
-  graph.location: /data/graph-cache
-  graph.encoded_values: car_access, car_average_speed, country, road_class, roundabout, max_speed, foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed, road_environment, osm_way_id
-  import.osm.ignored_highways: motor, trunk
-  path_details: osm_way_id
-  ...
-```
+#### 完了条件
 
-`path_details: osm_way_id` の行は既に存在するのでそのまま残す（実害はない）。
+- 渋谷→新宿のルートで、すべての右折 instruction について
+  `interval[0]` が指す way が「右折先の道路」と一致することを目視確認した
+- 一致しなかった場合は修正コードを実装し、修正前後で違反検出数の差分を記録する
+- `docs/ARCHITECTURE.md` に確認結果を追記した
 
-#### 手順2: 既存グラフキャッシュを削除
+---
 
-`osm_way_id` を encoded value に追加した場合、**既存の graph-cache を削除しないと再ビルドされない**。GraphHopper は graph-cache が存在するとそれを再利用する仕様なので、削除が必須。
+### タスク C3：Vite の安定版固定【優先度：中】
 
-```powershell
-# Windows PowerShell
-docker-compose down
-Remove-Item -Recurse -Force C:\Users\masa2\Desktop\卒研\bicycle-navi\graphhopper\graph-cache
-```
+#### 背景
 
-または bash 環境：
+現状 `frontend/package-lock.json` を見ると Vite が 8.0.8、`rolldown` を使う
+実験的ブランチ（`rolldown-vite` 系統）になっている。卒研の実装期間中・
+論文執筆期間中に破壊的変更が入ると、提出直前に「フロントが起動しない」
+事故につながる。
 
-```bash
-docker-compose down
-rm -rf graphhopper/graph-cache
-```
+研究としての貢献はフロントエンドのバージョンに依存しないので、
+ここは安定版に固定して動作を凍結する。
 
-#### 手順3: GraphHopper を再起動してグラフを再ビルド
+#### 変更対象ファイル
 
-```bash
-docker-compose up -d
-```
+- `frontend/package.json`
+- `frontend/package-lock.json`（再生成）
 
-**初回ビルドは 30分〜1時間かかる**。`docker-compose logs -f graphhopper` でログを確認し、以下のメッセージが出るまで待つ：
+#### 手順
 
-```
-Started server at HTTP 0.0.0.0/0.0.0.0:8989
-```
+1. `frontend/package.json` の Vite を `^7.x`（または `^6.x` の最新安定版）に変更
+2. `frontend/node_modules` と `frontend/package-lock.json` を削除
+3. `npm install` で再インストール
+4. `npm run dev` で起動を確認、`http://localhost:5173` でアプリが表示されること
+5. 渋谷→新宿のシナリオで、地図表示・違反マーカー・モード切り替え・GPS
+   インジケーターが従来通り動作することを確認
+6. スマートフォン LAN アクセス（HTTPS）も従来通り動作することを確認
+   （`@vitejs/plugin-basic-ssl` の互換性も確認）
 
-ビルド中は `/route` エンドポイントが 503 を返す。
+#### 完了条件
 
-#### 手順4: edge_id 取得が動くことを確認
+- Vite が安定版（7.x または 6.x の最新）に固定された
+- 既存の動作確認シナリオでリグレッションが起きない
+- HTTPS 経由のスマホアクセスも動作する
 
-GraphHopper 起動完了後、curl で確認：
+---
 
-```bash
-curl "http://localhost:8989/route?point=35.6580,139.7016&point=35.6895,139.7006&profile=bike&locale=ja&points_encoded=false&details=osm_way_id"
-```
+## フェーズ2：研究データ確保
 
-期待結果：レスポンス JSON の `paths[0].details.osm_way_id` に `[[start_idx, end_idx, way_id], ...]` 形式の配列が含まれている。
+フェーズ1完了後に着手する。タスク C2 で `interval[0]` の解釈が誤っていた
+場合は、フェーズ2の評価実験を全てやり直すことになるため、必ず C2 を先に
+完了させること。
 
-400 Bad Request が返る場合は config の修正が反映されていない、または graph-cache の削除が不完全。
+### タスク R1：Ground truth による評価（人手判定との混同行列）【優先度：高】
 
-#### 手順5: `POST /api/route` で edge_id 判定が動くことを確認
+#### 背景
 
-バックエンドが起動していることを確認した上で：
+現状の評価実験は「v1 vs v3 で違反検出数がどう変わったか」しか測れていない。
+論文の主張を「正確性を高めた」「偽陽性を削減した」に強化するためには、
+「人手で判定した本物の違反」と「システムの判定結果」を比較する必要がある。
 
-```bash
-curl -X POST http://localhost:8000/api/route \
-  -H "Content-Type: application/json" \
-  -d '{"origin_lat":35.658,"origin_lng":139.7016,"dest_lat":35.6895,"dest_lng":139.7006}'
-```
+これにより、v1 / v3 それぞれについて Precision / Recall / F1 を算出でき、
+「v3 で Recall を維持しながら Precision を改善した」という主張が可能になる。
 
-期待結果：レスポンス JSON の `comparison.using_edge_ids` が **true** であること。
+宮治先生の「成果の難易度が低い」指摘に対する直接的な反論材料になる。
 
-サーバログで以下が出ることを確認：
+#### 変更対象ファイル
 
-```
-INFO:services.route_analyzer:edge_idベース判定: N ways, X.X秒
-INFO:services.route_analyzer:法規チェック完了(v3): oneway=N two_step=N (edge_id=True)
-```
+- `backend/data/ground_truth.csv`（新規作成）
+- `backend/routers/experiment.py`（混同行列出力エンドポイントを追加）
+- `docs/ARCHITECTURE.md`（評価方法の説明を追加）
 
-`(edge_id=True)` が出ていれば成功。`(edge_id=False)` のままなら失敗なので config / graph-cache を再確認。
+#### 手順
 
-#### 手順6: 比較実験の再実行
+1. **対象ルートの選定（5〜10ペア）**：
+   - `od_pairs.csv` から幹線道路中心・住宅街中心・混在型を均等に抽出
+   - 1ルートあたり 1〜5km 程度の長さ
+2. **Ground truth の作成**：
+   - 各ルートで `POST /api/route` を v3 で実行し、レスポンスの violations と
+     ルート全体の OSM way_id 列を取得
+   - Google Maps と OpenStreetMap で実際の道路を確認しながら、各 way について
+     「一方通行を逆走しているか」「右折時に二段階右折が必要な道路か」を人手判定
+   - `ground_truth.csv` の列：`label`, `way_id`, `point_lat`, `point_lng`,
+     `true_oneway_violation`, `true_two_step_required`, `notes`
+3. **混同行列出力エンドポイントの実装**：
+   - `POST /api/experiment/ground-truth/compare` を新設
+   - `ground_truth.csv` を読み込み、各ルートを v1 と v3 で実行
+   - way_id 単位で「ground truth の violation」と「システムの violation」を
+     突き合わせ、TP / FP / FN / TN を集計
+   - 出力 CSV の列：`label`, `algo_version`, `rule`, `TP`, `FP`, `FN`, `TN`,
+     `precision`, `recall`, `f1`
+4. **判定の境界条件を明文化**：
+   - confidence < 0.7 の violations は「検出済み」とみなすか「未検出」とみなすか
+   - 推奨：confidence ≥ 0.7 のみを「検出」とカウントし、< 0.7 は別途集計
 
-edge_id 判定が動くことを確認したら、再度比較 CSV を取得する：
+#### 完了条件
 
-```bash
-curl -X POST http://localhost:8000/api/experiment/batch/od-pairs/compare/csv \
-  -o experiment_v1_vs_v3_with_edge_id.csv
-```
+- `ground_truth.csv` に 5〜10ルートぶんの人手判定結果が登録された
+- `POST /api/experiment/ground-truth/compare` が混同行列付き CSV を返す
+- v1 と v3 で Precision / Recall / F1 を算出でき、v3 が Precision を改善した
+  ことが定量的に示せる
+- 判定の境界条件（confidence しきい値の扱い）が `docs/ARCHITECTURE.md` に記載される
 
-サーバログで v3 のペアすべてに `(edge_id=True)` が出ていることを確認する。**1件でも `(edge_id=False)` がある場合は、その O-D ペアの座標が GraphHopper の対応範囲外（kanto-latest.osm.pbf のカバー外）か、その他の障害がある**。ログにエラーが出ていないか確認すること。
+---
 
-### 完了条件
+### タスク R2：Google Maps 自転車モードとの手動比較実験【優先度：高】
 
-1. `graphhopper/config.yml` の `graph.encoded_values` に `osm_way_id` が含まれている。
-2. `graphhopper/graph-cache/` が再生成され、GraphHopper が起動完了している。
-3. `curl http://localhost:8989/route?...&details=osm_way_id` が 200 を返し、レスポンスに `paths[0].details.osm_way_id` が含まれている。
-4. `POST /api/route` のレスポンスで `comparison.using_edge_ids` が **true** になっている。
-5. `POST /api/experiment/batch/od-pairs/compare/csv` を実行したサーバログで、v3 ペアの大半に `法規チェック完了(v3): ... (edge_id=True)` が出ている。
-6. 取得した新 CSV を `experiment_v1_vs_v3_with_edge_id.csv` として保存する。
+#### 背景
 
-### 注意事項
+卒業研究提案書のフェーズ1で予定している「既存ナビゲーションサービスとの
+比較評価」がまだ実装されていない。論文の主軸である
+「既存ナビでは対応できていない法規違反リスク箇所を定量的に示す」という
+主張のために、Google Maps 自転車モードのルートと本システムのルートを比較する
+必要がある。
 
-- `osm_way_id` は GraphHopper の標準 encoded value として最近のバージョンでサポートされている。`israelhikingmap/graphhopper:latest` のバージョンで対応していなければ、エラーメッセージが出るので、その場合は報告すること（その場合は別の取得方法を検討する必要がある）。
-- グラフ再ビルドは時間がかかるので、ビルド中に他の作業を進める際は注意。バックエンドや フロントエンドは GraphHopper が起動完了するまで動作しない。
-- 既存の `POST /api/experiment/batch/od-pairs/compare/csv` などのエンドポイントは変更不要。問題は GraphHopper 側の設定のみ。
-- `route_analyzer.py` の挙動は正しい。edge_id details が取得できれば自動的に edge_id 判定に入り、できなければ点ベースにフォールバックする設計になっている。今回の修正でフォールバック側ではなく本来の edge_id 側が動くようになる。
+**API を使わず手動で実施する方針**：卒研の規模（5〜10 ペア）では、Google Maps
+Directions API のセットアップ・課金設定・クライアント実装コストよりも、
+人手でルートをなぞる方が短時間で完了する。また、ストリートビューや OSM を
+併用した人間の判断（自転車専用道の有無など）も組み込めるため、評価の質が高い。
 
-### 副次的に確認すべき点（解決後）
+ground truth 判定（R1）と同じルートを対象にすることで、二度手間を避ける。
 
-サーバログを見ると、v1 実行時に Overpass の `kumi.systems` がタイムアウトする頻度が高い（特に 1km 未満の短いルートで発生）。これは Overpass 側の負荷状況による一時的な問題なので、edge_id 判定が動くようになれば Overpass への負荷自体が減り（way_id 直指定のクエリは点ベース広範囲検索より軽量）、改善する可能性がある。
+#### 役割分担
+
+- **マサヤさん（手動作業）**：Google Maps での経路取得、ルートの目視チェック、
+  違反箇所カウント、CSV への記録
+- **Claude Code（実装）**：手動入力 CSV テンプレートの作成、集計エンドポイントの
+  実装、論文用の集計表の生成
+
+#### 変更対象ファイル
+
+- `backend/data/google_comparison.csv`（手動入力用テンプレートを新規作成）
+- `backend/routers/experiment.py`（集計エンドポイントを追加）
+- `docs/ARCHITECTURE.md`（手動比較実験の手順を追加）
+
+#### 手順
+
+1. **手動入力 CSV テンプレートの作成（Claude Code）**：
+   - `backend/data/google_comparison.csv` を新規作成
+   - 列構成：
+     - `label`：R1 と同じラベル
+     - `road_type`：幹線道路中心 / 住宅街中心 / 混在型
+     - `system_distance_m`：本システムの v3 ルート距離
+     - `system_time_s`：本システムの所要時間
+     - `system_violation_count`：本システムのルート上の違反数（v3）
+     - `system_violation_count_high_conf`：confidence ≥ 0.7 の違反数
+     - `google_distance_m`：Google Maps 自転車モードの距離（手動入力）
+     - `google_time_s`：Google Maps の所要時間（手動入力）
+     - `google_oneway_violation_count`：Google Maps ルート上の一方通行違反数
+       （手動カウント）
+     - `google_two_step_violation_count`：Google Maps ルート上の二段階右折
+       違反数（手動カウント）
+     - `route_overlap_pct`：本システムと Google Maps のルート重複率（目視概算、
+       0〜100 で記入）
+     - `screenshot_filename`：スクリーンショットのファイル名
+     - `notes`：判定に迷った点、特記事項
+   - 各列のサンプル行を 1 行入れて、入力例を示す
+
+2. **マサヤさんによる手動ルート取得・判定**：
+   - R1 で選定した 5〜10 ペアと同じ O-D で Google Maps の自転車モードを開く
+   - 各ペアについて以下を記録：
+     - Google Maps 上での距離・所要時間
+     - スクリーンショットを `docs/screenshots/google_maps/` に保存
+     - ルートを目視でなぞり、一方通行違反・二段階右折違反の箇所をカウント
+       （OSM Wiki / ストリートビューで道路属性を確認）
+     - 本システムのルートとの重複率を目視で 0〜100 概算
+   - 並行して、本システムの値（`system_*` 列）も `POST /api/route` v3 で取得して記録
+
+3. **集計エンドポイントの実装（Claude Code）**：
+   - `POST /api/experiment/google-comparison/summary` を新設
+   - `google_comparison.csv` を読み込み、以下を集計した CSV を返す：
+     - 各ペアの「本システム vs Google Maps」の違反数差分
+     - 全ペアでの平均距離差・平均違反数差
+     - 「本システムでは回避できているが Google Maps では残っている違反」の総数
+     - `road_type` 別の集計
+   - エンドポイントは「読み込んで集計するだけ」の軽量実装（外部 API 呼び出しなし）
+
+4. **論文用の集計**：
+   - `road_type` 別に「本システムが Google Maps 比でいくつ違反を回避できたか」を
+     表として整理
+   - 「本システムのリルートが Google Maps では検出されていない違反を回避できて
+     いる」ことを定量的に示す
+   - 距離増加とのトレードオフ（縄野・間邊2020 の規格化旅行時間に相当する指標）
+     も併せて記載
+
+#### 完了条件
+
+- `backend/data/google_comparison.csv` のテンプレートが作成され、列構成が
+  明文化されている
+- マサヤさんが 5〜10 ペアぶんの Google Maps 比較データを CSV に記入済み
+- スクリーンショットが `docs/screenshots/google_maps/` に保存されている
+- `POST /api/experiment/google-comparison/summary` が集計 CSV を返す
+- 集計結果から「本システム vs Google Maps」の違反検出数差分が表として
+  まとまっており、論文の章 5（評価実験）に転記可能な形になっている
+
+---
+
+## タスクの推奨実施順
+
+1. **タスク C2**（interval[0] の妥当性確認）を最初に実施
+   - 結果次第で C1 と R1 の前提が変わるため
+2. **タスク C1**（二分探索化）と **タスク C3**（Vite 固定）を実施
+   - 動作変更を伴わない品質改善なので影響が局所的
+3. **タスク R1**（Ground truth 評価）を実施
+   - C2 が完了している前提
+4. タスク R2（Google Maps 手動比較）を実施
+   - R1 と同じルートを対象にするため、R1 の人手判定と並行して実施するのが効率的
+   - Claude Code はテンプレート CSV と集計エンドポイントのみ実装し、Google Mapsの手動操作はマサヤさんが行う
 
 ---
 
 ## 不変の制約（変更禁止）
 
 - `check_sidewalk_violation` は **呼び出し禁止**（研究スコープ除外）
-  - 関数定義は `law_checker.py` に残してよいが `route.py` / `experiment.py` から呼んではならない
-  - 除外理由：歩道走行は利用者が現場で視認判断できる問題であり、経路選択系の法規に該当しない
 - `MapView.jsx` / `ViolationAlert.jsx` は **preparing モード専用**
 - `RidingView.jsx` は **riding モード専用**
 - モード切り替えはフロントエンド側のみ。バックエンド API への影響はない
 - GraphHopper の `vehicle=bike` パラメータは旧仕様。**`profile=bike`** を使用すること
 - リルート計算時は `ch.disable=True` が必須（CH モードでは custom_model 非対応）
+- `route.py` は常に v3 固定。`algo_version` パラメータは追加しない
+- `experiment.py` の v1/v3 切替構造は変更しない（論文の比較実験で使用中）
 
 ---
 
@@ -452,8 +363,9 @@ curl -X POST http://localhost:8000/api/experiment/batch/od-pairs/compare/csv \
 - 実装前に必ず対象ファイルを `view` で読み、既存実装を把握すること
 - エラーが発生した場合は、エラーメッセージを解析して自律的に修正すること
 - 大きな変更を加える前に、変更方針を要約してユーザーに確認すること
-- 既存の動作確認シナリオ（渋谷→新宿、東京駅→渋谷）でリグレッションが起きていないこと
+- 既存の動作確認シナリオ（渋谷→新宿、東京駅→渋谷）でリグレッションが起きないこと
 - バックエンドの起動方法は `docs/SETUP.md` を参照
+- タスク完了時は `docs/CHANGELOG.md` に追記する
 
 ---
 

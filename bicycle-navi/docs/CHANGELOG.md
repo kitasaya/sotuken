@@ -406,3 +406,74 @@ edge_id ベース判定に移行した後も、`oneway=yes` の way であれば
 - `graph.encoded_values` に `osm_way_id` が含まれている ✅
 - GraphHopper 再起動後に `details=osm_way_id` リクエストで 63件の way_id が返る（400 エラーなし） ✅
 - `POST /api/route` のレスポンスで `comparison.using_edge_ids: true` を確認 ✅
+
+---
+
+## タスク C1：way_id → 右折地点解決の二分探索化（2026-05-12）
+
+### 変更内容
+
+**`backend/services/route_analyzer.py`**
+- `import bisect` を追加
+- `_analyze_v3` の右折地点解決ループを O(N×M) 線形探索から `bisect_right` による O(N log M) 二分探索に変更
+- `start_indices = [int(seg[0]) for seg in way_id_details]` をループ外で一度だけ構築
+- `bisect_right(start_indices, idx) - 1` で対象セグメントを特定し、`start <= idx <= end` の包含チェックを実施
+
+### 副次的な修正
+
+- 旧・線形探索は `way_id_details` をリスト順（start_idx 昇順）でスキャンするため、同じインデックスを含む2つのセグメント（approach road と departure road）が存在する場合、先に見つかる **approach road** を返していた
+- 新・二分探索は `bisect_right(start_indices, idx) - 1` で `start_idx == interval[0]` のセグメント（**departure road**）を返す
+- これにより、設計意図（「進入先 way」のタグで判定）と実装の乖離が解消された
+
+### 完了条件の確認
+
+- `_analyze_v3` の右折地点解決部分の計算量が O(N log M) になる ✅
+- 渋谷→新宿で two_step_turn violations 2件（変更前後で一致）✅
+
+---
+
+## タスク C2：二段階右折 interval[0] の妥当性確認（2026-05-12）
+
+### 検証手順
+
+1. 渋谷→新宿のルートで `GET http://localhost:8989/route` を直接実行（GraphHopper v12）
+2. 右折 instruction（sign=2）の `interval[0]` を 6件抽出
+3. `details.osm_way_id` の各セグメントと照合
+
+### 確認結果
+
+- `interval[0]` は右折交差点ノードのインデックスであり、`details.osm_way_id` では **approach road の `end_idx`** かつ **departure road の `start_idx`** として共有される（両セグメントに含まれる）
+- 旧・線形探索はリスト順（start_idx 昇順）で先に見つかる approach road を返していた（設計意図と不一致）
+- タスク C1 の `bisect_right(start_indices, idx) - 1` は `start_idx == interval[0]` のセグメント（departure road）を返す（設計意図に一致）
+- 渋谷→新宿の全 6 右折箇所で approach/departure ともに同一の highway 分類（right turn #4: tertiary/4lanes、right turn #6: secondary）のため、**違反検出結果は変わらない**
+
+### 影響
+
+- タスク C1（二分探索化）はセマンティクス上の修正も兼ねる結果となった
+- departure road ベースの判定が設計意図として正しく、C1 後の実装が正しい挙動になっている
+- `docs/ARCHITECTURE.md` に GraphHopper v12 での interval[0] 挙動を追記済み
+
+### 完了条件の確認
+
+- 渋谷→新宿の全 6 右折 instruction について interval[0] が指す way の確認を実施 ✅
+- `docs/ARCHITECTURE.md` に確認結果を追記 ✅
+
+---
+
+## タスク C3：Vite の安定版固定（2026-05-12）
+
+### 変更内容
+
+**`frontend/package.json`**
+- `vite: ^8.0.4`（rolldown 実験的ブランチ）→ `^7.3.3`（安定版）に変更
+- `@vitejs/plugin-react: ^6.0.1`（Vite 8 専用）→ `^5.2.0`（Vite 4〜8 互換）に変更
+
+**`frontend/package-lock.json`**
+- `node_modules` と `package-lock.json` を削除して `npm install` で再生成
+- Vite 7.3.3、@vitejs/plugin-react 5.2.0 が正常インストールされたことを確認
+
+### 完了条件の確認
+
+- Vite が安定版 7.3.3 に固定された ✅
+- `npm run dev` で HTTPS 起動確認（`VITE v7.3.3  ready in 488 ms`）✅
+- `@vitejs/plugin-basic-ssl` の互換性も維持（Vite 6/7/8 に対応済み）✅

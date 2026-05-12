@@ -1,4 +1,5 @@
 import asyncio
+import bisect
 import logging
 import time
 from services.graphhopper import get_route
@@ -94,14 +95,15 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                 p_start = points[info["start_idx"]]
                 p_end = points[min(info["end_idx"], len(points) - 1)]
                 travel_vectors.append([p_end[0] - p_start[0], p_end[1] - p_start[1]])
-            # 右折地点のタグを way_id_to_data から解決
+            # 右折地点のタグを way_id_to_data から解決（二分探索 O(N log M)）
+            start_indices = [int(seg[0]) for seg in way_id_details]
             for idx in two_step_idxs:
                 wid = None
-                for seg in way_id_details:
-                    s, e, w = int(seg[0]), int(seg[1]), int(seg[2])
+                k = bisect.bisect_right(start_indices, idx) - 1
+                if k >= 0:
+                    s, e, w = int(way_id_details[k][0]), int(way_id_details[k][1]), int(way_id_details[k][2])
                     if s <= idx <= e:
                         wid = w
-                        break
                 two_step_tags_arg.append(way_id_to_data.get(wid, {}).get("tags", {}) if wid else {})
             logger.info("edge_idベース判定: %d ways, %.1f秒", len(unique_way_ids), time.perf_counter() - t0)
         except Exception as e:
