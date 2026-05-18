@@ -23,7 +23,7 @@ async def get_route(origin_lat, origin_lng, dest_lat, dest_lng):
             resp = await client.get(f"{GH_BASE}/route", params={
                 **_BASE_PARAMS,
                 "point": points,
-                "details": ["osm_way_id"],
+                "details": ["osm_way_id", "road_class"],
             })
             resp.raise_for_status()
             return resp.json()

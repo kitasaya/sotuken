@@ -83,7 +83,7 @@ bicycle-navi/
 | `check_cycleway_recommendation` | 推奨 | `cycleway=lane/track` の way 上の点 | `cycleway` |
 | `check_two_step_turn` | 違反 | 右折 instruction 地点で `highway=primary/secondary` または `lanes>=3` | `highway`, `lanes` |
 
-**現在の挙動（2026-05-12）：**
+**現在の挙動（2026-05-18）：**
 
 判定ロジックは `services/route_analyzer.py` の `analyze_route` に集約されており、`route.py` と `experiment.py` の両方から呼ばれる。
 
@@ -117,6 +117,19 @@ bicycle-navi/
   - 戻り値: `{way_id: {"tags": {...}, "geometry": [[lon, lat], ...]}}`
 - `get_bulk_way_tags(points)` で Union クエリによる一括取得（フォールバック用・3.4秒/リクエスト）
 - 全滅した場合は空結果を返してチェックをスキップし、ルートのみ表示する仕様
+
+**リルートの違反種別フィルタ（2026-05-18 追加）：**
+
+`_build_response` 内でリルート対象を `oneway` 違反のみに絞る。
+
+| 違反種別 | リルート | 理由 |
+|---|---|---|
+| `oneway` | する（`rerouted=true`） | その道を通ること自体が違法 |
+| `two_step_turn` | しない（`rerouted=false`） | 走行手順を守れば合法。経路変更は不要 |
+
+- 各 violation に `triggered_reroute: bool` フィールドを付与（フロント表示差別化用）
+- レスポンスの `violations` 配列には `oneway` と `two_step_turn` の両方を引き続き含む
+- `compliant` フラグは「violations が 0 件」（従来通り）
 
 ### `services/rerouter.py`
 
