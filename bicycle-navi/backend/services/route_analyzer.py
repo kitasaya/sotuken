@@ -51,6 +51,17 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
     way_id_details = route_data["paths"][0].get("details", {}).get("osm_way_id", [])
     using_edge_ids = bool(way_id_details)
 
+    # road_class detail（GH ローカル取得）: Overpass 不要で two_step_turn の primary/secondary 判定に使用
+    road_class_details = route_data["paths"][0].get("details", {}).get("road_class", [])
+    rc_starts = [int(seg[0]) for seg in road_class_details]
+
+    def _road_class_at(idx: int) -> str:
+        """idx を含む road_class セグメントの値を返す。見つからなければ空文字。"""
+        k = bisect.bisect_right(rc_starts, idx) - 1
+        if k >= 0 and int(road_class_details[k][0]) <= idx <= int(road_class_details[k][1]):
+            return str(road_class_details[k][2])
+        return ""
+
     # 二段階右折チェック用：右折 instruction の地点を先に抽出
     instructions = route_data["paths"][0].get("instructions", [])
     two_step_pts: list = []
@@ -65,11 +76,16 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
         two_step_pts.append(points[min(idx, len(points) - 1)])
         two_step_idxs.append(idx)
 
+    # road_class からローカルタグを構築（Overpass 不要・常に利用可能）
+    # Overpass が利用できる場合は lanes 情報で補完する
+    two_step_local_tags = [{"highway": _road_class_at(idx)} for idx in two_step_idxs]
+
     t0 = time.perf_counter()
     geometries: list[list] | None = None
     travel_vectors: list[list] | None = None
     way_id_to_data: dict = {}
     two_step_tags_arg: list = []
+    two_step_wids: list = []
 
     if using_edge_ids:
         way_id_info: dict[int, dict] = {}
@@ -86,6 +102,9 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
         unique_way_ids = list(way_id_info.keys())
         try:
             way_id_to_data = await get_way_tags_by_ids(unique_way_ids)
+            if not way_id_to_data and unique_way_ids:
+                # Overpass が無音で空を返した（全エンドポイント失敗）→ フォールバックへ
+                raise RuntimeError("Overpass returned empty for all %d way IDs" % len(unique_way_ids))
             check_points = [way_id_info[wid]["point"] for wid in unique_way_ids]
             tags_list = [way_id_to_data.get(wid, {}).get("tags", {}) for wid in unique_way_ids]
             geometries = [way_id_to_data.get(wid, {}).get("geometry", []) for wid in unique_way_ids]
@@ -97,34 +116,51 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                 travel_vectors.append([p_end[0] - p_start[0], p_end[1] - p_start[1]])
             # 右折地点のタグを way_id_to_data から解決（二分探索 O(N log M)）
             start_indices = [int(seg[0]) for seg in way_id_details]
-            for idx in two_step_idxs:
+            for i, idx in enumerate(two_step_idxs):
                 wid = None
                 k = bisect.bisect_right(start_indices, idx) - 1
                 if k >= 0:
                     s, e, w = int(way_id_details[k][0]), int(way_id_details[k][1]), int(way_id_details[k][2])
                     if s <= idx <= e:
                         wid = w
-                two_step_tags_arg.append(way_id_to_data.get(wid, {}).get("tags", {}) if wid else {})
+                # Overpass タグと road_class ローカルタグをマージ（lanes 等 road_class にない情報を補完）
+                overpass_tags = way_id_to_data.get(wid, {}).get("tags", {}) if wid else {}
+                merged = {**two_step_local_tags[i], **overpass_tags}
+                two_step_tags_arg.append(merged)
+                two_step_wids.append(wid)
             logger.info("edge_idベース判定: %d ways, %.1f秒", len(unique_way_ids), time.perf_counter() - t0)
         except Exception as e:
-            logger.warning("Overpass by-ID取得失敗（点ベースにフォールバック）: %s", e)
+            logger.warning("Overpass by-ID取得失敗（road_classローカルタグで代替）: %s", e)
             using_edge_ids = False
             geometries = None
             travel_vectors = None
-            two_step_tags_arg = []
+            # road_class ローカルタグで two_step_turn は継続検出
+            two_step_tags_arg = list(two_step_local_tags)
+            two_step_wids = []
 
     if not using_edge_ids:
         sampled = _sample(points)
         combined_pts = sampled + two_step_pts
+        overpass_ok = False
         try:
             combined_data = await get_bulk_way_data(combined_pts)
+            overpass_ok = True
         except Exception as e:
-            logger.warning("Overpass一括取得失敗（チェックをスキップ）: %s", e)
+            logger.warning("Overpass一括取得失敗（road_classローカルタグで継続）: %s", e)
             combined_data = [{"tags": {}, "geometry": []} for _ in combined_pts]
         sampled_data = combined_data[:len(sampled)]
         tags_list = [d["tags"] for d in sampled_data]
-        two_step_tags_arg = [d["tags"] for d in combined_data[len(sampled):]]
         geometries = [d["geometry"] for d in sampled_data]
+        if overpass_ok:
+            # Overpass が成功した場合のみ road_class ローカルタグと Overpass タグをマージ
+            overpass_two_step = [d["tags"] for d in combined_data[len(sampled):]]
+            two_step_tags_arg = [
+                {**local, **over}
+                for local, over in zip(two_step_local_tags, overpass_two_step)
+            ]
+        elif not two_step_tags_arg:
+            # Overpass 失敗かつまだ設定されていない場合: road_class ローカルタグのみ使用
+            two_step_tags_arg = list(two_step_local_tags)
         travel_vectors = []
         for k in range(len(sampled)):
             if k + 1 < len(sampled):
@@ -143,6 +179,19 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
     )
     logger.info("法規チェック完了(v3): oneway=%d two_step=%d (edge_id=%s)",
                 len(oneway_violations), len(two_step_violations), using_edge_ids)
+
+    # edge_id モード時は violations に way_id を付与（ground truth 評価のマッチングに使用）
+    if using_edge_ids:
+        cp_to_wid = {(check_points[i][1], check_points[i][0]): unique_way_ids[i]
+                     for i in range(len(unique_way_ids))}
+        for v in oneway_violations:
+            v["way_id"] = cp_to_wid.get((v["lat"], v["lng"]))
+        if two_step_wids:
+            ts_to_wid = {(two_step_pts[j][1], two_step_pts[j][0]): two_step_wids[j]
+                         for j in range(min(len(two_step_wids), len(two_step_pts)))}
+            for v in two_step_violations:
+                v["way_id"] = ts_to_wid.get((v["lat"], v["lng"]))
+
     violations = oneway_violations + two_step_violations
 
     return await _build_response(
@@ -196,11 +245,13 @@ async def _build_response(
     *, using_edge_ids: bool, algo_version: str,
 ) -> dict:
     original_route = route_data["paths"][0]
+    # two_step_turn は走行手順の指示であり経路変更不要。oneway のみリルート対象とする
+    reroute_violations = [v for v in violations if v["rule"] == "oneway"]
     rerouted = False
-    if violations:
+    if reroute_violations:
         try:
             compliant_data = await get_compliant_route(
-                origin_lat, origin_lng, dest_lat, dest_lng, violations,
+                origin_lat, origin_lng, dest_lat, dest_lng, reroute_violations,
             )
             compliant_route = compliant_data["paths"][0]
             rerouted = True
@@ -209,6 +260,10 @@ async def _build_response(
             compliant_route = original_route
     else:
         compliant_route = original_route
+
+    # 各 violation に「リルートの原因になったか」フラグを付与（F2 フロント差別化用）
+    for v in violations:
+        v["triggered_reroute"] = (v["rule"] == "oneway" and rerouted)
 
     orig_dist = original_route.get("distance", 0)
     comp_dist = compliant_route.get("distance", 0)

@@ -651,3 +651,163 @@ edge_id ベース判定に移行した後も、`oneway=yes` の way であれば
   ブラウザによってアニメーション挙動が異なる可能性あり（実機テストで確認）
 - ViolationCard の地点表示は座標（小数 5 桁）のみ。住所表示は逆ジオコード API が
   必要なため見送り（U2 のスコープ外）
+
+---
+
+## タスク R1：Ground truth による評価（2026-05-18）
+
+### 変更内容
+
+**`backend/services/route_analyzer.py`**
+- `_analyze_v3` の二段階右折ループで `two_step_wids` を並行して記録するよう変更
+- asyncio.gather 後、edge_id モード時に violations の各エントリへ `way_id` フィールドを付与
+  - oneway violations：check_points → unique_way_ids の逆引きマップで解決
+  - two_step violations：two_step_pts → two_step_wids の逆引きマップで解決
+  - フォールバック（点ベース）時は way_id フィールドなし
+
+**`backend/data/ground_truth.csv`（新規作成）**
+- 人手判定用テンプレート
+- 列：`label, way_id, point_lat, point_lng, true_oneway_violation, true_two_step_required, notes`
+- サンプル行入り（Masaya さんが 5〜10 ルートぶんのデータを記入する）
+
+**`backend/routers/experiment.py`**
+- `POST /api/experiment/ground-truth/compare` を新設
+  - `ground_truth.csv` を読み込み、各 label に対して v1 と v3 でルートを実行
+  - confidence ≥ 0.7 の violations のみを「検出済み」としてカウント
+  - way_id 完全一致（v3）または 300m 近傍（v1・フォールバック）でマッチング
+  - (label, algo_version, rule) ごとに TP/FP/FN/TN と Precision/Recall/F1 を算出
+  - 末尾に全ラベル集計行（ALL）を追加した CSV を返す
+
+### 判定の境界条件（ARCHITECTURE.md にも記載）
+
+- confidence ≥ 0.7 のみを「検出」とカウント（< 0.7 は「未検出」扱い）
+- v3 の oneway 違反は way_id で完全一致、それ以外は 300m 近傍でマッチング
+
+### 完了条件の確認
+
+- `POST /api/experiment/ground-truth/compare` がエンドポイントとして登録された ✅
+- `google-comparison/summary` のサンプル行で集計 CSV が正常出力された ✅
+- Masaya さんによる 5〜10 ルートの人手判定データ記入は別途実施（未完了）
+
+---
+
+## タスク R2：Google Maps 手動比較テンプレート・集計エンドポイント（2026-05-18）
+
+### 変更内容
+
+**`backend/data/google_comparison.csv`（新規作成）**
+- 手動入力用テンプレート
+- 列：`label, road_type, system_distance_m, system_time_s, system_violation_count,
+  system_violation_count_high_conf, google_distance_m, google_time_s,
+  google_oneway_violation_count, google_two_step_violation_count,
+  route_overlap_pct, screenshot_filename, notes`
+- サンプル行入り（Masaya さんが Google Maps で計測したデータを記入する）
+
+**`backend/routers/experiment.py`**
+- `POST /api/experiment/google-comparison/summary` を新設
+  - `google_comparison.csv` を読み込み（外部 API 呼び出しなし）
+  - per-route セクション：各ルートの google_total_violation_count・violation_diff・distance_diff_m を算出
+  - aggregate セクション：全体平均 + road_type 別平均を付加した CSV を返す
+
+### 完了条件の確認
+
+- `POST /api/experiment/google-comparison/summary` がエンドポイントとして登録された ✅
+- サンプル行での動作確認（per-route + aggregate が正常出力）✅
+- Masaya さんによる Google Maps 比較データ記入は別途実施（未完了）
+
+---
+
+## タスク F1：二段階右折のリルート除外（2026-05-18）
+
+### 背景
+
+ground_truth.csv 作成中（渋谷→新宿ルートの検証時）に発見したバグ。
+`_build_response` が violation 種別を問わずすべての違反をリルート対象にしていたため、
+`two_step_turn` 検出時にも不要な迂回が発生していた。
+
+道路交通法上、二段階右折は「走行手順を守れば合法」であり、そのルートを通れないわけではない。
+一方通行違反（逆走）のみが「別ルートで回避すべき」違反に該当する。
+
+### 変更内容
+
+**`backend/services/route_analyzer.py`**
+- `_build_response` にて、rerouter に渡す violations を `oneway` のみに絞る
+  - `reroute_violations = [v for v in violations if v["rule"] == "oneway"]`
+- リルート判定を `if reroute_violations:` に変更（全 violations ではなく）
+- 各 violation に `triggered_reroute: bool` フィールドを追加
+  - `True`：oneway 違反かつリルート成功
+  - `False`：two_step_turn 違反またはリルート失敗
+- レスポンスの `violations` 配列は全件（oneway + two_step_turn）を維持
+
+**`backend/data/experiment_v1_vs_v3_post_f1.csv`（新規作成）**
+- F1 修正後の 15 O-D ペア × v1/v3 比較実験結果
+
+**`docs/ARCHITECTURE.md`**
+- `route_analyzer.py` セクションにリルートフィルタの仕様を追記
+
+### F1 修正後の実験結果サマリ（15 O-D ペア）
+
+**v3 全ルートでリルートなし（距離増加 0m）：**
+
+| ルート | v1 距離増加 | v3 距離増加 | v3 violations |
+|---|---|---|---|
+| 渋谷→新宿 | +144.9m | **+0m** | two_step_turn×1 |
+| 東京→渋谷 | +956.9m | **+0m** | なし |
+| 品川→東京 | +153.0m | **+0m** | two_step_turn×1 |
+| 渋谷→六本木 | +66.9m | **+0m** | なし |
+| 下北沢→三軒茶屋 | +329.5m | **+0m** | なし |
+| 吉祥寺→三鷹 | +13.8m | **+0m** | two_step_turn×1 |
+| 立川→国分寺 | +221.4m | **+0m** | なし |
+| 横浜→みなとみらい | +805.9m | **+0m** | なし |
+| 川崎→武蔵小杉 | +636.4m | **+0m** | なし |
+| その他 6ルート | 0m | **0m** | なし |
+
+- v1：15ルートのうち 9ルートでリルート発生、平均距離増加 +221.9m
+- v3：15ルートすべてリルートなし（進行方向照合で偽陽性 oneway を除去）
+
+### 論文への反映
+
+- 「二段階右折は経路変更ではなく走行手順の指示として扱う設計」と記述可能
+- v1 → v3 で距離増加が平均 +221.9m → 0m に改善（偽陽性排除の効果）
+- 実装当初の trial-and-error として論文の考察セクションに記述可能
+
+### 完了条件の確認
+
+- 渋谷→新宿：`rerouted=false`、距離 4175m ✅
+- 東京→渋谷：`rerouted=false`、距離 7736.4m ✅
+- 15 O-D ペア再実験完了、CSV を `data/experiment_v1_vs_v3_post_f1.csv` に保存 ✅
+- `docs/ARCHITECTURE.md` に「two_step_turn はリルート対象外」を追記 ✅
+
+---
+
+## バグ修正：Overpass 無音失敗時の two_step_turn 検出欠損（2026-05-18）
+
+### 発生状況
+
+渋谷→新宿のルートで、Overpass API が全エンドポイント（overpass-api.de / kumi.systems / maps.mail.ru）で
+失敗した際に two_step_turn 違反のマーカーが地図上から消える問題が発生。
+
+### 根本原因
+
+`get_way_tags_by_ids` は全エンドポイント失敗時に例外ではなく空 `{}` を返す。
+`_analyze_v3` の try ブロックは例外でのみフォールバックするため、空結果時に
+フォールバックが起動せず、タグなし（空 dict）で `check_two_step_turn` が呼ばれ違反ゼロとなった。
+
+### 修正内容
+
+**`backend/services/graphhopper.py`**
+- GraphHopper ルートリクエストに `road_class` detail を追加（`osm_way_id` と同時取得）
+
+**`backend/services/route_analyzer.py`**
+- `_analyze_v3` の冒頭で `road_class_details` を取得し、右折 instruction ごとに
+  `{"highway": road_class_at_idx}` のローカルタグを構築（Overpass 不要・常に利用可能）
+- Overpass by-ID が空 dict を返した場合に `RuntimeError` を raise してフォールバックを起動
+- Overpass by-ID 成功時はローカルタグと Overpass タグをマージ（`lanes` 等の補完）
+- 点ベースフォールバックの Overpass 一括取得も失敗した場合、`two_step_tags_arg` を
+  road_class ローカルタグで保持（空 dict で上書きしない）
+
+### 動作確認
+
+- Overpass が落ちている状態で渋谷→新宿を実行 → `violation_count=1`（two_step_turn）検出 ✅
+- Overpass が回復した状態で同ルートを実行 → `using_edge_ids=True`、同一座標で検出 ✅
+- マーカー表示、走行モードの二段階右折案内・TwoStepGuide パネルは既存実装で対応済み ✅
