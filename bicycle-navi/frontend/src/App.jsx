@@ -1,31 +1,36 @@
 import { useState, useCallback } from "react";
-import SearchForm from "./components/SearchForm";
 import MapView from "./components/MapView";
-import ViolationAlert from "./components/ViolationAlert";
+import PreparingPanel from "./components/PreparingPanel";
 import ModeSwitcher from "./components/ModeSwitcher";
 import RidingView from "./components/RidingView";
+import BottomSheet from "./components/BottomSheet";
 import { fetchRoute } from "./api/route";
 import { useGeoAutoMode } from "./hooks/useGeoAutoMode";
+import "./App.css";
+
+// BottomSheet と同期する FAB 位置計算用（peek/half/full の vh 比）
+const SNAP_VH = { peek: 18, half: 50, full: 90 };
 
 export default function App() {
   const [routeData, setRouteData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  // UIモード: "preparing" = 出発前/停車中, "riding" = 走行中
   const [mode, setMode] = useState("preparing");
-  // 走行中モード用: 現在のinstruction index
   const [currentInstructionIndex, setCurrentInstructionIndex] = useState(0);
-  // 音声案内ON/OFF
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  // GPS現在位置 { lat, lng, speed, accuracy } | null
   const [currentPosition, setCurrentPosition] = useState(null);
+  const [sheetSnap, setSheetSnap] = useState("half");
+  const [focusVersion, setFocusVersion] = useState(0);
+  const [routeFitVersion, setRouteFitVersion] = useState(0);
+  // 地図の flyTo 先（現在地 FAB と違反カードタップで共用）
+  const [mapFocusTarget, setMapFocusTarget] = useState(null);
+  // 違反リストで現在ハイライト中のインデックス
+  const [focusedViolationIndex, setFocusedViolationIndex] = useState(null);
 
-  // GPS位置情報コールバック（useGeoAutoModeに渡すため useCallback で安定化）
   const handlePosition = useCallback((pos) => {
     setCurrentPosition(pos);
   }, []);
 
-  // GPS速度によるモード自動切り替え
   const { handleManualModeChange, geoError, isGeoActive, manualLocked } =
     useGeoAutoMode({ setMode, onPosition: handlePosition });
 
@@ -36,6 +41,9 @@ export default function App() {
       const data = await fetchRoute(oLat, oLng, dLat, dLng);
       setRouteData(data);
       setCurrentInstructionIndex(0);
+      setRouteFitVersion((v) => v + 1);
+      setSheetSnap("half");
+      setFocusedViolationIndex(null);
     } catch (e) {
       setError("ルート取得に失敗しました: " + e.message);
     } finally {
@@ -43,7 +51,6 @@ export default function App() {
     }
   };
 
-  // 走行中モードで「次の案内へ」進む（デモ用）
   const handleNextInstruction = () => {
     const instructions = routeData?.compliant_route?.instructions || [];
     if (currentInstructionIndex < instructions.length - 1) {
@@ -51,91 +58,218 @@ export default function App() {
     }
   };
 
-  // 出発前・停車中モードの表示
-  const renderPreparingMode = () => (
-    <>
-      <SearchForm onSearch={handleSearch} />
-      {loading && <p>検索中...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {routeData?.rerouted && (
-        <p style={{ color: "#0066cc", fontWeight: "bold" }}>
-          法規に合わせてルートを変更しました
-        </p>
-      )}
-      {routeData && (
-        <ViolationAlert
-          violations={routeData.violations}
-          compliant={routeData.compliant}
-          recommendations={routeData.recommendations}
-        />
-      )}
-      <MapView
-        originalRoute={routeData?.original_route}
-        compliantRoute={routeData?.compliant_route}
-        violations={routeData?.violations}
-      />
-    </>
-  );
+  const handleCurrentLocation = () => {
+    if (!currentPosition) return;
+    setMapFocusTarget({ lat: currentPosition.lat, lng: currentPosition.lng });
+    setFocusVersion((prev) => prev + 1);
+  };
 
-  // 走行中モードの表示
-  const renderRidingMode = () => (
-    <RidingView
-      routeData={routeData}
-      currentInstructionIndex={currentInstructionIndex}
-      onNextInstruction={handleNextInstruction}
-      violations={routeData?.violations || []}
-      voiceEnabled={voiceEnabled}
-      onVoiceToggle={() => setVoiceEnabled((v) => !v)}
-      currentPosition={currentPosition}
-    />
-  );
+  // 地図上の違反マーカーをタップ → 該当カードをハイライトし full に展開
+  const handleViolationMarkerClick = (index) => {
+    setFocusedViolationIndex(index);
+    setSheetSnap("full");
+  };
 
+  // BottomSheet 内の違反カードをタップ → 地図をその地点に flyTo
+  const handleViolationCardClick = (index) => {
+    const v = routeData?.violations?.[index];
+    if (!v) return;
+    setFocusedViolationIndex(index);
+    setMapFocusTarget({ lat: v.lat, lng: v.lng });
+    setFocusVersion((prev) => prev + 1);
+  };
+
+  const renderGeoBadge = () => {
+    if (geoError) {
+      return (
+        <span style={badgeStyles.error} title={geoError}>
+          GPS×
+        </span>
+      );
+    }
+    if (isGeoActive) {
+      return (
+        <span
+          style={badgeStyles.active}
+          title={
+            manualLocked
+              ? "手動切り替え中（自動切り替え一時停止）"
+              : "GPS自動切り替え有効"
+          }
+        >
+          {manualLocked ? "GPS手動" : "GPS自動"}
+        </span>
+      );
+    }
+    return (
+      <span style={badgeStyles.waiting} title="GPS待機中">
+        GPS待機
+      </span>
+    );
+  };
+
+  // riding モード（U3 で再構築予定）：従来レイアウトを維持
+  if (mode === "riding") {
+    return (
+      <div className="app-root" style={{ background: "#0d0d1a" }}>
+        <header style={ridingHeaderStyle}>
+          <h1 style={{ margin: 0, fontSize: "1.05rem", color: "#fff" }}>
+            自転車ナビ
+          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {renderGeoBadge()}
+            <ModeSwitcher
+              mode={mode}
+              onModeChange={handleManualModeChange}
+              hasRoute={!!routeData}
+            />
+          </div>
+        </header>
+        <main style={{ height: "calc(100vh - 60px)" }}>
+          <RidingView
+            routeData={routeData}
+            currentInstructionIndex={currentInstructionIndex}
+            onNextInstruction={handleNextInstruction}
+            violations={routeData?.violations || []}
+            voiceEnabled={voiceEnabled}
+            onVoiceToggle={() => setVoiceEnabled((v) => !v)}
+            currentPosition={currentPosition}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  // preparing モード：地図ファースト + ボトムシート + FAB
   return (
-    <div style={{ position: "relative" }}>
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "8px 16px",
-          borderBottom: "1px solid #ddd",
-        }}
-      >
-        <h1 style={{ margin: 0, fontSize: "1.5rem" }}>自転車ナビ</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {/* GPS状態インジケーター */}
-          {geoError ? (
-            <span style={styles.geoErrorBadge} title={geoError}>
-              GPS×
-            </span>
-          ) : isGeoActive ? (
-            <span
-              style={styles.geoActiveBadge}
-              title={manualLocked ? "手動切り替え中（自動切り替え一時停止）" : "GPS自動切り替え有効"}
-            >
-              {manualLocked ? "GPS手動" : "GPS自動"}
-            </span>
-          ) : (
-            <span style={styles.geoWaitingBadge} title="GPS待機中">
-              GPS待機
-            </span>
-          )}
+    <div className="app-root">
+      <div className="map-layer">
+        <MapView
+          originalRoute={routeData?.original_route}
+          compliantRoute={routeData?.compliant_route}
+          violations={routeData?.violations}
+          currentPosition={currentPosition}
+          focusTarget={mapFocusTarget}
+          focusVersion={focusVersion}
+          routeFitVersion={routeFitVersion}
+          onViolationClick={handleViolationMarkerClick}
+          focusedViolationIndex={focusedViolationIndex}
+        />
+      </div>
+
+      <div className="top-bar">
+        <h1>自転車ナビ</h1>
+        <div className="top-bar-right">
+          {renderGeoBadge()}
           <ModeSwitcher
             mode={mode}
             onModeChange={handleManualModeChange}
             hasRoute={!!routeData}
           />
         </div>
-      </header>
-      <main style={{ padding: mode === "riding" ? 0 : "16px" }}>
-        {mode === "preparing" ? renderPreparingMode() : renderRidingMode()}
-      </main>
+      </div>
+
+      {routeData && (
+        <div className="map-legend">
+          <div className="map-legend-row">
+            <span
+              className="map-legend-swatch"
+              style={{ background: "#1976d2" }}
+            />
+            法規準拠ルート
+          </div>
+          <div className="map-legend-row">
+            <span
+              className="map-legend-swatch"
+              style={{ background: "#e65100" }}
+            />
+            最短ルート
+          </div>
+          <div className="map-legend-row">
+            <span
+              className="map-legend-dot"
+              style={{ background: "#d32f2f" }}
+            />
+            違反（確実）
+          </div>
+          <div className="map-legend-row">
+            <span
+              className="map-legend-dot"
+              style={{ background: "#f9a825" }}
+            />
+            違反（要確認）
+          </div>
+        </div>
+      )}
+
+      <div
+        className="map-attribution"
+        style={{ bottom: `calc(${SNAP_VH[sheetSnap]}vh + 4px)` }}
+      >
+        ©{" "}
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          OpenStreetMap
+        </a>{" "}
+        contributors |{" "}
+        <a
+          href="https://leafletjs.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Leaflet
+        </a>
+      </div>
+
+      <div
+        className="fab-stack"
+        style={{ bottom: `calc(${SNAP_VH[sheetSnap]}vh + 16px)` }}
+      >
+        {currentPosition && (
+          <button
+            className="fab"
+            onClick={handleCurrentLocation}
+            aria-label="現在地に移動"
+            title="現在地に移動"
+          >
+            📍
+          </button>
+        )}
+      </div>
+
+      <BottomSheet snap={sheetSnap} onSnapChange={setSheetSnap}>
+        <PreparingPanel
+          routeData={routeData}
+          loading={loading}
+          error={error}
+          onSearch={handleSearch}
+          focusedViolationIndex={focusedViolationIndex}
+          onViolationCardClick={handleViolationCardClick}
+          recommendations={routeData?.recommendations}
+        />
+      </BottomSheet>
     </div>
   );
 }
 
-const styles = {
-  geoActiveBadge: {
+const ridingHeaderStyle = {
+  position: "relative",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "8px 16px",
+  paddingTop: "max(8px, env(safe-area-inset-top))",
+  height: "60px",
+  background: "#16213e",
+  borderBottom: "1px solid #1a3a6e",
+  zIndex: 10,
+};
+
+const badgeStyles = {
+  active: {
     fontSize: "0.75rem",
     padding: "3px 8px",
     borderRadius: "12px",
@@ -143,7 +277,7 @@ const styles = {
     color: "#2e7d32",
     border: "1px solid #a5d6a7",
   },
-  geoWaitingBadge: {
+  waiting: {
     fontSize: "0.75rem",
     padding: "3px 8px",
     borderRadius: "12px",
@@ -151,7 +285,7 @@ const styles = {
     color: "#f57f17",
     border: "1px solid #ffe082",
   },
-  geoErrorBadge: {
+  error: {
     fontSize: "0.75rem",
     padding: "3px 8px",
     borderRadius: "12px",

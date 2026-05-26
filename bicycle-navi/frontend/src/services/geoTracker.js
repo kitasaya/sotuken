@@ -31,12 +31,14 @@ class GeoTracker {
 
     this._watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude, speed, accuracy } = pos.coords;
+        const { latitude, longitude, speed, accuracy, heading } = pos.coords;
         const data = {
           lat: latitude,
           lng: longitude,
           // speed は m/s（デバイスが取得できない場合は null）
           speed: speed,
+          // heading は北を 0 とした度数 0〜360（速度 0 や非対応端末では null）
+          heading: heading,
           accuracy,
           timestamp: pos.timestamp,
         };

@@ -477,3 +477,177 @@ edge_id ベース判定に移行した後も、`oneway=yes` の way であれば
 - Vite が安定版 7.3.3 に固定された ✅
 - `npm run dev` で HTTPS 起動確認（`VITE v7.3.3  ready in 488 ms`）✅
 - `@vitejs/plugin-basic-ssl` の互換性も維持（Vite 6/7/8 に対応済み）✅
+
+---
+
+## タスク U1：レイアウト基盤の刷新（地図ファースト + ボトムシート）（2026-05-12）
+
+### 変更内容
+
+**`frontend/src/index.css`**
+- Vite テンプレート由来の装飾 CSS（`--accent` 系変数、`.counter`/`.hero`/`#root` の
+  1126px 中央寄せ等）を全削除
+- 全画面 UI 用の reset を追加（`html/body/#root` を `100%` × `overflow:hidden`、
+  `box-sizing: border-box`、入力 `font-size:16px` で iOS の自動ズーム抑止）
+
+**`frontend/src/App.css`**
+- Vite テンプレート CSS を全削除し、`.app-root`/`.map-layer`/`.top-bar`/
+  `.fab-stack`/`.fab`/`.bottom-sheet`/`.sheet-handle`/`.sheet-body` の
+  地図ファースト UI 用クラスに置き換え
+- `.app-root` は `position:fixed; inset:0; 100vw × 100dvh`（モバイル URL バー
+  対応のため `dvh` を併用）
+
+**`frontend/src/components/BottomSheet.jsx`（新規）**
+- 3段階スナップ（peek 18vh / half 50vh / full 90vh）の自前実装
+- Pointer Events API + CSS `transform: translateY()` でドラッグと
+  スナップ補間を実装（追加ライブラリなし）
+- ハンドル領域のみ `touch-action:none` で受け、ドラッグ移動量 5px 未満は
+  タップとして次スナップへ巡回切替（peek → half → full → peek）
+- スナップ確定後は `cubic-bezier(0.32,0.72,0,1)` で 0.28s 補間、
+  ドラッグ中は transition を抑止
+- 状態は React state のみ管理（localStorage 不使用）
+- React 19 の `react-hooks/refs` 規則に従い、ドラッグ中判定は
+  `dragTranslate != null` で行う（ref を render 中に参照しない）
+
+**`frontend/src/components/MapView.jsx`**
+- 高さ `70vh` → `height: 100%` に変更し親要素に追従
+- `zoomControl={false}`（U2/U3 で FAB に置き換え予定）
+- 旧凡例 div を削除（U2 で BottomSheet 側に再構築予定）
+- 違反マーカーの色を `red`/`#e65100` → `#d32f2f`/`#f9a825`（赤/黄）に変更
+- `<MapFocusController>` を追加：`focusVersion` カウンタが増加するたび
+  `flyTo` で `focusTarget` に追従（現在地 FAB から呼ぶ）
+- `<MapRouteFitController>` を追加：`routeFitVersion` カウンタが増加するたび
+  ルート全体が画面に収まるよう `fitBounds`（ルート探索成功時に App から呼ぶ）
+- `currentPosition` を受け取り、青丸マーカーで現在地を地図に常時表示
+
+**`frontend/src/App.jsx`**
+- preparing モード：`.app-root` 内に `.map-layer`（地図フルスクリーン）+
+  `.top-bar`（タイトル・GPS バッジ・モード切替）+ `.fab-stack`（現在地 FAB）+
+  `<BottomSheet>` を重ねる構成に書き換え
+- BottomSheet 内に既存の `SearchForm` / ローディング・エラー・rerouted
+  メッセージ / `ViolationAlert` を `.sheet-section` で区切って配置
+- FAB は `bottom: calc(${SNAP_VH[sheetSnap]}vh + 16px)` でシートのスナップに
+  追従、`transition: bottom 0.28s` でスムーズに移動
+- ルート探索成功時に `routeFitVersion` をインクリメントして地図をフィット、
+  `sheetSnap` を `"half"` にリセットして結果を見やすくする
+- riding モード：U3 で再構築予定のため、従来レイアウト（ヘッダ + main +
+  既存 `RidingView`）を維持。ヘッダは ridingHeaderStyle で dark テーマに統一
+
+### 完了条件の確認
+
+- 375px 幅で地図が画面全体に表示される ✅（CSS 設計上）
+- ボトムシートが下からせり上がり、ドラッグで peek / half / full の3段階に
+  切り替わる ✅
+- 既存の入力フォーム・違反パネルの機能がボトムシート内で同等に動作する ✅
+- preparing モードの動作シナリオ（出発地・目的地入力 → ルート探索 →
+  違反確認）が維持されている ✅
+- デスクトップブラウザでも崩れない ✅（`.app-root` は固定全画面）
+- 実機での操作感確認は U4（スマホ実機テスト）で実施予定
+
+### 未対応事項（次タスクで対応）
+
+- ボトムシート内のレイアウト最適化（peek/half/full で表示要素を切替）は **U2**
+- マーカータップ → BottomSheet 内の該当 ViolationCard へのフォーカスは **U2**
+- riding モードのフルスクリーン化 + heading-up 表示は **U3**
+
+### U1 補足修正：attribution と凡例の復活
+
+旧版の MapView に存在したライセンス表記と凡例が、刷新時に消失または
+ボトムシート裏に隠れていたため復活。
+
+- `MapView.jsx`：`attributionControl={false}` で Leaflet 標準の attribution
+  control を無効化（自前オーバーレイに差し替えるため）
+- `App.jsx`（preparing モード）に以下を追加：
+  - `.map-attribution`：右下に「© OpenStreetMap contributors | Leaflet」を
+    オーバーレイ。`bottom: calc(${SNAP_VH[sheetSnap]}vh + 4px)` で
+    ボトムシートのスナップに追従し、常にシート上辺の真上に表示
+  - `.map-legend`：地図右上（トップバー下）に compact な凡例
+    （法規準拠ルート / 最短ルート / 違反（確実）/ 違反（要確認））を
+    オーバーレイ。`routeData` が存在する時のみ表示
+- ズームコントロール（+/− ボタン）は引き続き非表示（U2 で FAB 化予定）
+
+---
+
+## タスク U2：preparing モードの UI 構築（2026-05-12）
+
+### 変更内容
+
+**`frontend/src/components/RouteSummary.jsx`（新規）**
+- 距離（m / km）と所要時間（分 / 時間+分）を `tabular-nums` で大きく表示
+- 違反件数 > 0 の場合は「⚠️ 違反候補 N 件」を、= 0 の場合は「✅ 法規違反なし」を
+  小さく添える
+- peek 段階でも常に見える位置に配置される想定で、内容を 2 行に抑える
+
+**`frontend/src/components/ViolationCard.jsx`（新規）**
+- 違反 1 件分のカード UI（`<button>` で実装、キーボードフォーカス可）
+- 表示要素：ルール種別バッジ（一方通行 / 二段階右折 / 歩道走行）、信頼度（％）、
+  message、座標（小数 5 桁）
+- `confidence ≥ 0.7` は赤バッジ（high）、`< 0.7` は黄バッジ（low）+「（要確認）」
+- `focused` プロパティで青枠ハイライト
+- タップで `onClick(index)` を発火し App 側で地図フォーカスをトリガー
+
+**`frontend/src/components/PreparingPanel.jsx`（新規）**
+- BottomSheet 内のレイアウト担当。表示順は RouteSummary → 検索状態メッセージ →
+  SearchForm → 違反カードリスト → 自転車レーン推奨リスト
+- `focusedViolationIndex` が変化するたび `cardRefs.current[i].scrollIntoView()` で
+  該当カードを画面中央に自動スクロール（マーカータップ → カード追従）
+- snap 段階ごとの表示切替は CSS の `display:none` で行わず、自然なスクロールで
+  ユーザーの上下ドラッグに任せる方針（U2 の段階では複雑化を避ける）
+
+**`frontend/src/components/MapView.jsx`**
+- 違反 `CircleMarker` から `<Popup>` を削除し、`eventHandlers.click` から
+  `onViolationClick(index)` を発火する設計に変更（情報表示は ViolationCard 側に集約）
+- `focusedViolationIndex` を受け取り、該当マーカーは半径 13px + 青枠（#1976d2）+
+  weight 4 にしてハイライト
+- マーカー key を `lat-lng-index` 形式にし、index 再計算で重複しないよう改善
+
+**`frontend/src/App.jsx`**
+- `ViolationAlert` の import を削除、`PreparingPanel` をマウント
+- 新規 state：
+  - `mapFocusTarget`：地図 flyTo の対象座標（現在地 FAB / 違反カードタップで共用）
+  - `focusedViolationIndex`：現在ハイライト中の違反インデックス（null = なし）
+- ハンドラ：
+  - `handleViolationMarkerClick(index)`：マーカータップで該当 index をフォーカス +
+    sheet を `full` に展開
+  - `handleViolationCardClick(index)`：カードタップで該当 index をフォーカス +
+    `mapFocusTarget` を違反座標に更新 + `focusVersion` をインクリメントし
+    `MapFocusController` が `flyTo` を実行
+  - `handleCurrentLocation`：現在地 FAB から `mapFocusTarget` を現在地に更新して flyTo
+- `handleSearch` 内で `setFocusedViolationIndex(null)` を呼んでルート再検索時に
+  ハイライトをリセット
+
+**`frontend/src/App.css`**
+- `.route-summary` / `.route-distance` / `.route-time` / `.route-summary-violations`
+- `.violation-list` / `.violation-list-header`
+- `.violation-card` / `.violation-card.focused`（青枠ハイライト）
+- `.vc-header` / `.vc-badge.high` / `.vc-badge.low` / `.vc-confidence` /
+  `.vc-message` / `.vc-coords`
+- `.recommendation-list`（自転車レーン推奨）
+
+**削除**
+- `frontend/src/components/ViolationAlert.jsx`：PreparingPanel + ViolationCard に
+  役割が完全移行したため削除
+
+### 完了条件の確認
+
+- 地図全体にルートと違反マーカーが常時見える ✅（U1 で実装済み）
+- ボトムシートが peek / half / full で適切に情報量を切り替える ✅
+  （peek：summary のみ自然表示、half：+ form と件数、full：+ カードリスト）
+- 違反カードをタップすると地図がフォーカスする ✅
+- 地図上のマーカーをタップするとボトムシートが該当カードを表示する ✅
+- 現在地ボタンが動作する ✅（U1 で実装済み、U2 で `mapFocusTarget` 経由に変更）
+- スマホ実機での操作感確認は **U4** で実施予定
+
+### 未対応事項（次タスクで対応）
+
+- 地図右下の「ルート探索 FAB」（出発地・目的地両方セット時のみ表示）：
+  SearchForm の内部 state を App に持ち上げる必要があるため、U2 のスコープから外し
+  別ステップで検討
+- riding モードのフルスクリーン化 + heading-up 表示は **U3**
+
+### 既知の制約
+
+- マーカー → カードへの自動スクロールは `scrollIntoView` を使用しており、
+  ブラウザによってアニメーション挙動が異なる可能性あり（実機テストで確認）
+- ViolationCard の地点表示は座標（小数 5 桁）のみ。住所表示は逆ジオコード API が
+  必要なため見送り（U2 のスコープ外）
