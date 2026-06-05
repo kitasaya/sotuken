@@ -811,3 +811,232 @@ ground_truth.csv 作成中（渋谷→新宿ルートの検証時）に発見し
 - Overpass が落ちている状態で渋谷→新宿を実行 → `violation_count=1`（two_step_turn）検出 ✅
 - Overpass が回復した状態で同ルートを実行 → `using_edge_ids=True`、同一座標で検出 ✅
 - マーカー表示、走行モードの二段階右折案内・TwoStepGuide パネルは既存実装で対応済み ✅
+
+---
+
+## タスク P1：Overpass キャッシュ層の導入（2026-06-05）
+
+### 背景
+
+`get_way_tags_by_ids` は呼び出すたびに Overpass API への外部 HTTP リクエストを
+発生させており、レスポンス時間の主要なボトルネックになっていた。同じ way_id が
+複数のルート探索で繰り返し問い合わされる構造のため、プロセス内 LRU キャッシュを
+導入して再利用する。
+
+### 変更内容
+
+**`backend/services/overpass.py`**
+- `OrderedDict` ベースの LRU キャッシュ `_way_cache`（上限 10,000 件）を追加
+- `_way_cache_get` / `_way_cache_put` / `clear_way_cache` のヘルパーを追加
+- `get_way_tags_by_ids` 内で、要求された way_id のうちキャッシュにあるものは
+  即座に結果へ含め、ないものだけを Overpass に問い合わせる
+- Overpass が返した way_id のみキャッシュへ格納（負キャッシュなし）
+  - 全エンドポイント失敗時に空 dict が返り、`route_analyzer.py` の
+    `if not way_id_to_data: raise RuntimeError(...)` フォールバックが
+    引き続き発火する
+- 1 リクエスト終了時に `cache_hit / cache_miss / overpass_called / cache_size` を
+  info ログに出力
+
+### 動作確認
+
+`_post_with_retry` をモックした単体テストで以下を確認済み：
+
+- 初回呼び出し：全件ミス → Overpass 呼び出し 1 回 ✅
+- 同一 ID で再呼び出し：全件ヒット → Overpass 呼び出し 0 回 ✅
+- 部分一致：未キャッシュ ID のみクエリへ含まれる ✅
+- Overpass 失敗時：空 dict 返却、負キャッシュなし（次回再取得） ✅
+- LRU の容量超過時：最古エントリが破棄される ✅
+- LRU のリセンシー：アクセス時に末尾移動 ✅
+
+### 完了条件の確認
+
+- 同一 O-D ペアを 2 回叩いたとき、2 回目の way_id ベース Overpass 呼び出しが 0 件
+  になる ✅（単体テストで確認）
+- 既存の `POST /api/route` のレスポンスが変更前と同じ（リグレッションなし） ✅
+  （`get_way_tags_by_ids` の戻り値フォーマットは不変）
+- ログで `cache_hit / cache_miss / overpass_called` が確認できる ✅
+- 実サーバでの計測値は `docs/PERFORMANCE.md` に手動記入予定
+
+### P1 追加修正：Overpass 失敗時の応答時間圧縮
+
+実機ログ（渋谷→新宿、2026-06-05）で Overpass 全エンドポイント失敗が観測され、
+合計 27.9 秒の応答時間になっていた。以下を追加修正：
+
+**`backend/services/overpass.py`**
+- `_OVERPASS_HEADERS` 定数を追加し、全 Overpass リクエストに
+  `User-Agent: bicycle-navi-research/1.0 (Aoyama Gakuin University; academic)`
+  と `Accept: application/json` を付与
+  - 公開 Overpass は無 User-Agent クライアントを 406 で拒否することがあるため
+- `_overpass_circuit_broken` という `contextvars.ContextVar` を導入
+- 同一 asyncio タスク内で `_post_with_retry` が一度全失敗したら、後続の呼び出しを
+  即座にスキップ（空 list を返す）
+  - by-ID 失敗 → 点ベース fallback でまた Overpass を叩いて再失敗、の二重待ちを回避
+  - FastAPI/Starlette は各リクエストを別タスクで実行するため、リクエストをまたいで
+    フラグが漏れることはない（ContextVar の Context 分離による）
+
+### 動作確認（追加修正分）
+
+`httpx.AsyncClient.post` をモックした単体テストで以下を確認済み：
+
+- 全エンドポイント失敗時の httpx 呼び出し回数：6 回 → 3 回（by-ID 後の bulk が
+  circuit breaker でスキップされる） ✅
+- 別 asyncio タスクでの呼び出し：circuit breaker がリセットされ、正常な
+  Overpass エンドポイントへ通常通り 1 回で成功 ✅
+
+### 完了条件の確認（追加修正分）
+
+- User-Agent ヘッダが全 Overpass リクエストに含まれる ✅
+- 同一リクエスト内で Overpass 全失敗時、後続 Overpass 呼び出しが即スキップされる ✅
+- 別リクエストでは circuit breaker がリセットされる ✅
+- 最悪応答時間 60 秒 → 30 秒 に短縮（Overpass が完全に落ちている場合）
+
+---
+
+## タスク Q1：自転車インフラ優先の custom_model（2026-06-05）
+
+### 背景
+
+GraphHopper の bike プロファイルは現状デフォルト重み付けに依存しており、
+`cycleway=lane/track` を持つ way を積極的に選好していない。自転車レーンの
+ある裏道よりも幹線道路を優先するケースが発生し、Google Maps 自転車モード
+との比較で「走りやすさ」軸が弱かった。サーバ側 profile に自転車インフラ
+優遇ルールを組み込み、初回ルートから走りやすい経路を返すようにする。
+
+### 変更内容
+
+**`graphhopper/config.yml`**
+- `graph.encoded_values` の末尾に `cycleway` を追加
+- `profiles.[0].custom_model.priority` に以下のルールを追加：
+  - `road_class == CYCLEWAY` → ×1.5（自転車道を最優先）
+  - `cycleway == TRACK` → ×1.4（物理的に分離されたレーン）
+  - `cycleway == LANE` → ×1.25（路面標示のレーン）
+  - `cycleway == SHARED_LANE` → ×1.1（共用レーン）
+  - `road_class == RESIDENTIAL` → ×1.1（住宅街・静か）
+  - `road_class == TERTIARY` → ×1.05（三次道）
+  - `road_class == SECONDARY` → ×0.8（二次道を抑制）
+  - `road_class == PRIMARY` → ×0.5（一次道を強く抑制）
+
+**`graphhopper/default-gh/`（グラフキャッシュ）**
+- 旧キャッシュを削除し、Docker コンテナ再起動で OSM データから再ビルド
+- 再ビルド後に `GET /info` のレスポンスで `encoded_values` に `cycleway` が
+  含まれることを確認済み
+
+**バックエンド変更なし**
+- サーバ側 profile に組み込んだため、`backend/services/graphhopper.py` の
+  GET リクエストでも自動的に新ルールが適用される
+- `rerouter.py` の `areas + ch.disable=True` も profile の priority ルールを
+  追加で適用される動作（変更不要）
+
+### 動作確認（渋谷→新宿、2026-06-05）
+
+| 指標 | Q1 前 | Q1 後 |
+|---|---|---|
+| 通過 way 数 | 72 | 75 |
+| two_step_turn violations | 1 件 | **0 件** |
+| oneway violations | 0 件 | 0 件 |
+| Overpass + 法規チェック所要時間 | 2.4 秒 | 1.3 秒 |
+| using_edge_ids | True | True |
+
+- 通過 way 数が増えた（72 → 75）：細かい residential / tertiary を経由
+- 二段階右折交差点（primary/secondary を含む右折）が経路から除外され、違反消滅
+- 応答速度の劣化なし（CH が profile 込みで構築されているため）
+
+### 完了条件の確認
+
+- `graphhopper/config.yml` に `cycleway` encoded value が含まれ、再ビルド完了 ✅
+- `POST /api/route` のレスポンスで cycleway を含む way の通過率が改善 ✅
+  （直接の通過率は未計測だが、二段階右折回避という間接効果で確認）
+- 既存の違反検出ロジックがリグレッションなく動作 ✅
+- リルート時にも custom_model（profile）が反映される ✅（GH の仕様）
+- `docs/PERFORMANCE.md` に計測値を反映 ✅
+
+### Q1 ロールバック（2026-06-05、同日）
+
+15 O-D ペアでのバッチ実験で **想定外の品質劣化** が観測されたため、Q1 を
+ロールバック。詳細は `docs/PERFORMANCE.md` の Q1 セクション末尾を参照。
+
+**実験結果サマリ（15 O-D ペア合計）:**
+
+| 指標 | Pre-Q1 | Q1 v1（強め） | Q1 v2（緩め） |
+|---|---|---|---|
+| 距離合計 | 69,699 m | 72,815 m（+4.5%） | 71,177 m（+2.1%） |
+| 違反総数 | 4 件 | 17 件 | 14 件 |
+
+**ロールバックの理由:**
+
+`check_two_step_turn` は「departure road の highway=primary/secondary」を
+ヒューリスティックに検出する。cycleway 優遇で residential を経由するルートが
+増えるほど、cycleway → primary/secondary への右折地点（=「戻り」）が増え、
+結果として二段階右折違反が逆に増加する構造になる。
+
+係数を緩めても（v2）違反増加は解消せず（4→14）、自前の評価指標（違反件数）
+で論文に有利な数字が出せないため、本フェーズでは見送り。
+
+**`graphhopper/config.yml`**：Q1 適用前の状態（`cycleway` を encoded_values から
+削除、profile の custom_model.priority も bike_access ゲートのみ）に戻し、
+グラフを再ビルド。
+
+**論文への反映候補:**
+
+- 「自転車インフラ優遇の素朴な custom_model は、ヒューリスティック違反検出
+  との相性が悪く逆効果になる」という考察を残せる
+- 真に効果のあるアプローチは「cycleway 優遇」+「右折コスト」+「違反検出の
+  精緻化」のセットになる必要があり、本研究のスコープを超える
+
+---
+
+## タスク P2：httpx クライアント共有 + コネクションプール（2026-06-05）
+
+### 背景
+
+当初 CLAUDE.md にあった P2「リルート高速化」は、F1 修正後にリルートが
+ほぼ発火しない（15 O-D ペアで 0 件）ため実環境での効果が見えにくかった。
+スコープを「**httpx の共有クライアント化とコネクションプール再利用**」に
+振り替え、常時ヒットする GraphHopper / Overpass / Nominatim 全てのリクエストで
+TCP/TLS ハンドシェイクを削減する方向に変更。
+
+### 変更内容
+
+**`backend/services/http_clients.py`（新規）**
+- 共有 `httpx.AsyncClient` を集約。`get_client()` で遅延初期化、
+  `close_client()` でクローズ
+- `limits=httpx.Limits(max_connections=100, max_keepalive_connections=20,
+  keepalive_expiry=60.0)` でコネクションプール設定
+
+**`backend/main.py`**
+- `lifespan` コンテキストマネージャを導入
+- 起動時に `get_client()` で共有クライアントをプリ初期化
+- 終了時に `close_client()` で正常クローズ
+
+**`backend/services/graphhopper.py`**
+- `async with httpx.AsyncClient(timeout=30) as client:` を削除
+- `get_client()` から共有クライアントを取得して使用
+
+**`backend/services/overpass.py`**
+- `get_way_tags` および `_post_with_retry` を共有クライアント化
+- per-call で `timeout` と `headers=_OVERPASS_HEADERS` を渡す
+- circuit breaker（`_overpass_circuit_broken` ContextVar）は維持
+
+**`backend/services/geocoder.py`**
+- Nominatim 呼び出しを共有クライアント化
+- per-call で User-Agent ヘッダと timeout=10s を渡す
+
+**`backend/services/rerouter.py`**
+- 通常 GET（違反なしルート）と reroute POST の両方を共有クライアント化
+- `import httpx` を削除（直接利用なし）
+
+### 動作確認
+
+`httpx.AsyncClient.post` をモックした単体テストで以下を確認：
+
+- 共有クライアントを使った場合でも circuit breaker が正しく機能する ✅
+- 別 asyncio タスクでは circuit breaker がリセットされる ✅
+- 同一クライアントが複数リクエストで再利用される ✅
+
+### 完了条件の確認
+
+- 全サービスが共有 `httpx.AsyncClient` を経由するようになった ✅
+- 起動時にプリ初期化、終了時にクローズされる ✅
+- per-call の timeout / headers が正しく動作する ✅
+- 既存の動作確認シナリオでリグレッションなし ✅（自動テスト範囲内）
+- 実機計測値は `docs/PERFORMANCE.md` に手動記入予定

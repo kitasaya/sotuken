@@ -1,5 +1,5 @@
-import httpx
 import logging
+from services.http_clients import get_client
 
 logger = logging.getLogger(__name__)
 GH_BASE = "http://localhost:8989"
@@ -32,15 +32,15 @@ async def get_compliant_route(
     """
     if not violations:
         # 違反なし → 通常リクエストと同じ内容を返す
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{GH_BASE}/route", params={
-                "point": [f"{origin_lat},{origin_lng}", f"{dest_lat},{dest_lng}"],
-                "profile": "bike",
-                "locale": "ja",
-                "points_encoded": "false",
-            })
-            resp.raise_for_status()
-            return resp.json()
+        client = get_client()
+        resp = await client.get(f"{GH_BASE}/route", params={
+            "point": [f"{origin_lat},{origin_lng}", f"{dest_lat},{dest_lng}"],
+            "profile": "bike",
+            "locale": "ja",
+            "points_encoded": "false",
+        })
+        resp.raise_for_status()
+        return resp.json()
 
     # 重複座標を除去（同一地点の違反が複数ある場合）
     seen = set()
@@ -86,13 +86,13 @@ async def get_compliant_route(
         "custom_model": custom_model,
     }
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(f"{GH_BASE}/route", json=body)
-        if resp.status_code >= 400:
-            logger.error(
-                "GraphHopper POST /route error %d: %s",
-                resp.status_code,
-                resp.text,
-            )
-        resp.raise_for_status()
-        return resp.json()
+    client = get_client()
+    resp = await client.post(f"{GH_BASE}/route", json=body)
+    if resp.status_code >= 400:
+        logger.error(
+            "GraphHopper POST /route error %d: %s",
+            resp.status_code,
+            resp.text,
+        )
+    resp.raise_for_status()
+    return resp.json()
