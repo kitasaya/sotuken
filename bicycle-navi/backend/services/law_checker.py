@@ -1,3 +1,5 @@
+import math
+
 import httpx
 from services.overpass import get_bulk_way_tags
 
@@ -10,6 +12,40 @@ def _sample(points: list) -> list:
 
 def _dot2d(v1: list, v2: list) -> float:
     return v1[0] * v2[0] + v1[1] * v2[1]
+
+
+def _haversine_m(a: list, b: list) -> float:
+    """2点間の距離をメートルで返す。a, b = [lng, lat]"""
+    R = 6_371_000
+    lat1, lat2 = math.radians(a[1]), math.radians(b[1])
+    dlat = math.radians(b[1] - a[1])
+    dlng = math.radians(b[0] - a[0])
+    x = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(min(x, 1.0)))
+
+
+def _geom_length_m(geom: list) -> float:
+    """ジオメトリノード列の総距離をメートルで返す。"""
+    return sum(_haversine_m(geom[i], geom[i + 1]) for i in range(len(geom) - 1))
+
+
+def _check_direction(geom: list, tv: list, oneway: str) -> bool:
+    """way ジオメトリとトラベルベクトルから逆走かどうかを判定する。
+    3点以上のカーブ区間は多数決、2点の直線は始終点ベクトルで判定。
+    """
+    if len(geom) >= 3:
+        against = sum(
+            1 for j in range(len(geom) - 1)
+            if (
+                (_dot2d([geom[j + 1][0] - geom[j][0], geom[j + 1][1] - geom[j][1]], tv) > 0)
+                if oneway == "-1"
+                else (_dot2d([geom[j + 1][0] - geom[j][0], geom[j + 1][1] - geom[j][1]], tv) < 0)
+            )
+        )
+        return against > (len(geom) - 1) / 2
+    else:
+        way_vec = [geom[-1][0] - geom[0][0], geom[-1][1] - geom[0][1]]
+        return (_dot2d(way_vec, tv) > 0) if oneway == "-1" else (_dot2d(way_vec, tv) < 0)
 
 
 async def check_oneway_violation(
@@ -58,13 +94,14 @@ async def check_oneway_violation(
             geom = geometries[i]
             tv = travel_vectors[i]
             if len(geom) >= 2 and (tv[0] != 0 or tv[1] != 0):
-                way_vec = [geom[-1][0] - geom[0][0], geom[-1][1] - geom[0][1]]
-                dot = _dot2d(way_vec, tv)
-                # oneway=-1 は始点→終点方向が「逆」を意味する
-                going_wrong_way = (dot > 0) if oneway == "-1" else (dot < 0)
-                if not going_wrong_way:
-                    continue  # 順方向走行、違反なし
-                confidence = 1.0  # 進行方向照合済み
+                if _geom_length_m(geom) < 20.0:
+                    # 短い区間は照合精度が低いため方向照合をスキップ
+                    confidence = 0.7
+                else:
+                    going_wrong_way = _check_direction(geom, tv, oneway)
+                    if not going_wrong_way:
+                        continue  # 順方向走行、違反なし
+                    confidence = 1.0
 
         violations.append({
             "lat": lat, "lng": lng,

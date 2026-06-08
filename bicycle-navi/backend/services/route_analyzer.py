@@ -15,6 +15,24 @@ from services.rerouter import get_compliant_route
 logger = logging.getLogger(__name__)
 
 
+def _trim_geometry(geom: list, p_start: list, p_end: list) -> list:
+    """OSM way ジオメトリをルートが通過した区間のノード列にクリップする。
+    p_start / p_end に最も近いノードを両端とし、その間のサブリストを返す。
+    """
+    if len(geom) < 2:
+        return geom
+
+    def dist_sq(a, b):
+        return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+
+    i_s = min(range(len(geom)), key=lambda i: dist_sq(geom[i], p_start))
+    i_e = min(range(len(geom)), key=lambda i: dist_sq(geom[i], p_end))
+
+    lo, hi = min(i_s, i_e), max(i_s, i_e)
+    trimmed = geom[lo: hi + 1]
+    return trimmed if len(trimmed) >= 2 else geom
+
+
 async def analyze_route(
     origin_lat: float,
     origin_lng: float,
@@ -107,13 +125,15 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                 raise RuntimeError("Overpass returned empty for all %d way IDs" % len(unique_way_ids))
             check_points = [way_id_info[wid]["point"] for wid in unique_way_ids]
             tags_list = [way_id_to_data.get(wid, {}).get("tags", {}) for wid in unique_way_ids]
-            geometries = [way_id_to_data.get(wid, {}).get("geometry", []) for wid in unique_way_ids]
+            geometries = []
             travel_vectors = []
             for wid in unique_way_ids:
                 info = way_id_info[wid]
                 p_start = points[info["start_idx"]]
                 p_end = points[min(info["end_idx"], len(points) - 1)]
                 travel_vectors.append([p_end[0] - p_start[0], p_end[1] - p_start[1]])
+                raw_geom = way_id_to_data.get(wid, {}).get("geometry", [])
+                geometries.append(_trim_geometry(raw_geom, p_start, p_end))
             # 右折地点のタグを way_id_to_data から解決（二分探索 O(N log M)）
             start_indices = [int(seg[0]) for seg in way_id_details]
             for i, idx in enumerate(two_step_idxs):

@@ -294,3 +294,71 @@ Ctrl+C → 再起動。
 
 コード側で transport-level retry や keepalive_expiry の短縮で対処することも
 可能だが、本フェーズではコードを最小化する方針で運用ルール対応とした。
+
+---
+
+## タスク Q2：進行方向照合のロバスト化（2026-06-07 実装）
+
+### 設計の要点
+
+`check_oneway_violation` の方向照合精度を 3 点から改善した。
+
+**1. OSM ジオメトリをルート通過区間にクリップ（`route_analyzer.py`）**
+
+- `_trim_geometry(geom, p_start, p_end)` ヘルパーを追加
+- `p_start = points[start_idx]`、`p_end = points[end_idx]` に最も近いノードを
+  geom から距離の二乗で探索し、その間のサブリストを返す
+- これにより法規チェックが「ルートが実際に通った区間」のみを対象にする
+  （カーブの多い long way でも迂回部分のノードが多数決を汚染しない）
+
+**2. 短い区間の照合スキップ（`law_checker.py`）**
+
+- `_haversine_m(a, b)` と `_geom_length_m(geom)` を追加
+- クリップ後の区間長が **20m 未満**の場合は方向照合をスキップし、
+  `confidence=0.7` のまま違反として登録する
+  （短い区間は travel_vector のノイズに対して内積符号が不安定なため）
+
+**3. カーブ区間の多数決判定（`law_checker.py`）**
+
+- `_check_direction(geom, tv, oneway)` ヘルパーを追加
+- クリップ後のノードが **3 点以上**のとき、隣接ノード間のすべてのセグメント
+  ベクトルと travel_vector の内積を計算し、「逆向き」が **過半数**なら
+  逆走と判定する（多数決）
+- 2 点の場合は従来どおり始終点ベクトルの内積で判定
+
+### 期待される効果
+
+- カーブが多い residential / tertiary 区間での偽陽性減少
+  → L 字カーブや S 字の長い way で始終点ベクトルが斜めを向く問題が解消
+- 短い way（< 20m）での信頼度の誤上昇防止
+  → 従来は `confidence=1.0` が出てしまう場合があった
+- `confidence=1.0` の割合は true positive に限定され、精度指標が向上する見込み
+
+### 変更ファイル
+
+- `backend/services/law_checker.py`：ヘルパー 4 関数追加、照合ブロック置き換え
+- `backend/services/route_analyzer.py`：`_trim_geometry` 追加、ジオメトリ構築を
+  リスト内包 → ループに変更してクリップを適用
+
+### 計測結果（Masaya さんに手動記入）
+
+バックエンド再起動後、`POST /api/experiment/batch/od-pairs/csv` で 15 O-D ペアを実行：
+
+| 指標 | Q2 前（Pre-Q2） | Q2 後 |
+|---|---|---|
+| violations 総数（15ペア） | 4 件 | xx 件 |
+| うち confidence=1.0 件数 | xx 件 | xx 件 |
+| うち confidence=0.7 件数 | xx 件 | xx 件 |
+| リルート発生ルート数 | 0 件 | xx 件 |
+
+confidence 分布の確認コマンド：
+
+```powershell
+# バックエンド起動後
+curl.exe -X POST http://localhost:8000/api/experiment/batch/od-pairs/csv `
+  -H "Content-Type: application/json" `
+  -d '{"algo_version":"v3"}' `
+  -o experiment_post_q2.csv
+```
+
+CSV の `violation_count_high_conf` / `violation_count_low_conf` 列で確認する。
