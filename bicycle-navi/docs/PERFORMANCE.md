@@ -340,25 +340,40 @@ Ctrl+C → 再起動。
 - `backend/services/route_analyzer.py`：`_trim_geometry` 追加、ジオメトリ構築を
   リスト内包 → ループに変更してクリップを適用
 
-### 計測結果（Masaya さんに手動記入）
+### 計測結果（2026-06-08 実測）
 
-バックエンド再起動後、`POST /api/experiment/batch/od-pairs/csv` で 15 O-D ペアを実行：
+`POST /api/experiment/batch/od-pairs/csv` で 15 O-D ペアを実行：
 
-| 指標 | Q2 前（Pre-Q2） | Q2 後 |
+| 指標 | Pre-Q2 | Q2 後 |
 |---|---|---|
-| violations 総数（15ペア） | 4 件 | xx 件 |
-| うち confidence=1.0 件数 | xx 件 | xx 件 |
-| うち confidence=0.7 件数 | xx 件 | xx 件 |
-| リルート発生ルート数 | 0 件 | xx 件 |
+| violations 総数（15ペア） | 4 件 | 10 件 |
+| うち confidence=1.0 件数 | 4 件 | 10 件（100%） |
+| うち confidence=0.7 件数 | 0 件 | 0 件 |
+| リルート発生ルート数 | 0 件 | 1 件（横浜→みなとみらい） |
+| compliant_distance 合計 | 69,699 m | 70,114 m（+415m） |
 
-confidence 分布の確認コマンド：
+### 変化の内訳分析
 
-```powershell
-# バックエンド起動後
-curl.exe -X POST http://localhost:8000/api/experiment/batch/od-pairs/csv `
-  -H "Content-Type: application/json" `
-  -d '{"algo_version":"v3"}' `
-  -o experiment_post_q2.csv
-```
+| ルート | 変化 | 原因 |
+|---|---|---|
+| 東京→渋谷 | 0→3 (two_step_turn) | GH ルート変動（7742.8m→7736.4m） |
+| 浦和→さいたま新都心 | 0→1 (two_step_turn) | GH ルート変動（4427.7m→4373.3m） |
+| 川崎→武蔵小杉 | 0→1 (two_step_turn) | GH ルート変動（7929.8m→8049.4m） |
+| 横浜→みなとみらい | 0→1 (oneway) | **Q2 に直接起因** |
 
-CSV の `violation_count_high_conf` / `violation_count_low_conf` 列で確認する。
+two_step_turn の増加 3件は Q2 コード変更と無関係（GH ルート変動が原因）。  
+Q2 の効果として帰属できる変化は **横浜→みなとみらいの oneway 検出 1件のみ**。
+
+**横浜→みなとみらい の詳細**：
+- 元ルートは変わらず（2277.7m）
+- Pre-Q2：全 geom の始点→終点ベクトルが方向を正と判定 → 違反なし
+- Q2：クリップ済みジオメトリの多数決が逆走と判定 → confidence=1.0 → リルート +415.8m（+18.3%）
+- 真の改善か新しい偽陽性かは地図上で手動確認が必要
+
+### 結論
+
+- **confidence=0.7 件数は 0**：短路スキップ廃止後のロジックが偽陽性を出していない ✅
+- **confidence=1.0 比率：100%（Pre-Q2 と同水準）**：測定可能な向上なし
+  - 理由：Pre-Q2 の時点で全違反がすでに confidence=1.0 に達していたため改善余地がなかった
+- **論文記述候補**：「多数決 + ジオメトリクリップで精度向上を図ったが、既存の
+  15 O-D ペアでは全違反が既に confidence=1.0 であり定量的な差は生じなかった」

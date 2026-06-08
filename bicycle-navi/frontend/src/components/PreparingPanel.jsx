@@ -8,6 +8,7 @@ export default function PreparingPanel({
   loading,
   error,
   onSearch,
+  currentPosition,
   focusedViolationIndex,
   onViolationCardClick,
   recommendations,
@@ -50,7 +51,7 @@ export default function PreparingPanel({
       )}
 
       <div className="sheet-section">
-        <SearchForm onSearch={onSearch} />
+        <SearchForm onSearch={onSearch} currentPosition={currentPosition} />
       </div>
 
       {violations.length > 0 && (

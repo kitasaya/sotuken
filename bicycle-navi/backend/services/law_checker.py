@@ -94,14 +94,11 @@ async def check_oneway_violation(
             geom = geometries[i]
             tv = travel_vectors[i]
             if len(geom) >= 2 and (tv[0] != 0 or tv[1] != 0):
-                if _geom_length_m(geom) < 20.0:
-                    # 短い区間は照合精度が低いため方向照合をスキップ
-                    confidence = 0.7
-                else:
-                    going_wrong_way = _check_direction(geom, tv, oneway)
-                    if not going_wrong_way:
-                        continue  # 順方向走行、違反なし
-                    confidence = 1.0
+                going_wrong_way = _check_direction(geom, tv, oneway)
+                if not going_wrong_way:
+                    continue  # 順方向走行、違反なし
+                # 短い区間は照合精度が低いため信頼度を下げる
+                confidence = 0.7 if _geom_length_m(geom) < 20.0 else 1.0
 
         violations.append({
             "lat": lat, "lng": lng,

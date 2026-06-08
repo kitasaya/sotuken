@@ -8,7 +8,20 @@ async function fetchGeocode(query) {
   return res.data; // { lat, lng, display_name }
 }
 
-export default function SearchForm({ onSearch }) {
+const gpsButtonStyle = {
+  flexShrink: 0,
+  padding: "6px 10px",
+  fontSize: "0.82rem",
+  background: "#e3f2fd",
+  color: "#1565c0",
+  border: "1px solid #90caf9",
+  borderRadius: "6px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  touchAction: "manipulation",
+};
+
+export default function SearchForm({ onSearch, currentPosition }) {
   const [mode, setMode] = useState("address"); // "address" | "coords"
 
   // 住所モード
@@ -23,14 +36,46 @@ export default function SearchForm({ onSearch }) {
   const [origin, setOrigin] = useState({ lat: "", lng: "" });
   const [dest, setDest] = useState({ lat: "", lng: "" });
 
+  // 住所入力が変わったら resolved をクリア（再ジオコーディング対象に戻す）
+  const handleOriginChange = (e) => {
+    setOriginQuery(e.target.value);
+    setOriginResolved(null);
+  };
+
+  const handleDestChange = (e) => {
+    setDestQuery(e.target.value);
+    setDestResolved(null);
+  };
+
+  // 出発地に現在地をセット（住所モード）
+  const handleUseCurrentPosAddress = () => {
+    if (!currentPosition) return;
+    setOriginQuery("現在地");
+    setOriginResolved({
+      lat: currentPosition.lat,
+      lng: currentPosition.lng,
+      display_name: "現在地（GPS）",
+    });
+  };
+
+  // 出発地に現在地をセット（座標モード）
+  const handleUseCurrentPosCoords = () => {
+    if (!currentPosition) return;
+    setOrigin({
+      lat: String(currentPosition.lat.toFixed(6)),
+      lng: String(currentPosition.lng.toFixed(6)),
+    });
+  };
+
   const handleAddressSubmit = async (e) => {
     e.preventDefault();
     setGeocoding(true);
     setGeocodeError(null);
     try {
+      // resolved 済みのものはジオコーディングをスキップ
       const [o, d] = await Promise.all([
-        fetchGeocode(originQuery),
-        fetchGeocode(destQuery),
+        originResolved ? Promise.resolve(originResolved) : fetchGeocode(originQuery),
+        destResolved ? Promise.resolve(destResolved) : fetchGeocode(destQuery),
       ]);
       setOriginResolved(o);
       setDestResolved(d);
@@ -57,7 +102,6 @@ export default function SearchForm({ onSearch }) {
   const tabStyle = (active) => ({
     padding: "6px 16px",
     cursor: "pointer",
-    borderBottom: active ? "2px solid #0066cc" : "2px solid transparent",
     color: active ? "#0066cc" : "#666",
     fontWeight: active ? "bold" : "normal",
     background: "none",
@@ -82,35 +126,50 @@ export default function SearchForm({ onSearch }) {
       {mode === "address" && (
         <form onSubmit={handleAddressSubmit}>
           <div style={{ marginBottom: "8px" }}>
-            <label>出発地（住所・地名）</label>
-            <input
-              value={originQuery}
-              onChange={(e) => setOriginQuery(e.target.value)}
-              placeholder="例: 渋谷駅"
-              required
-              style={{ marginLeft: "8px", width: "240px" }}
-            />
+            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.9rem" }}>
+              出発地
+            </label>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <input
+                value={originQuery}
+                onChange={handleOriginChange}
+                placeholder="例: 渋谷駅"
+                required
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              {currentPosition && (
+                <button type="button" onClick={handleUseCurrentPosAddress} style={gpsButtonStyle}>
+                  📍 現在地
+                </button>
+              )}
+            </div>
             {originResolved && (
-              <span style={{ fontSize: "0.8em", color: "#555", marginLeft: "8px" }}>
-                → {originResolved.display_name.slice(0, 40)}…
+              <span style={{ fontSize: "0.8em", color: "#555" }}>
+                → {originResolved.display_name.slice(0, 50)}
+                {originResolved.display_name.length > 50 ? "…" : ""}
               </span>
             )}
           </div>
+
           <div style={{ marginBottom: "8px" }}>
-            <label>目的地（住所・地名）</label>
+            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.9rem" }}>
+              目的地
+            </label>
             <input
               value={destQuery}
-              onChange={(e) => setDestQuery(e.target.value)}
+              onChange={handleDestChange}
               placeholder="例: 新宿駅"
               required
-              style={{ marginLeft: "8px", width: "240px" }}
+              style={{ width: "100%", boxSizing: "border-box" }}
             />
             {destResolved && (
-              <span style={{ fontSize: "0.8em", color: "#555", marginLeft: "8px" }}>
-                → {destResolved.display_name.slice(0, 40)}…
+              <span style={{ fontSize: "0.8em", color: "#555" }}>
+                → {destResolved.display_name.slice(0, 50)}
+                {destResolved.display_name.length > 50 ? "…" : ""}
               </span>
             )}
           </div>
+
           {geocodeError && (
             <p style={{ color: "red", margin: "4px 0" }}>{geocodeError}</p>
           )}
@@ -124,40 +183,51 @@ export default function SearchForm({ onSearch }) {
       {mode === "coords" && (
         <form onSubmit={handleCoordsSubmit}>
           <div style={{ marginBottom: "8px" }}>
-            <label>出発地（緯度）</label>
-            <input
-              value={origin.lat}
-              onChange={(e) => setOrigin({ ...origin, lat: e.target.value })}
-              placeholder="35.6580"
-              required
-              style={{ marginLeft: "8px", width: "100px" }}
-            />
-            <label style={{ marginLeft: "12px" }}>出発地（経度）</label>
-            <input
-              value={origin.lng}
-              onChange={(e) => setOrigin({ ...origin, lng: e.target.value })}
-              placeholder="139.7016"
-              required
-              style={{ marginLeft: "8px", width: "100px" }}
-            />
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <label style={{ fontSize: "0.9rem" }}>出発地</label>
+              {currentPosition && (
+                <button type="button" onClick={handleUseCurrentPosCoords} style={gpsButtonStyle}>
+                  📍 現在地
+                </button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                value={origin.lat}
+                onChange={(e) => setOrigin({ ...origin, lat: e.target.value })}
+                placeholder="緯度 35.6580"
+                required
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <input
+                value={origin.lng}
+                onChange={(e) => setOrigin({ ...origin, lng: e.target.value })}
+                placeholder="経度 139.7016"
+                required
+                style={{ flex: 1, minWidth: 0 }}
+              />
+            </div>
           </div>
           <div style={{ marginBottom: "8px" }}>
-            <label>目的地（緯度）</label>
-            <input
-              value={dest.lat}
-              onChange={(e) => setDest({ ...dest, lat: e.target.value })}
-              placeholder="35.6896"
-              required
-              style={{ marginLeft: "8px", width: "100px" }}
-            />
-            <label style={{ marginLeft: "12px" }}>目的地（経度）</label>
-            <input
-              value={dest.lng}
-              onChange={(e) => setDest({ ...dest, lng: e.target.value })}
-              placeholder="139.6922"
-              required
-              style={{ marginLeft: "8px", width: "100px" }}
-            />
+            <label style={{ display: "block", marginBottom: "4px", fontSize: "0.9rem" }}>
+              目的地
+            </label>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                value={dest.lat}
+                onChange={(e) => setDest({ ...dest, lat: e.target.value })}
+                placeholder="緯度 35.6896"
+                required
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <input
+                value={dest.lng}
+                onChange={(e) => setDest({ ...dest, lng: e.target.value })}
+                placeholder="経度 139.6922"
+                required
+                style={{ flex: 1, minWidth: 0 }}
+              />
+            </div>
           </div>
           <button type="submit">ルートを検索</button>
         </form>

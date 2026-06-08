@@ -246,6 +246,7 @@ export default function App() {
           loading={loading}
           error={error}
           onSearch={handleSearch}
+          currentPosition={currentPosition}
           focusedViolationIndex={focusedViolationIndex}
           onViolationCardClick={handleViolationCardClick}
           recommendations={routeData?.recommendations}
