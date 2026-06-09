@@ -307,13 +307,23 @@ export default function RidingView({
         </div>
       </div>
 
-      {/* 矢印表示エリア */}
+      {/* 矢印表示エリア（二段階右折時は縦スペースを節約するため縮小） */}
       <div style={{
         ...styles.arrowContainer,
-        ...(isTwoStepTurn ? styles.twoStepBorder : hasWarning ? styles.warningBorder : {}),
+        ...(isTwoStepTurn
+          ? { ...styles.twoStepBorder, padding: "10px 24px 8px" }
+          : hasWarning
+          ? styles.warningBorder
+          : {}),
       }}>
-        <div style={styles.arrow}>{config.arrow}</div>
-        <div style={styles.directionLabel}>{config.label}</div>
+        <div style={{
+          ...styles.arrow,
+          fontSize: isTwoStepTurn ? "5rem" : "8rem",
+        }}>{config.arrow}</div>
+        <div style={{
+          ...styles.directionLabel,
+          fontSize: isTwoStepTurn ? "1.3rem" : "1.6rem",
+        }}>{config.label}</div>
       </div>
 
       {/* 警告バナー（法規違反リスク箇所） */}

@@ -89,6 +89,17 @@ export default function PreparingPanel({
           </ul>
         </div>
       )}
+
+      <div className="map-credit">
+        ©{" "}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+          OpenStreetMap
+        </a>{" "}
+        contributors |{" "}
+        <a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">
+          Leaflet
+        </a>
+      </div>
     </>
   );
 }

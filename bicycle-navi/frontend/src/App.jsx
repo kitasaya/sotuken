@@ -191,28 +191,6 @@ export default function App() {
       )}
 
       <div
-        className="map-attribution"
-        style={{ bottom: `calc(${SNAP_VH[sheetSnap]}vh + 4px)` }}
-      >
-        ©{" "}
-        <a
-          href="https://www.openstreetmap.org/copyright"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          OpenStreetMap
-        </a>{" "}
-        contributors |{" "}
-        <a
-          href="https://leafletjs.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Leaflet
-        </a>
-      </div>
-
-      <div
         className="fab-stack"
         style={{ bottom: `calc(${SNAP_VH[sheetSnap]}vh + 16px)` }}
       >

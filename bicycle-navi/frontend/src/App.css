@@ -91,25 +91,6 @@
   color: #ffffff;
 }
 
-.map-attribution {
-  position: absolute;
-  right: 6px;
-  z-index: 850;
-  font-size: 10px;
-  line-height: 1.3;
-  color: rgba(0, 0, 0, 0.7);
-  background: rgba(255, 255, 255, 0.85);
-  padding: 2px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
-  transition: bottom 0.28s cubic-bezier(0.32, 0.72, 0, 1);
-  pointer-events: auto;
-}
-
-.map-attribution a {
-  color: inherit;
-  text-decoration: underline;
-}
 
 .map-legend {
   position: absolute;
@@ -349,4 +330,16 @@
 
 .sheet-section:last-child {
   border-bottom: none;
+}
+
+.map-credit {
+  padding: 10px 0 4px;
+  font-size: 10px;
+  color: #aaa;
+  text-align: center;
+}
+
+.map-credit a {
+  color: inherit;
+  text-decoration: underline;
 }
