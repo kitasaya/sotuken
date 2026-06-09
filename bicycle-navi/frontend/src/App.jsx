@@ -58,6 +58,12 @@ export default function App() {
     }
   };
 
+  const handlePrevInstruction = () => {
+    if (currentInstructionIndex > 0) {
+      setCurrentInstructionIndex((prev) => prev - 1);
+    }
+  };
+
   const handleCurrentLocation = () => {
     if (!currentPosition) return;
     setMapFocusTarget({ lat: currentPosition.lat, lng: currentPosition.lng });
@@ -116,6 +122,7 @@ export default function App() {
           routeData={routeData}
           currentInstructionIndex={currentInstructionIndex}
           onNextInstruction={handleNextInstruction}
+          onPrevInstruction={handlePrevInstruction}
           violations={routeData?.violations || []}
           voiceEnabled={voiceEnabled}
           onVoiceToggle={() => setVoiceEnabled((v) => !v)}

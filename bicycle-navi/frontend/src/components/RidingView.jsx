@@ -51,8 +51,9 @@ const hasViolationNearby = (instruction, violations, routeCoords) => {
   const coord = getInstructionCoord(instruction, routeCoords);
   if (!coord) return false;
   const [lat, lng] = coord;
+  // 0.0003° ≈ 33m：同一交差点のみを対象にする（0.001° だと隣の交差点まで拾う）
   return violations.some(
-    (v) => Math.abs(v.lat - lat) < 0.001 && Math.abs(v.lng - lng) < 0.001
+    (v) => Math.abs(v.lat - lat) < 0.0003 && Math.abs(v.lng - lng) < 0.0003
   );
 };
 
@@ -136,6 +137,7 @@ export default function RidingView({
   routeData,
   currentInstructionIndex,
   onNextInstruction,
+  onPrevInstruction,
   violations,
   voiceEnabled,
   onVoiceToggle,
@@ -450,17 +452,32 @@ export default function RidingView({
           </button>
         </div>
 
-        {/* 次の案内へ（デモ用） */}
-        <button
-          onClick={onNextInstruction}
-          disabled={currentInstructionIndex >= instructions.length - 1}
-          style={{
-            ...styles.nextButton,
-            opacity: currentInstructionIndex >= instructions.length - 1 ? 0.4 : 1,
-          }}
-        >
-          次の案内へ ({currentInstructionIndex + 1} / {instructions.length})
-        </button>
+        {/* 前後の案内ナビゲーション（デモ用） */}
+        <div style={styles.navRow}>
+          <button
+            onClick={onPrevInstruction}
+            disabled={currentInstructionIndex === 0}
+            style={{
+              ...styles.prevButton,
+              opacity: currentInstructionIndex === 0 ? 0.4 : 1,
+            }}
+          >
+            ← 前へ
+          </button>
+          <div style={styles.navCounter}>
+            {currentInstructionIndex + 1} / {instructions.length}
+          </div>
+          <button
+            onClick={onNextInstruction}
+            disabled={currentInstructionIndex >= instructions.length - 1}
+            style={{
+              ...styles.nextButton,
+              opacity: currentInstructionIndex >= instructions.length - 1 ? 0.4 : 1,
+            }}
+          >
+            次へ →
+          </button>
+        </div>
         {nextInstruction && (
           <div style={styles.nextPreview}>
             次: {DIRECTION_CONFIG[nextInstruction.sign]?.label || "直進"}
@@ -725,11 +742,38 @@ const styles = {
     cursor: "pointer",
     touchAction: "manipulation",
   },
-  nextButton: {
-    width: "100%",
+  navRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginBottom: "4px",
+  },
+  navCounter: {
+    flex: "0 0 auto",
+    fontSize: "0.9rem",
+    color: "#78909c",
+    textAlign: "center",
+    minWidth: "52px",
+    fontVariantNumeric: "tabular-nums",
+  },
+  prevButton: {
+    flex: 1,
     minHeight: "52px",
-    padding: "12px",
-    fontSize: "1.1rem",
+    padding: "12px 8px",
+    fontSize: "1rem",
+    fontWeight: "bold",
+    backgroundColor: "#37474f",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    touchAction: "manipulation",
+  },
+  nextButton: {
+    flex: 1,
+    minHeight: "52px",
+    padding: "12px 8px",
+    fontSize: "1rem",
     fontWeight: "bold",
     backgroundColor: "#2e7d32",
     color: "white",
