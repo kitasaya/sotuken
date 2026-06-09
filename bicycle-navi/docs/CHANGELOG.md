@@ -1093,3 +1093,46 @@ TCP/TLS ハンドシェイクを削減する方向に変更。
 - per-call の timeout / headers が正しく動作する ✅
 - 既存の動作確認シナリオでリグレッションなし ✅（自動テスト範囲内）
 - 実機計測値は `docs/PERFORMANCE.md` に手動記入予定
+
+---
+
+## タスク U3: riding モードのフルスクリーン化 + heading-up（2026-06-09）
+
+### 背景
+
+- riding モードに 60px のヘッダーが存在し、画面上端を占有していた
+- 地図ミニマップが北向き固定で、進行方向が直感的に分からなかった
+
+### 変更内容
+
+**`frontend/src/App.jsx`**
+- riding モードの `<header>` を完全に削除
+- `ModeSwitcher` を riding モードブランチから削除
+- `RidingView` に `onModeChange`・`geoBadge`・`hasRoute` の 3 prop を追加
+
+**`frontend/src/components/RidingView.jsx`**
+- コンテナ高さを `calc(100vh - 60px)` → `100%`（`.app-root` が `100dvh` 担保）に変更
+- 上部オーバーレイ（`topOverlay`）を新設：「自転車ナビ」タイトル + GPS バッジ + 「地図に戻る」ボタン
+- `heading` 正規化ロジックを追加（`useEffect` + `prevHeadingRef`）：0/360 境界ジャンプを防ぐ累積角度方式
+- ミニ地図を `mapWrapper`（`overflow: hidden; position: relative`）+ `rotatingMapInner`（`position: absolute; inset: 0`）構造に変更
+  - `transform: rotate(-heading deg) scale(1.5)` でタイル・ルートラインを同時回転
+  - `scale(1.5)` は回転時の四隅空白を塗りつぶす（√2 ≈ 1.414 以上が必要）
+  - CSS `transition: 0.4s ease-out` でスムーズ回転
+- `Compass` コンポーネントを新設（右上固定、`rotate(-heading deg)` で北方向を表示）
+- 進行方向マーカー `▲` を地図上部中央に固定オーバーレイとして追加
+
+### 設計上の注意
+
+- `GeolocationCoordinates.heading`（0=北、時計回り）を使用。速度0や非対応端末では `null`
+- heading が `null` の場合は地図回転なし（北向き固定）でフォールバック
+- compass の N 針は `rotate(−heading)` で画面上の北方向を示す
+- Leaflet のタイル再計算と CSS rotation は独立しているため `dragging=false` 前提で干渉なし
+
+### 動作確認
+
+- フルスクリーン riding モード：60px ヘッダーなし、代わりにオーバーレイ表示 ✅
+- heading=90°（東向き）で地図が反時計回り 90° 回転、青い現在地ドットが中央に表示 ✅
+- コンパス「↑N」が右上に表示（北方向を指す） ✅
+- 進行方向マーカー「▲」が地図上部中央に表示 ✅
+- GPS なし（heading=null）は北向き固定で通常表示 ✅
+- 「地図に戻る」ボタンで preparing モードに戻れる ✅

@@ -108,34 +108,22 @@ export default function App() {
     );
   };
 
-  // riding モード（U3 で再構築予定）：従来レイアウトを維持
+  // riding モード（U3）：フルスクリーン
   if (mode === "riding") {
     return (
       <div className="app-root" style={{ background: "#0d0d1a" }}>
-        <header style={ridingHeaderStyle}>
-          <h1 style={{ margin: 0, fontSize: "1.05rem", color: "#fff" }}>
-            自転車ナビ
-          </h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {renderGeoBadge()}
-            <ModeSwitcher
-              mode={mode}
-              onModeChange={handleManualModeChange}
-              hasRoute={!!routeData}
-            />
-          </div>
-        </header>
-        <main style={{ height: "calc(100vh - 60px)" }}>
-          <RidingView
-            routeData={routeData}
-            currentInstructionIndex={currentInstructionIndex}
-            onNextInstruction={handleNextInstruction}
-            violations={routeData?.violations || []}
-            voiceEnabled={voiceEnabled}
-            onVoiceToggle={() => setVoiceEnabled((v) => !v)}
-            currentPosition={currentPosition}
-          />
-        </main>
+        <RidingView
+          routeData={routeData}
+          currentInstructionIndex={currentInstructionIndex}
+          onNextInstruction={handleNextInstruction}
+          violations={routeData?.violations || []}
+          voiceEnabled={voiceEnabled}
+          onVoiceToggle={() => setVoiceEnabled((v) => !v)}
+          currentPosition={currentPosition}
+          onModeChange={handleManualModeChange}
+          geoBadge={renderGeoBadge()}
+          hasRoute={!!routeData}
+        />
       </div>
     );
   }
@@ -255,19 +243,6 @@ export default function App() {
     </div>
   );
 }
-
-const ridingHeaderStyle = {
-  position: "relative",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "8px 16px",
-  paddingTop: "max(8px, env(safe-area-inset-top))",
-  height: "60px",
-  background: "#16213e",
-  borderBottom: "1px solid #1a3a6e",
-  zIndex: 10,
-};
 
 const badgeStyles = {
   active: {

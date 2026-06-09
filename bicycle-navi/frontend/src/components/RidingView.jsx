@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -109,6 +109,29 @@ function TwoStepGuide() {
   );
 }
 
+/**
+ * コンパスインジケーター
+ * heading-up 時、画面内で「北がどの方向か」を示す小型コンパス。
+ * normalizedHeading: 連続累積角度（CSS transition が 0/360 境界で跳ばないよう正規化済み）
+ */
+function Compass({ normalizedHeading }) {
+  return (
+    <div style={styles.compassWrapper}>
+      {/* N ラベル：heading が増えるほど反時計回りに回転 → 北が示される方向 */}
+      <div
+        style={{
+          ...styles.compassNeedle,
+          transform: `rotate(${-normalizedHeading}deg)`,
+          transition: "transform 0.4s ease-out",
+        }}
+      >
+        ↑
+      </div>
+      <span style={styles.compassLabel}>N</span>
+    </div>
+  );
+}
+
 export default function RidingView({
   routeData,
   currentInstructionIndex,
@@ -117,6 +140,9 @@ export default function RidingView({
   voiceEnabled,
   onVoiceToggle,
   currentPosition,
+  onModeChange,
+  geoBadge,
+  hasRoute,
 }) {
   const instructions = routeData?.compliant_route?.instructions || [];
   const currentInstruction = instructions[currentInstructionIndex];
@@ -127,6 +153,29 @@ export default function RidingView({
   const rerouteAnnouncedRef = useRef(false);
   const prevRouteDataRef = useRef(null);
   const approachNotifiedRef = useRef({ m100: false, m30: false });
+
+  // heading-up: GPS heading を連続累積角度に変換（0/360 境界ジャンプ防止）
+  const [normalizedHeading, setNormalizedHeading] = useState(null);
+  const prevHeadingRef = useRef(null);
+
+  useEffect(() => {
+    const h = currentPosition?.heading;
+    if (h == null) {
+      prevHeadingRef.current = null;
+      setNormalizedHeading(null);
+      return;
+    }
+    if (prevHeadingRef.current == null) {
+      prevHeadingRef.current = h;
+      setNormalizedHeading(h);
+      return;
+    }
+    let delta = h - prevHeadingRef.current;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    prevHeadingRef.current += delta;
+    setNormalizedHeading(prevHeadingRef.current);
+  }, [currentPosition]);
 
   useEffect(() => {
     voiceGuide.setEnabled(voiceEnabled);
@@ -186,6 +235,19 @@ export default function RidingView({
   if (!currentInstruction) {
     return (
       <div style={styles.container}>
+        {/* フルスクリーン時のオーバーレイ */}
+        <div style={styles.topOverlay}>
+          <span style={styles.overlayTitle}>自転車ナビ</span>
+          <div style={styles.overlayRight}>
+            {geoBadge}
+            <button
+              onClick={() => onModeChange?.("preparing")}
+              style={styles.backButton}
+            >
+              地図に戻る
+            </button>
+          </div>
+        </div>
         <div style={styles.noRouteMessage}>ルートを検索してください</div>
       </div>
     );
@@ -219,8 +281,32 @@ export default function RidingView({
     getInstructionCoord(currentInstruction, routeCoords) || [35.6762, 139.6503];
   const mapCenter = gpsCenter || instructionCenter;
 
+  // heading-up: scale(1.5) で回転時の四隅の空白を塗りつぶす（√2 ≈ 1.414 以上必要）
+  const mapTransform = normalizedHeading != null
+    ? `rotate(${-normalizedHeading}deg) scale(1.5)`
+    : "none";
+
   return (
     <div style={styles.container}>
+      {/* フルスクリーン用オーバーレイ: GPS badge + 地図に戻るボタン */}
+      <div style={styles.topOverlay}>
+        <span style={styles.overlayTitle}>自転車ナビ</span>
+        <div style={styles.overlayRight}>
+          {geoBadge}
+          <button
+            onClick={() => onModeChange?.("preparing")}
+            disabled={!hasRoute}
+            style={{
+              ...styles.backButton,
+              opacity: hasRoute ? 1 : 0.5,
+              cursor: hasRoute ? "pointer" : "not-allowed",
+            }}
+          >
+            地図に戻る
+          </button>
+        </div>
+      </div>
+
       {/* 矢印表示エリア */}
       <div style={{
         ...styles.arrowContainer,
@@ -259,54 +345,72 @@ export default function RidingView({
       {/* 二段階右折の手順説明 */}
       {isTwoStepTurn && <TwoStepGuide />}
 
-      {/* ミニ地図 */}
-      <div style={styles.miniMapContainer}>
-        <MapContainer
-          center={mapCenter}
-          zoom={17}
-          style={{ height: "100%", width: "100%" }}
-          zoomControl={false}
-          dragging={false}
-          scrollWheelZoom={false}
+      {/* heading-up ミニ地図 */}
+      <div style={styles.mapWrapper}>
+        {/* 回転・スケールする内側ラッパー */}
+        <div
+          style={{
+            ...styles.rotatingMapInner,
+            transform: mapTransform,
+            transition: normalizedHeading != null ? "transform 0.4s ease-out" : "none",
+          }}
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="© OSM"
-          />
-          {/* instructionが変わった時 or GPS更新時に地図中心を追従させる */}
-          <MapCenter center={mapCenter} />
-          {route && (
-            <Polyline positions={toPositions(route)} color="#2196F3" weight={6} />
-          )}
-          {/* ターンポイントマーカー */}
-          <CircleMarker
-            center={instructionCenter}
-            radius={9}
-            color="#ff9800"
-            fillColor="#ff9800"
-            fillOpacity={0.8}
-          />
-          {/* 現在GPS位置マーカー */}
-          {gpsCenter ? (
-            <CircleMarker
-              center={gpsCenter}
-              radius={11}
-              color="white"
-              fillColor="#2196F3"
-              fillOpacity={1}
-              weight={3}
+          <MapContainer
+            center={mapCenter}
+            zoom={17}
+            style={{ height: "100%", width: "100%" }}
+            zoomControl={false}
+            dragging={false}
+            scrollWheelZoom={false}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="© OSM"
             />
-          ) : (
+            <MapCenter center={mapCenter} />
+            {route && (
+              <Polyline positions={toPositions(route)} color="#2196F3" weight={6} />
+            )}
+            {/* ターンポイントマーカー */}
             <CircleMarker
               center={instructionCenter}
-              radius={11}
-              color="white"
-              fillColor="#2196F3"
-              fillOpacity={1}
-              weight={3}
+              radius={9}
+              color="#ff9800"
+              fillColor="#ff9800"
+              fillOpacity={0.8}
             />
-          )}
-        </MapContainer>
+            {/* 現在GPS位置マーカー */}
+            {gpsCenter ? (
+              <CircleMarker
+                center={gpsCenter}
+                radius={11}
+                color="white"
+                fillColor="#2196F3"
+                fillOpacity={1}
+                weight={3}
+              />
+            ) : (
+              <CircleMarker
+                center={instructionCenter}
+                radius={11}
+                color="white"
+                fillColor="#2196F3"
+                fillOpacity={1}
+                weight={3}
+              />
+            )}
+          </MapContainer>
+        </div>
+
+        {/* コンパスインジケーター（回転しないオーバーレイ） */}
+        {normalizedHeading != null && (
+          <Compass normalizedHeading={normalizedHeading} />
+        )}
+
+        {/* 進行方向マーカー（常に画面上部中央に固定） */}
+        {normalizedHeading != null && (
+          <div style={styles.headingArrow}>▲</div>
+        )}
       </div>
 
       {/* コントロールエリア */}
@@ -362,12 +466,42 @@ const styles = {
   container: {
     display: "flex",
     flexDirection: "column",
-    height: "calc(100vh - 60px)",
+    height: "100%",
     backgroundColor: "#0d0d1a",
     color: "white",
-    // スマホでの文字選択を無効化（矢印などを誤タップ選択しない）
     userSelect: "none",
     WebkitUserSelect: "none",
+  },
+  // フルスクリーン用 top オーバーレイ
+  topOverlay: {
+    flex: "0 0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "8px 16px",
+    paddingTop: "max(8px, env(safe-area-inset-top))",
+    backgroundColor: "rgba(22, 33, 62, 0.95)",
+    borderBottom: "1px solid #1a3a6e",
+  },
+  overlayTitle: {
+    fontSize: "0.95rem",
+    fontWeight: "bold",
+    color: "#90caf9",
+  },
+  overlayRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  backButton: {
+    padding: "6px 14px",
+    fontSize: "0.85rem",
+    borderRadius: "16px",
+    border: "none",
+    backgroundColor: "#2196F3",
+    color: "white",
+    touchAction: "manipulation",
+    minHeight: "38px",
   },
   noRouteMessage: {
     flex: 1,
@@ -399,7 +533,6 @@ const styles = {
     fontSize: "8rem",
     lineHeight: 1,
     color: "#4fc3f7",
-    // フォント指定でプラットフォーム間の矢印表示差異を抑制
     fontFamily: "system-ui, -apple-system, sans-serif",
   },
   directionLabel: {
@@ -409,7 +542,6 @@ const styles = {
     color: "#90caf9",
     letterSpacing: "0.05em",
   },
-  // 警告バナー（全幅）
   warningBanner: {
     flex: "0 0 auto",
     padding: "10px 16px",
@@ -454,7 +586,6 @@ const styles = {
     color: "#66bb6a",
     marginTop: "4px",
   },
-  // 二段階右折手順パネル
   twoStepGuide: {
     flex: "0 0 auto",
     backgroundColor: "#1a0a00",
@@ -493,16 +624,66 @@ const styles = {
     fontWeight: "bold",
     fontSize: "0.85rem",
   },
-  miniMapContainer: {
+  // heading-up 地図セクション
+  mapWrapper: {
     flex: 1,
+    position: "relative",
+    overflow: "hidden",
     minHeight: "120px",
+  },
+  rotatingMapInner: {
+    position: "absolute",
+    inset: 0,
+    willChange: "transform",
+    transformOrigin: "center center",
+  },
+  // コンパスインジケーター（右上固定）
+  compassWrapper: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 38,
+    height: 38,
+    borderRadius: "50%",
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    pointerEvents: "none",
+  },
+  compassNeedle: {
+    fontSize: "1.1rem",
+    color: "#ff5252",
+    lineHeight: 1,
+    userSelect: "none",
+  },
+  compassLabel: {
+    fontSize: "0.55rem",
+    color: "#ff5252",
+    fontWeight: "bold",
+    lineHeight: 1,
+    marginTop: "1px",
+  },
+  // 進行方向（上）を示す三角形マーカー（画面上部中央固定）
+  headingArrow: {
+    position: "absolute",
+    top: 6,
+    left: "50%",
+    transform: "translateX(-50%)",
+    fontSize: "1.1rem",
+    color: "#4fc3f7",
+    zIndex: 1000,
+    pointerEvents: "none",
+    lineHeight: 1,
+    textShadow: "0 0 4px rgba(0,0,0,0.8)",
   },
   controls: {
     flex: "0 0 auto",
     padding: "10px 12px",
     backgroundColor: "#16213e",
     borderTop: "1px solid #1a3a6e",
-    // iOS Safari のホームバー対応
     paddingBottom: "max(10px, env(safe-area-inset-bottom))",
   },
   voiceRow: {
@@ -512,7 +693,6 @@ const styles = {
   },
   voiceButton: {
     flex: 1,
-    // スマホタッチターゲット最小 48px
     minHeight: "48px",
     padding: "10px",
     fontSize: "1rem",
@@ -520,7 +700,6 @@ const styles = {
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
-    // ダブルタップズームを防止
     touchAction: "manipulation",
     transition: "opacity 0.15s",
   },
