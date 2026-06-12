@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# mkcert 証明書（秘密鍵を含むためリポジトリに含めない）
+*.pem
