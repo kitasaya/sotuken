@@ -5037,6 +5037,7 @@
       "rule": "two_step_turn",
       "message": "二段階右折が必要な交差点です",
       "confidence": 0.7,
+      "way_id": 166728238,
       "triggered_reroute": false
     }
   ],
@@ -5053,7 +5054,7 @@
       "two_step_turn"
     ],
     "rerouted": false,
-    "using_edge_ids": false,
+    "using_edge_ids": true,
     "algo_version": "v3"
   }
 }

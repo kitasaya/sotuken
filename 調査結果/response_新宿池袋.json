@@ -3215,7 +3215,7 @@
     "violation_count": 0,
     "violation_types": [],
     "rerouted": false,
-    "using_edge_ids": false,
+    "using_edge_ids": true,
     "algo_version": "v3"
   }
 }
