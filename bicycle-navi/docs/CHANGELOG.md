@@ -1254,3 +1254,28 @@ instruction が無いため、右折地点を「進行方向が45度以上右に
   フィルタが違反を抑制したケースはゼロ
 
 向き整合チェック（60度閾値）は実データでも設計通りに機能することを確認した。
+
+---
+
+## R2-auto バッチ採点パイプライン構築（2026-06-30）
+
+### 実装内容
+
+- **`backend/data/google_routes_input.csv`** を新規作成（Masaya が polyline を貼り込む入力ファイル）
+  - 列：`label`（od_pairs.csv と完全一致）, `polyline`（Google encoded polyline、ダブルクォート必須）
+- **`backend/scripts/score_google_routes.py`** を新規実装
+  - `--dry-run`：採点のみ（google_comparison.csv へは書き込まない）
+  - `--write`：採点後に google_comparison.csv の違反数列のみを更新。手入力列は保持。書込前に自動バックアップ。
+  - 実行前にリグレッション確認（渋谷→新宿 oneway=1）と label 照合を必ず実施
+- **`backend/data/google_comparison.csv`** を15ペア行枠で再構築
+  - od_pairs.csv の label/road_type を転記、全採点列を空欄で初期化
+  - 採点器が書く列（google_total_violation_count / scorer_route_distance_m / scorer_sampled_points / scored_at）を先にヘッダーへ追加済み
+
+### 採点済みペア（2/15）
+
+| label | oneway | two_step | total | dist_m |
+|---|---|---|---|---|
+| 渋谷→新宿 | **1** | 0 | **1** | 3591.2 |
+| 新宿→池袋 | 0 | 0 | 0 | 4586.0 |
+
+残り13ペアは Masaya が polyline を google_routes_input.csv に追記後、`--write` で随時流し込む。

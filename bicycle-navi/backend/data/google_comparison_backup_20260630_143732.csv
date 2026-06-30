@@ -1,7 +1,7 @@
 label,road_type,system_distance_m,system_time_s,system_violation_count,system_violation_count_high_conf,google_distance_m,google_time_s,google_oneway_violation_count,google_two_step_violation_count,google_total_violation_count,route_overlap_pct,screenshot_filename,notes,scorer_route_distance_m,scorer_sampled_points,scored_at
-渋谷→新宿,幹線道路中心,,,,,,,1,0,1,,,,3591.2,20,2026-06-30 14:37:32
+渋谷→新宿,幹線道路中心,,,,,,,,,,,,,,,
 東京→渋谷,幹線道路中心,,,,,,,,,,,,,,,
-新宿→池袋,幹線道路中心,,,,,,,0,0,0,,,,4586.0,25,2026-06-30 14:37:32
+新宿→池袋,幹線道路中心,,,,,,,,,,,,,,,
 品川→東京,幹線道路中心,,,,,,,,,,,,,,,
 渋谷→六本木,幹線道路中心,,,,,,,,,,,,,,,
 下北沢→三軒茶屋,住宅街中心,,,,,,,,,,,,,,,

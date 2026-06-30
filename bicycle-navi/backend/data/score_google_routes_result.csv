@@ -1,0 +1,3 @@
+label,oneway_violation_count,two_step_violation_count,total_violation_count,route_distance_m,sampled_points
+渋谷→新宿,1,0,1,3591.2,20
+新宿→池袋,0,0,0,4586.0,25
