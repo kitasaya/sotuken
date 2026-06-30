@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from services.route_analyzer import analyze_route
+from services.external_route_scorer import score_external_route, decode_polyline
 
 logger = logging.getLogger(__name__)
 
@@ -428,3 +429,36 @@ async def google_comparison_summary():
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=google_comparison_summary.csv"},
     )
+
+
+# ---------------------------------------------------------------------------
+# 外部ルート（Google Maps 等）の自動採点エンドポイント（R2 半自動化）
+# ---------------------------------------------------------------------------
+
+class ExternalRouteRequest(BaseModel):
+    """外部ルートを座標列または Google encoded polyline で受け取る。
+
+    coords と polyline のどちらか一方を指定する（両方あれば coords を優先）。
+    coords は [[lng, lat], ...] 形式（GeoJSON 座標順）。
+    """
+    label: str = ""
+    coords: list[list[float]] | None = None
+    polyline: str | None = None
+    sample_interval_m: float = 40.0
+
+
+@router.post("/experiment/external-route/score")
+async def score_external(req: ExternalRouteRequest):
+    """Google Maps 等の外部ルートを本システムと同一の判定器で採点する。
+
+    google_comparison.csv の google_oneway_violation_count /
+    google_two_step_violation_count を手動カウントせず自動算出するための補助。
+    """
+    coords = req.coords
+    if coords is None and req.polyline:
+        coords = decode_polyline(req.polyline)
+    if not coords:
+        return {"error": "coords または polyline を指定してください", "label": req.label}
+
+    score = await score_external_route(coords, sample_interval_m=req.sample_interval_m)
+    return {"label": req.label, **score}

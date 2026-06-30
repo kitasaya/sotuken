@@ -1174,3 +1174,83 @@ TCP/TLS ハンドシェイクを削減する方向に変更。
 - 音声案内の動作確認（Web Speech API、iOS Safari）
 - Heading-up：移動中に地図が進行方向に回転するか
 - GPS 自動モード切り替え：5km/h 以上で riding、停車 5秒で preparing
+
+---
+
+## タスク R2-auto：外部ルート自動採点器の実地検証（2026-06-23）
+
+### 背景
+
+R2-auto（`POST /experiment/external-route/score`）を実装後、本番投入前に
+ground_truth.csv（渋谷→新宿6点）で検証した。
+
+### 発見した問題
+
+**① oneway 判定の偽陽性（座標逆引き方式に内在する構造的欠陥）**
+
+自システムの v3 解析（edge_id ベース）で oneway 違反 0 件のルートに対し、採点器が
+confidence 1.0 の偽陽性を3件報告。原因は Overpass の最近傍ノード検索
+（`around:20m`）が、ルートが実際に通った way とは別の **交差する側道**（`highway=unclassified`
+の `oneway=yes` の小道、進行方向に対しほぼ直交＝偏差86〜90度）を誤って拾っていたこと。
+
+ground_truth.csv 6点でも、最近傍マッチが実 way と食い違う割合は 2/6（33.3%）。
+
+半径を狭める対応は採らない。対向車線・交差小道が10m以内にある都市部交差点では
+同じ誤マッチが残り、半径を狭めれば今度は way の取りこぼし（偽陰性化）を招くため。
+座標から way を逆引きする方式そのものに内在する限界であり、本システムが v1（点ベース）
+から v3（edge_id ベース）へ移行した経緯と同じ問題の再来。Google ルートには `osm_way_id`
+が無く、採点器はこの座標逆引きから原理的に逃げられない。
+
+**対応**：`external_route_scorer.py` に `_is_way_misaligned()` を追加。最近傍マッチで
+拾った way の軸ベクトル（始点→終点）と travel_vector の角度差を計算し、平行・反平行
+（0度・180度）からの偏差が60度を超える場合は「異なる道を拾った」とみなしタグを無効化
+（誤マッチの除外。v3 の `_check_direction` と同じ「進行方向照合」の発想）。
+
+ground_truth.csv 6点 + 偽陽性が観測された3点で再照合し、偽陽性3件が0件に解消、
+既存の真陰性（TN）6件・検出漏れ（FN）1件は変化なしを確認
+（`backend/data/scorer_validation_groundtruth.csv` に before/after を記録）。
+
+**② two_step_turn 判定の偽陰性（近似の限界・対応見送り）**
+
+ground_truth.csv の `true_two_step_required=true` の交差点（代々木公園通り、
+way_id 967529918）を採点器は検出できなかった。外部ルートには GraphHopper の
+instruction が無いため、右折地点を「進行方向が45度以上右に折れる点」で近似検出している
+が、実測した折れ角は約26〜31度で、緩いカーブとして処理され閾値に届かなかった。
+
+閾値（45度）を下げる対応は採らない。緩いカーブを右折と誤検出するリスクが上がるため。
+**外部ルートに instruction が無いことに起因する近似の限界として記録するに留める**。
+
+代替案として「Google ルートに対しても GraphHopper で同一 O-D を引き直し、instruction
+由来の右折地点を借用できないか」が考えられるが、「Google が実際に通ったルート」と
+「GraphHopper が引くルート」は別物になりうるため、採用可否は論点として残すのみで
+今回は実装しない。
+
+### 論文への影響（記録）
+
+「自システムと同一の判定器（law_checker）を使うから公平」という主張は、判定関数の
+共有のみを指す。判定の手前の「どの way を見るか」の精度は両者で非対称
+（自システム：edge_id で正確に特定／採点器：座標逆引きで推定）であり、この差が
+採点器のノイズとして観測される違反数に混入しうる。論文では「Google ルートに法規違反
+エッジが N 件観測された」という観測事実ベースの主張に統一し、「Google は法規を無視
+している」という意図の断定は避ける。採点器側の Precision/Recall（本検証で得た数値を含む）
+を明示し、誤差を踏まえて違反数差を解釈する旨を記載する。
+
+### 検証データ
+
+- `backend/data/scorer_validation_groundtruth.csv`：before/after の TP/FP/FN/TN・
+  Precision/Recall・way_id 一致率
+- `backend/scripts/validate_scorer_groundtruth.py`：検証スクリプト（再実行可能）
+
+### ステップ4：実 Google ルートでの挙動確認（2026-06-30）
+
+渋谷→新宿の Google ルート encoded polyline を実際に採点器に通した。
+
+- **oneway 違反 1件検出**（way 138533178、`highway=unclassified` `oneway=yes`、座標 35.68928, 139.70220）
+  - way 軸と travel_vector の角度 175.5°（ほぼ反平行）、deviation=4.5° → 向き整合チェック通過
+  - 逆走として正当に検出（confidence 1.0）
+- **フィルタされた点 6/20**：すべて `oneway=no`（steps/pedestrian/footway/unclassified）だったため、
+  フィルタの有無にかかわらず違反カウントは変化しない
+- **逆走を握りつぶしていないことを確認**：oneway=yes 点11件すべて deviation < 60° で通過。
+  フィルタが違反を抑制したケースはゼロ
+
+向き整合チェック（60度閾値）は実データでも設計通りに機能することを確認した。

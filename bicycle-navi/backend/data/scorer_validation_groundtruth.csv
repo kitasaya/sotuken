@@ -1,0 +1,23 @@
+label,point_lat,point_lng,rule,ground_truth,scorer_detected_before,scorer_detected_after,matched_way_id,expected_way_id,match_ok,result_before,result_after,notes
+渋谷→新宿,35.669235,139.702106,oneway,False,False,False,41520933,967529918,False,TN,TN,
+渋谷→新宿,35.669235,139.702106,two_step_turn,True,False,False,41520933,967529918,False,FN,FN,turn_angle_deg=0.0
+渋谷→新宿,35.675342,139.7037,oneway,False,False,False,135233112,135233112,True,TN,TN,
+渋谷→新宿,35.675342,139.7037,two_step_turn,False,False,False,135233112,135233112,True,TN,TN,turn_angle_deg=10.1
+渋谷→新宿,35.684544,139.701337,oneway,False,False,False,243007650,1069102646,False,TN,TN,
+渋谷→新宿,35.684544,139.701337,two_step_turn,False,False,False,243007650,1069102646,False,TN,TN,turn_angle_deg=9.6
+渋谷→新宿,35.662992,139.700902,oneway,False,False,False,265139657,265139657,True,TN,TN,
+渋谷→新宿,35.662992,139.700902,two_step_turn,False,False,False,265139657,265139657,True,TN,TN,turn_angle_deg=21.3
+渋谷→新宿,35.686921,139.699608,oneway,False,False,False,375809348,375809348,True,TN,TN,
+渋谷→新宿,35.686921,139.699608,two_step_turn,False,False,False,375809348,375809348,True,TN,TN,turn_angle_deg=9.2
+渋谷→新宿,35.665731,139.70165,oneway,False,False,False,153108796,153108796,True,TN,TN,
+渋谷→新宿,35.665731,139.70165,two_step_turn,False,False,False,153108796,153108796,True,TN,TN,turn_angle_deg=0.3
+渋谷→新宿（追加検証: 40m間隔リサンプリング点）,35.659482,139.700572,oneway,False,True,False,87250185,1156909226,False,FP,TN,実way=1156909226(oneway=yes) を採点器は別wayと誤マッチ
+渋谷→新宿（追加検証: 40m間隔リサンプリング点）,35.660436,139.700822,oneway,False,True,False,46769498,260252968,False,FP,TN,実way=260252968(oneway=None) を採点器は別wayと誤マッチ
+渋谷→新宿（追加検証: 40m間隔リサンプリング点）,35.664087,139.701327,oneway,False,True,False,26958821,375809332,False,FP,TN,実way=375809332(oneway=None) を採点器は別wayと誤マッチ
+# [before] oneway: TP=0 FP=3 FN=0 TN=6 precision=0.000 recall=0.000
+# [before] two_step_turn: TP=0 FP=0 FN=1 TN=5 precision=0.000 recall=0.000
+# [after] oneway: TP=0 FP=0 FN=0 TN=9 precision=0.000 recall=0.000
+# [after] two_step_turn: TP=0 FP=0 FN=1 TN=5 precision=0.000 recall=0.000
+# way_id mismatch (ground_truth.csv 6点): 2/6 (33.3%)
+# 注: ground_truth.csv にはoneway=Trueの正例が無いため、上記表のoneway TP/FNは常に0。
+#     oneway偽陽性の実例は下記「追加検証」3行（40m間隔リサンプリング点）を参照。
