@@ -1,12 +1,19 @@
-"""Google ルートの polyline を一括採点し、結果を google_comparison.csv へ流し込む。
+"""Google ルートの polyline を採点し、結果を google_comparison.csv へ流し込む。
 
 ## 使い方
 
-  # ステップ1：採点結果を確認（CSV には書き込まない）
-  python3 scripts/score_google_routes.py --dry-run
+  # 特定の label だけを採点・確認（CSV には書き込まない）
+  python3 scripts/score_google_routes.py --label 渋谷→新宿 --dry-run
 
-  # ステップ2：確認後に google_comparison.csv へ流し込む
-  python3 scripts/score_google_routes.py --write
+  # 特定の label だけを採点して書き込む（推奨。他の行には一切触れない）
+  python3 scripts/score_google_routes.py --label 渋谷→新宿 --write
+
+  # 複数 label をまとめて指定することも可能
+  python3 scripts/score_google_routes.py --label 渋谷→新宿 --label 東京→渋谷 --write
+
+  # 入力ファイル全件を対象にする場合（Overpass 障害時に既存の正しい値を
+  # 巻き込んで壊すリスクがあるため、通常は --label 指定を推奨）
+  python3 scripts/score_google_routes.py --all --write
 
 ## 入力
 
@@ -19,10 +26,20 @@
 
 ## 出力（--write）
 
-  backend/data/google_comparison.csv の google_oneway_violation_count /
-  google_two_step_violation_count / google_total_violation_count 列のみを更新。
-  手入力列（距離・時間・route_overlap_pct など）は一切上書きしない。
+  google_comparison.csv のうち、**採点対象に指定した label の行のみ**の
+  google_oneway_violation_count / google_two_step_violation_count /
+  google_total_violation_count 列を更新する。指定していない行・列（距離・
+  時間・route_overlap_pct などの手入力列）には一切触れない。
   書き込み前に google_comparison.csv のバックアップを自動作成。
+
+## 設計上の注意（2026-07-07 の事故を踏まえて）
+
+  以前は実行のたびに入力ファイルの全行を無条件に再採点していた。Overpass が
+  一時的に全エンドポイント失敗すると、該当地点のタグが空 {} として扱われ
+  「違反なし」と区別できないまま結果が 0 に化ける。この状態で --write すると
+  既に確定していた行が誤って上書きされる事故が起きた（品川→東京が3→0等）。
+  そのため --all を明示しない限り --label 指定を必須とし、意図しない対象への
+  書き込みを防ぐ。
 """
 
 import argparse
@@ -177,16 +194,39 @@ def write_to_comparison(results: list[dict]) -> None:
     print(f"\n{updated} 行を更新しました → {COMPARISON_CSV.name}")
 
 
-async def main(dry_run: bool) -> None:
+async def main(dry_run: bool, labels: list[str] | None) -> None:
     print(f"入力: {INPUT_CSV}")
     with open(INPUT_CSV, encoding="utf-8", newline="") as f:
-        input_rows = list(csv.DictReader(f))
-    print(f"{len(input_rows)} 件の入力を読み込みました\n")
+        all_input_rows = list(csv.DictReader(f))
 
-    results = await score_all(input_rows)
+    if labels is not None:
+        wanted = set(labels)
+        available = {row["label"] for row in all_input_rows}
+        missing = wanted - available
+        if missing:
+            print(f"\n⚠ 入力ファイルに存在しない label が指定されました: {sorted(missing)}")
+            sys.exit(1)
+        target_rows = [row for row in all_input_rows if row["label"] in wanted]
+        print(f"--label 指定により {len(target_rows)} 件のみ採点します: {[r['label'] for r in target_rows]}\n")
+    else:
+        target_rows = all_input_rows
+        print(f"--all 指定により入力ファイル全 {len(target_rows)} 件を対象にします\n")
 
-    # (1) リグレッション確認
-    reg_ok = check_regression(results)
+    results = await score_all(target_rows)
+
+    # (1) リグレッション確認：渋谷→新宿が採点対象に含まれていなければ、
+    # 書き込み対象を汚さないよう別途スコアだけ取得して確認する。
+    if any(r["label"] == REGRESSION_LABEL for r in results):
+        reg_ok = check_regression(results)
+    else:
+        reg_row = next((row for row in all_input_rows if row["label"] == REGRESSION_LABEL), None)
+        if reg_row is None:
+            print(f"\n⚠ リグレッション確認用の {REGRESSION_LABEL} が入力ファイルに存在しません")
+            reg_ok = False
+        else:
+            print(f"\n[リグレッション確認] {REGRESSION_LABEL} を別途採点して確認します（書き込み対象には含めない）")
+            reg_results = await score_all([reg_row])
+            reg_ok = check_regression(reg_results)
 
     # (2) label 照合
     label_ok = check_label_match(results)
@@ -210,15 +250,29 @@ async def main(dry_run: bool) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Google ルートを一括採点して google_comparison.csv へ流し込む")
+    parser = argparse.ArgumentParser(description="Google ルートを採点して google_comparison.csv へ流し込む")
     parser.add_argument("--dry-run", action="store_true",
                         help="採点のみ実行。google_comparison.csv への書き込みはしない")
     parser.add_argument("--write", action="store_true",
                         help="採点後に google_comparison.csv を更新する")
+    parser.add_argument("--label", action="append", default=None,
+                        help="採点対象の label を指定（繰り返し指定可）。指定した行のみ処理する。"
+                             "未指定の場合は --all を明示すること")
+    parser.add_argument("--all", action="store_true",
+                        help="入力ファイル全件を対象にする（--label 未指定時に必須の明示フラグ）")
     args = parser.parse_args()
 
     if not args.dry_run and not args.write:
         parser.print_help()
         sys.exit(1)
 
-    asyncio.run(main(dry_run=args.dry_run))
+    if args.label is None and not args.all:
+        print("⚠ --label を指定するか、全件対象にする場合は --all を明示してください。")
+        print("  （Overpass 障害時に無関係な行を巻き込んで壊す事故を防ぐための必須化です）")
+        sys.exit(1)
+
+    if args.label is not None and args.all:
+        print("⚠ --label と --all は同時に指定できません。")
+        sys.exit(1)
+
+    asyncio.run(main(dry_run=args.dry_run, labels=args.label))
