@@ -1312,6 +1312,12 @@ Overpass 復旧後に立川→国分寺のみ再採点（2回連続で `oneway=2
 違反ゼロのペアは 6/15。本システムは同一 O-D 全15件で違反0・距離増加+0.0mが確定済み
 （`experiment_v1_vs_v3_post_f1.csv`）。この対比が R2 の中核データとなる。
 
-残作業：Masaya が `google_comparison.csv` の `google_distance_m` / `google_time_s` /
-`route_overlap_pct` / `screenshot_filename` 等の手入力列を実測して埋める
-（採点器はこれらの列に一切触れていない）。
+残作業：Masaya が `google_comparison.csv` の `google_distance_m` / `google_time_s`
+を実測して埋める（採点器はこれらの列に一切触れていない）→ 2026-07-07 記入完了。
+
+追記（2026-07-07）：`route_overlap_pct` の自動算出を試みたが、この15ペアは
+リルート未発動（`rerouted=False`・距離差+0.0m）であり、乖離は法規回避の効果では
+なく GraphHopper と Google という別ルーティングエンジンの経路選択差にすぎないと
+判明。R2 の主張（距離・時間・違反数の比較）には寄与しないため、`route_overlap_pct`
+列自体を `google_comparison.csv` から削除した。`screenshot_filename` 列・撮影作業も
+不要と判断し削除。
