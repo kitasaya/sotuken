@@ -1,2 +1,0 @@
-label,road_type,system_distance_m,system_time_s,system_violation_count,system_violation_count_high_conf,google_distance_m,google_time_s,google_oneway_violation_count,google_two_step_violation_count,route_overlap_pct,screenshot_filename,notes
-渋谷→新宿,幹線道路中心,4617,1200,3,3,4500,1100,1,2,80,shibuya_shinjuku.png,サンプル行（削除して実際のデータを記入してください）

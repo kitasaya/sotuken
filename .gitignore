@@ -68,3 +68,7 @@ yarn-error.log*
 *.pdf
 *.docx
 *.pptx
+
+# score_google_routes.py が --write のたびに自動生成するタイムスタンプ付き
+# バックアップ。git 自体が履歴を持つため二重管理せず対象外にする。
+bicycle-navi/backend/data/google_comparison_backup_*.csv
