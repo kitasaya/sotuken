@@ -1385,3 +1385,60 @@ Overpass 復旧後に立川→国分寺のみ再採点（2回連続で `oneway=2
 | 横浜→みなとみらい | 2693.6 | 750.1 | 1 | 1 | **True (+415.8m)** |
 | 川崎→武蔵小杉 | 8049.4 | 1708.9 | 1 | 1 | False |
 | 千葉→幕張本郷 | 8338.3 | 1717.9 | 0 | 0 | False |
+
+---
+
+## R1-prep: ground_truth.csv 再構築のための下準備自動化（2026-07-10）
+
+### 背景
+
+ルーティングロジックの変更（F1修正・進行方向照合の追加等）により、渋谷→新宿6行のみ
+記入済みの旧 `ground_truth.csv` は前提が古くなった。15 O-Dペア全件を対象に
+ground_truth.csv を1から作り直すための下準備（way_id 抽出・OSM生タグ取得）を自動化した。
+`true_oneway_violation` / `true_two_step_required` の最終判定ロジックはここでは実装せず、
+空欄のまま出力する（マサヤさんが人手で判定するため）。
+
+### 実装内容
+
+新規 `backend/scripts/prepare_ground_truth.py`：
+
+- **タスク1（way_id 一括取得）**：`od_pairs.csv` の15 O-Dペア全件について
+  `POST /api/route` を呼び出し、`violations[]` から `way_id` / `point_lat` /
+  `point_lng` / `detected_rule`（参考列） / `system_confidence`（参考列）を抽出。
+  `comparison.using_edge_ids: false` の場合は `way_id` を空欄にし `notes` に
+  `"fallback: way_id unavailable"` と記録。violations 0件のラベルも
+  TN候補として1行出力する（`notes: "no violations detected by current system"`）。
+- **タスク2（OSM生タグの事前取得）**：既存の `services/overpass.py` の
+  `get_way_tags_by_ids` をそのまま再利用し（再実装なし）、判定関連タグ
+  （`oneway` / `oneway:bicycle` / `cycleway` / `cycleway:left` / `cycleway:right` /
+  `highway` / `junction`）を `osm_tags_raw` 列に文字列化して格納。Overpass失敗時は
+  当該行のみ `"(overpass fetch failed)"` と記録し処理継続、該当タグなしは
+  `"(no relevant tags)"`。
+- 出力先は `backend/data/ground_truth_template.csv`（新規）。既存の
+  `ground_truth.csv` の判定ロジックは模倣・再実装せず、`law_checker.py` にも
+  一切手を加えていない。
+
+### 実行結果
+
+GraphHopper（Docker）+ バックエンドを起動し実機で実行（`python scripts/prepare_ground_truth.py`）。
+
+- 15ラベル中15ラベル全件で `/api/route` 呼び出し成功（スキップ0件）
+- 出力行数：17行（violation 10件 + violations 0件のラベル7件）
+- `way_id` 取得成功：8行、フォールバック（空欄）：2行（`comparison.using_edge_ids`
+  が false だったラベルの two_step_turn 検出点）
+- 横浜→みなとみらいの `way_id=28413951`（`oneway=yes; highway=primary`）、
+  各ラベルの violation 件数（渋谷→新宿=1、東京→渋谷=3 等）は、
+  2026-07-07 の system 4列実測（本ファイル上記セクション）と完全に一致しており、
+  既存の判定結果との整合性を確認済み。
+
+### 完了条件の確認
+
+- `ground_truth_template.csv` が生成され、15ラベル全件が最低1行出力されている
+- 既存の `ground_truth.csv`（および `od_pairs.csv`）は変更していない
+- `true_oneway_violation` / `true_two_step_required` は全行空欄
+
+### 残タスク（マサヤさん・人手）
+
+`ground_truth_template.csv` の `osm_tags_raw` を見ながら `true_oneway_violation` /
+`true_two_step_required` を人手で判定 → `ground_truth.csv` にリネーム／上書き →
+`POST /api/experiment/ground-truth/compare` で Precision/Recall/F1 を確認。

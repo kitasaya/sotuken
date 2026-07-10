@@ -1,7 +1,0 @@
-label,way_id,point_lat,point_lng,true_oneway_violation,true_two_step_required,notes
-渋谷→新宿,967529918,35.669235,139.702106,false,true,代々木公園通り。highway=secondary、本システムの判定と一致(TP)
-渋谷→新宿,135233112,35.675342,139.703700,false,false,代々木神園町(highway=service)。非違反サンプル(TN)
-渋谷→新宿,1069102646,35.684544,139.701337,false,false,四谷角筈線(highway=secondary)。幹線だが直進区間のため違反対象外(TN)
-渋谷→新宿,265139657,35.662992,139.700902,false,false,神宮通り(highway=tertiary)。非違反サンプル(TN)
-渋谷→新宿,375809348,35.686921,139.699608,false,false,四谷角筈線(highway=secondary)。幹線だが直進区間(TN)
-渋谷→新宿,153108796,35.665731,139.701650,false,false,ファイアー通り(highway=tertiary)。非違反サンプル(TN)

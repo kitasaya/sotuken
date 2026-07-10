@@ -1,0 +1,18 @@
+label,way_id,point_lat,point_lng,true_oneway_violation,true_two_step_required,detected_rule,system_confidence,osm_tags_raw,notes
+渋谷→新宿,967529918,35.669235,139.702106,,,two_step_turn,0.7,oneway=yes; highway=secondary,
+東京→渋谷,1104965189,35.680261,139.76498,,,two_step_turn,0.7,oneway=yes; highway=secondary,
+東京→渋谷,178989940,35.677934,139.763409,,,two_step_turn,0.7,oneway=yes; cycleway:left=lane; highway=secondary,
+東京→渋谷,150868751,35.669593,139.751577,,,two_step_turn,0.7,oneway=yes; highway=secondary,
+新宿→池袋,,,,,,,,,no violations detected by current system
+品川→東京,257228938,35.680426,139.764244,,,two_step_turn,0.7,oneway=yes; highway=secondary,
+渋谷→六本木,,,,,,,,,no violations detected by current system
+下北沢→三軒茶屋,,35.643547,139.670488,,,two_step_turn,0.7,,fallback: way_id unavailable
+高円寺→中野,,,,,,,,,no violations detected by current system
+荻窪→阿佐ヶ谷,,,,,,,,,no violations detected by current system
+自由が丘→等々力,,,,,,,,,no violations detected by current system
+浦和→さいたま新都心,229140652,35.86637,139.651035,,,two_step_turn,0.7,oneway=no; highway=primary,
+吉祥寺→三鷹,483647040,35.683621,139.561339,,,two_step_turn,0.7,cycleway=no; highway=secondary,
+立川→国分寺,,,,,,,,,no violations detected by current system
+横浜→みなとみらい,28413951,35.464037,139.623297,,,oneway,1.0,oneway=yes; highway=primary,
+川崎→武蔵小杉,,35.532179,139.699124,,,two_step_turn,0.7,,fallback: way_id unavailable
+千葉→幕張本郷,,,,,,,,,no violations detected by current system

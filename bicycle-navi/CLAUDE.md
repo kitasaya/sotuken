@@ -19,7 +19,8 @@
 | 性能向上（P1〜P2・Q2） | **完了**（Q1 はロールバック） |
 | UI改善（U1〜U3） | **完了** |
 | U4：スマホ実機テスト | **進行中**（屋外テスト3点が残り。下記参照） |
-| 評価実験（R1：検出精度 / R2：Google Maps比較） | **データ収集中**（Masaya 手動） |
+| 評価実験（R1：検出精度） | **データ収集中**（下準備自動化済み・人手判定待ち） |
+| 評価実験（R2：Google Maps比較） | **完了**（15ペア全行記入済み） |
 | R2-auto：外部ルート自動採点器 | **実地検証済み・oneway偽陽性を修正済み**（下記参照） |
 
 履歴詳細は `docs/CHANGELOG.md`、システム構成は `docs/ARCHITECTURE.md`、
@@ -157,8 +158,10 @@ ground_truth.csv（渋谷→新宿6点）+ 偽陽性が観測された3点で検
   **Masaya の目視確認・OSM の `oneway=yes` タグ・採点器の `going_wrong_way` 判定の三者が
   独立に同一地点を指して一致**。R2 の中核を裏づける確定済みの観測事実として論文に記載する
   （「目視確認とシステム検出が独立に一致した違反エッジを確認した」）。
-- 残り O-D ペアへ展開し `google_comparison.csv` の `google_*_violation_count`
-  へ流し込む（polyline を入力すると対応行を埋めるスクリプト or エンドポイント）。
+- ~~残り O-D ペアへ展開し `google_comparison.csv` の `google_*_violation_count` へ流し込む~~
+  **完了（2026-07-07）**。`google_comparison.csv` は15ペア全行で system 4列・google 4列・
+  scorer 3列が埋まった状態（詳細は `docs/CHANGELOG.md` の該当エントリ参照）。
+  Claude Code 側の残タスクは現時点でなし。
 
 ---
 
@@ -210,12 +213,16 @@ ground_truth.csv（渋谷→新宿6点）+ 偽陽性が観測された3点で検
 以下は人手で進める作業。Claude Code は原則これらのファイルを書き換えない。
 
 - **R1：ground_truth.csv の構築** — 各O-Dペアの way を OSM で人手判定し、
-  違反サンプル（TP用）・非違反サンプル（TN用）を記入。現在は渋谷→新宿の6行が
-  記入済み（現行コードで妥当性確認済み）。残りO-Dペアへ拡充中。
-- **R2：google_comparison.csv の記入** — Google Maps 自転車モードの距離・時間を
-  計測して記入。メインの比較実験。違反数カウントは R2-auto 採点器で半自動化予定
-  （`POST /experiment/external-route/score` に Google ルートの polyline を渡す）。
-  Masaya は Google ルートの polyline 取得（共有リンク等からの抽出）を担当。
+  違反サンプル（TP用）・非違反サンプル（TN用）を記入。旧・渋谷→新宿6行のみの
+  ground_truth.csv はルーティングロジック変更（F1修正等）で前提が古くなったため
+  2026-07-10 に破棄。下準備として `backend/scripts/prepare_ground_truth.py`
+  （Claude Code 実装）で15O-Dペア全件の `way_id`/座標/OSM生タグを抽出した
+  `backend/data/ground_truth_template.csv` を生成済み。次は Masaya がこのテンプレートを
+  見ながら `true_oneway_violation`/`true_two_step_required` を人手判定し
+  `ground_truth.csv` にリネームする作業。
+- **R2：google_comparison.csv の記入** — **完了（2026-07-07）**。Google Maps の距離・時間、
+  system 側の距離・時間、違反数カウント（R2-auto 採点器で半自動化）まで15ペア全行が
+  埋まっている。
 - **中間発表準備** — スクリーンモックアップ・ユーザーシナリオ図の作成（宮治先生指示）。
 
 ---
