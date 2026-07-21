@@ -5,20 +5,29 @@ const SHEET_MAX_VH = 0.9;
 const SNAP_RATIOS = {
   peek: 0.18,
   half: 0.5,
-  full: 0.9,
+  // full 時も画面上部に top-bar / セーフエリア分の隙間を残す（下の MIN_TOP_GAP_PX と併用）
+  full: 0.78,
 };
 
 const SNAP_ORDER = ["peek", "half", "full"];
 
 const TAP_THRESHOLD_PX = 5;
+// full 時にシート上端（ハンドル）が top-bar の裏に隠れて操作不能にならないための最小余白
+const MIN_TOP_GAP_PX = 72;
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+const isInteractiveTarget = (target) =>
+  !!target?.closest?.(
+    'input, textarea, select, button, a, [role="button"], [contenteditable="true"]'
+  );
 
 export default function BottomSheet({ snap = "half", onSnapChange, children }) {
   const [winH, setWinH] = useState(() =>
     typeof window !== "undefined" ? window.innerHeight : 800
   );
   const handleRef = useRef(null);
+  const bodyRef = useRef(null);
   const dragStateRef = useRef(null);
   const [dragTranslate, setDragTranslate] = useState(null);
 
@@ -29,7 +38,7 @@ export default function BottomSheet({ snap = "half", onSnapChange, children }) {
   }, []);
 
   const snapTranslate = useCallback(
-    (s) => (SHEET_MAX_VH - SNAP_RATIOS[s]) * winH,
+    (s) => Math.max(MIN_TOP_GAP_PX, (SHEET_MAX_VH - SNAP_RATIOS[s]) * winH),
     [winH]
   );
 
@@ -37,14 +46,21 @@ export default function BottomSheet({ snap = "half", onSnapChange, children }) {
   // ドラッグ中（dragTranslate が数値）はアニメーション抑止、確定（null）後は補間
   const dragging = dragTranslate != null;
 
-  const handlePointerDown = useCallback(
-    (e) => {
+  const startDrag = useCallback(
+    (e, el) => {
       if (e.button != null && e.button !== 0 && e.pointerType === "mouse") return;
-      const handle = handleRef.current;
-      if (!handle) return;
-      handle.setPointerCapture(e.pointerId);
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        // pointer capture 非対応環境
+      }
+      // sheet-body はデフォルトで縦スクロール可能（touch-action: auto）なため、
+      // ドラッグ開始が確定した瞬間に touch-action を止めてブラウザ標準のスクロールと競合しないようにする。
+      // React の再レンダーを待たずに同期的に設定する必要がある（次の touchmove より前に反映させるため）。
+      el.style.touchAction = "none";
       dragStateRef.current = {
         pointerId: e.pointerId,
+        sourceEl: el,
         startY: e.clientY,
         startTranslate: snapTranslate(snap),
         moved: false,
@@ -54,8 +70,29 @@ export default function BottomSheet({ snap = "half", onSnapChange, children }) {
     [snap, snapTranslate]
   );
 
-  const handlePointerMove = useCallback(
+  const handlePointerDown = useCallback(
     (e) => {
+      if (!handleRef.current) return;
+      startDrag(e, handleRef.current);
+    },
+    [startDrag]
+  );
+
+  // 検索モードの本文余白（入力欄やボタン以外の部分）からもシートをドラッグできるようにする。
+  // すでに一番上までスクロールされている場合のみドラッグ開始とし、リストのスクロール操作と衝突しないようにする。
+  const handleBodyPointerDown = useCallback(
+    (e) => {
+      const body = bodyRef.current;
+      if (!body) return;
+      if (isInteractiveTarget(e.target)) return;
+      if (body.scrollTop > 0) return;
+      startDrag(e, body);
+    },
+    [startDrag]
+  );
+
+  useEffect(() => {
+    const handleMove = (e) => {
       const drag = dragStateRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
       const delta = e.clientY - drag.startY;
@@ -64,19 +101,17 @@ export default function BottomSheet({ snap = "half", onSnapChange, children }) {
       const maxTranslate = snapTranslate("peek");
       const next = clamp(drag.startTranslate + delta, minTranslate, maxTranslate);
       setDragTranslate(next);
-    },
-    [snapTranslate]
-  );
+    };
 
-  const finishDrag = useCallback(
-    (e) => {
+    const handleUp = (e) => {
       const drag = dragStateRef.current;
       if (!drag || drag.pointerId !== e.pointerId) return;
       try {
-        handleRef.current?.releasePointerCapture(e.pointerId);
+        drag.sourceEl?.releasePointerCapture(e.pointerId);
       } catch {
         // pointer already released
       }
+      if (drag.sourceEl) drag.sourceEl.style.touchAction = "";
       const finalTranslate = dragTranslate ?? snapTranslate(snap);
       const wasTap = !drag.moved;
       dragStateRef.current = null;
@@ -100,9 +135,17 @@ export default function BottomSheet({ snap = "half", onSnapChange, children }) {
       }
       onSnapChange?.(bestSnap);
       setDragTranslate(null);
-    },
-    [dragTranslate, onSnapChange, snap, snapTranslate]
-  );
+    };
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [dragTranslate, onSnapChange, snap, snapTranslate]);
 
   return (
     <div
@@ -120,16 +163,15 @@ export default function BottomSheet({ snap = "half", onSnapChange, children }) {
         ref={handleRef}
         className="sheet-handle-area"
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
         role="button"
         tabIndex={0}
         aria-label="ボトムシートを開閉"
       >
         <div className="sheet-handle" />
       </div>
-      <div className="sheet-body">{children}</div>
+      <div ref={bodyRef} className="sheet-body" onPointerDown={handleBodyPointerDown}>
+        {children}
+      </div>
     </div>
   );
 }

@@ -309,120 +309,124 @@ export default function RidingView({
         </div>
       </div>
 
-      {/* 矢印表示エリア（二段階右折時は縦スペースを節約するため縮小） */}
-      <div style={{
-        ...styles.arrowContainer,
-        ...(isTwoStepTurn
-          ? { ...styles.twoStepBorder, padding: "10px 24px 8px" }
-          : hasWarning
-          ? styles.warningBorder
-          : {}),
-      }}>
+      {/* 中間コンテンツ：画面が小さく全体が収まらない場合はここだけスクロールし、
+          上部オーバーレイと下部コントロール（次へ等）は常に画面内に固定表示する */}
+      <div style={styles.scrollArea}>
+        {/* 矢印表示エリア（二段階右折時は縦スペースを節約するため縮小） */}
         <div style={{
-          ...styles.arrow,
-          fontSize: isTwoStepTurn ? "5rem" : "8rem",
-        }}>{config.arrow}</div>
-        <div style={{
-          ...styles.directionLabel,
-          fontSize: isTwoStepTurn ? "1.3rem" : "1.6rem",
-        }}>{config.label}</div>
-      </div>
-
-      {/* 警告バナー（法規違反リスク箇所） */}
-      {isTwoStepTurn && (
-        <div style={styles.twoStepBanner}>
-          ⚠ この交差点は二段階右折が必要です
+          ...styles.arrowContainer,
+          ...(isTwoStepTurn
+            ? { ...styles.twoStepBorder, padding: "10px 24px 8px" }
+            : hasWarning
+            ? styles.warningBorder
+            : {}),
+        }}>
+          <div style={{
+            ...styles.arrow,
+            fontSize: isTwoStepTurn ? "5rem" : "8rem",
+          }}>{config.arrow}</div>
+          <div style={{
+            ...styles.directionLabel,
+            fontSize: isTwoStepTurn ? "1.3rem" : "1.6rem",
+          }}>{config.label}</div>
         </div>
-      )}
-      {hasWarning && !isTwoStepTurn && (
-        <div style={styles.warningBanner}>
-          ⚠ この先に法規注意箇所があります
-        </div>
-      )}
 
-      {/* 距離表示 */}
-      <div style={styles.distanceContainer}>
-        <div style={styles.distanceValue}>{formatDistance(displayDistance)}</div>
-        {streetName && <div style={styles.streetName}>{streetName}</div>}
-        {currentPosition && (
-          <div style={styles.gpsIndicator}>
-            GPS取得中
-            {currentPosition.speed != null && (
-              <span> · {(currentPosition.speed * 3.6).toFixed(1)} km/h</span>
-            )}
+        {/* 警告バナー（法規違反リスク箇所） */}
+        {isTwoStepTurn && (
+          <div style={styles.twoStepBanner}>
+            ⚠ この交差点は二段階右折が必要です
           </div>
         )}
-      </div>
+        {hasWarning && !isTwoStepTurn && (
+          <div style={styles.warningBanner}>
+            ⚠ この先に法規注意箇所があります
+          </div>
+        )}
 
-      {/* 二段階右折の手順説明 */}
-      {isTwoStepTurn && <TwoStepGuide />}
-
-      {/* heading-up ミニ地図 */}
-      <div style={styles.mapWrapper}>
-        {/* 回転・スケールする内側ラッパー */}
-        <div
-          style={{
-            ...styles.rotatingMapInner,
-            transform: mapTransform,
-            transition: normalizedHeading != null ? "transform 0.4s ease-out" : "none",
-          }}
-        >
-          <MapContainer
-            center={mapCenter}
-            zoom={17}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl={false}
-            dragging={false}
-            scrollWheelZoom={false}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="© OSM"
-            />
-            <MapCenter center={mapCenter} />
-            {route && (
-              <Polyline positions={toPositions(route)} color="#2196F3" weight={6} />
-            )}
-            {/* ターンポイントマーカー */}
-            <CircleMarker
-              center={instructionCenter}
-              radius={9}
-              color="#ff9800"
-              fillColor="#ff9800"
-              fillOpacity={0.8}
-            />
-            {/* 現在GPS位置マーカー */}
-            {gpsCenter ? (
-              <CircleMarker
-                center={gpsCenter}
-                radius={11}
-                color="white"
-                fillColor="#2196F3"
-                fillOpacity={1}
-                weight={3}
-              />
-            ) : (
-              <CircleMarker
-                center={instructionCenter}
-                radius={11}
-                color="white"
-                fillColor="#2196F3"
-                fillOpacity={1}
-                weight={3}
-              />
-            )}
-          </MapContainer>
+        {/* 距離表示 */}
+        <div style={styles.distanceContainer}>
+          <div style={styles.distanceValue}>{formatDistance(displayDistance)}</div>
+          {streetName && <div style={styles.streetName}>{streetName}</div>}
+          {currentPosition && (
+            <div style={styles.gpsIndicator}>
+              GPS取得中
+              {currentPosition.speed != null && (
+                <span> · {(currentPosition.speed * 3.6).toFixed(1)} km/h</span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* コンパスインジケーター（回転しないオーバーレイ） */}
-        {normalizedHeading != null && (
-          <Compass normalizedHeading={normalizedHeading} />
-        )}
+        {/* 二段階右折の手順説明 */}
+        {isTwoStepTurn && <TwoStepGuide />}
 
-        {/* 進行方向マーカー（常に画面上部中央に固定） */}
-        {normalizedHeading != null && (
-          <div style={styles.headingArrow}>▲</div>
-        )}
+        {/* heading-up ミニ地図 */}
+        <div style={styles.mapWrapper}>
+          {/* 回転・スケールする内側ラッパー */}
+          <div
+            style={{
+              ...styles.rotatingMapInner,
+              transform: mapTransform,
+              transition: normalizedHeading != null ? "transform 0.4s ease-out" : "none",
+            }}
+          >
+            <MapContainer
+              center={mapCenter}
+              zoom={17}
+              style={{ height: "100%", width: "100%" }}
+              zoomControl={false}
+              dragging={false}
+              scrollWheelZoom={false}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution="© OSM"
+              />
+              <MapCenter center={mapCenter} />
+              {route && (
+                <Polyline positions={toPositions(route)} color="#2196F3" weight={6} />
+              )}
+              {/* ターンポイントマーカー */}
+              <CircleMarker
+                center={instructionCenter}
+                radius={9}
+                color="#ff9800"
+                fillColor="#ff9800"
+                fillOpacity={0.8}
+              />
+              {/* 現在GPS位置マーカー */}
+              {gpsCenter ? (
+                <CircleMarker
+                  center={gpsCenter}
+                  radius={11}
+                  color="white"
+                  fillColor="#2196F3"
+                  fillOpacity={1}
+                  weight={3}
+                />
+              ) : (
+                <CircleMarker
+                  center={instructionCenter}
+                  radius={11}
+                  color="white"
+                  fillColor="#2196F3"
+                  fillOpacity={1}
+                  weight={3}
+                />
+              )}
+            </MapContainer>
+          </div>
+
+          {/* コンパスインジケーター（回転しないオーバーレイ） */}
+          {normalizedHeading != null && (
+            <Compass normalizedHeading={normalizedHeading} />
+          )}
+
+          {/* 進行方向マーカー（常に画面上部中央に固定） */}
+          {normalizedHeading != null && (
+            <div style={styles.headingArrow}>▲</div>
+          )}
+        </div>
       </div>
 
       {/* コントロールエリア */}
@@ -537,6 +541,16 @@ const styles = {
     justifyContent: "center",
     fontSize: "1.4rem",
     color: "#666",
+  },
+  // 上部オーバーレイ・下部コントロールの間で内容が収まらない場合にスクロールさせる領域
+  // minHeight: 0 は flex 子要素が親の高さを無視して伸びてしまう（overflow の原因になる）のを防ぐ
+  scrollArea: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
   },
   arrowContainer: {
     flex: "0 0 auto",

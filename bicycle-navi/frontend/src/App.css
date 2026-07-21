@@ -296,8 +296,10 @@
 
 .sheet-handle-area {
   flex: 0 0 auto;
-  padding: 10px 0 6px;
+  min-height: 44px;
+  padding: 14px 0 10px;
   display: flex;
+  align-items: center;
   justify-content: center;
   cursor: grab;
   touch-action: none;
