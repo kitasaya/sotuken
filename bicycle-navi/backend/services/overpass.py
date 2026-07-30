@@ -1,11 +1,33 @@
 import contextvars
 import httpx
 import logging
+import math
 from collections import OrderedDict
 from typing import Optional
 from services.http_clients import get_client
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# 最近傍 way マッチングの曖昧さ判定（診断情報）
+# ---------------------------------------------------------------------------
+# 最近傍探索の1位候補と2位候補の垂線距離差（マージン）がこの値未満の地点は、
+# どちらの way を選ぶかが不安定であり「原理的に判定不能」として扱う。
+#
+# 根拠（RESEARCH.md 21.10 / 24.3節・investigation_perpendicular_side_effects.md の実測）:
+#   想定外の判定変化を示した4地点 … マージン 0.50〜1.74m（全て 2m 未満）
+#   正常に動作した10地点           … マージン 2.75m 以上
+# 両者の間に明確な断絶があるため、その間を取って 2.0m を閾値とする。
+#
+# なお「進行方向と一致する候補を選ぶ」タイブレークは採用しない。測定対象が
+# 「進行方向が逆か（＝逆走）」であるため、方向で候補を選ぶと答えを使って答えを
+# 決める循環論法になる（RESEARCH.md 21.11節）。マージンはあくまで診断情報として
+# 記録するのみで、候補の選択には一切影響させない。
+MATCH_AMBIGUOUS_MARGIN_M = 2.0
+
+# 局所平面近似で使う 1 度あたりの距離（m）
+_M_PER_DEG_LAT = 110_540.0
+_M_PER_DEG_LNG_EQUATOR = 111_320.0
 
 # 順番に試すエンドポイント（メイン → 代替1 → 代替2）
 OVERPASS_ENDPOINTS = [
@@ -174,16 +196,121 @@ out tags geom;
     return result
 
 
+# ---------------------------------------------------------------------------
+# 垂線距離ベースの最近傍 way 選択（point-to-curve matching）
+# ---------------------------------------------------------------------------
+# 「点から way を構成するノード（頂点）までの距離」で最近傍 way を決めると、
+# ノード密度の不均一性により誤マッチが生じる。OSM 上で上下線が分離マッピング
+# された幹線道路では、線そのものは近いがノードが疎な正しい車線ではなく、
+# 線は遠いがノードが密な対向車線が選ばれる。誤選択先が対向車線であるため、
+# この誤マッチは必ず「逆走」として判定され、系統的に一方通行違反の偽陽性を
+# 生成する（RESEARCH.md 21.5〜21.7節で実データにより実証）。
+#
+# map matching の用語では point-to-point matching → point-to-curve matching への
+# 移行にあたる（White et al. 2000）。
+
+
+def _point_to_segment_dist_m(lat: float, lng: float, a: list, b: list) -> float:
+    """点 (lat, lng) から線分 a-b への垂線距離（m）。a, b = [lon, lat]。
+
+    局所平面近似（判定点の緯度で経度スケールを補正）で計算する。射影が線分の
+    外に落ちる場合は t を [0, 1] にクランプし、近い方の端点までの距離を返す。
+    """
+    kx = _M_PER_DEG_LNG_EQUATOR * math.cos(math.radians(lat))
+    ky = _M_PER_DEG_LAT
+
+    ax, ay = (a[0] - lng) * kx, (a[1] - lat) * ky
+    bx, by = (b[0] - lng) * kx, (b[1] - lat) * ky
+    dx, dy = bx - ax, by - ay
+
+    seg_len_sq = dx * dx + dy * dy
+    if seg_len_sq == 0.0:
+        return math.hypot(ax, ay)
+
+    # 原点（判定点）を線分 a-b に射影したパラメータ t を [0, 1] にクランプ
+    t = -(ax * dx + ay * dy) / seg_len_sq
+    t = max(0.0, min(1.0, t))
+    return math.hypot(ax + t * dx, ay + t * dy)
+
+
+def _point_to_way_dist_m(lat: float, lng: float, geometry: list) -> float:
+    """点 (lat, lng) から way ジオメトリへの最短垂線距離（m）。
+
+    geometry: [[lon, lat], ...]。ノードが1個しかない way は点距離で代替する。
+    ノードが無い way は inf を返す（候補から実質的に除外される）。
+    """
+    if not geometry:
+        return float("inf")
+    if len(geometry) == 1:
+        return _point_to_segment_dist_m(lat, lng, geometry[0], geometry[0])
+    return min(
+        _point_to_segment_dist_m(lat, lng, geometry[i], geometry[i + 1])
+        for i in range(len(geometry) - 1)
+    )
+
+
+def _elem_geometry(elem: dict) -> list:
+    """Overpass の way element を [[lon, lat], ...] 形式のジオメトリに変換する。"""
+    return [[n["lon"], n["lat"]] for n in elem.get("geometry", [])]
+
+
+def _rank_way_candidates(lat: float, lng: float, elements: list) -> list[tuple[float, dict]]:
+    """判定点に対する way 候補を垂線距離の昇順で返す。
+
+    戻り値: [(垂線距離m, elem), ...]
+
+    **way id で重複除去する。** Union クエリの結果に同一 way が複数含まれると
+    rank2 が rank1 と同じ way になり、マージン 0 の偽の「曖昧」判定を生むため。
+
+    ドライラン・検証スクリプトからも import して使う（診断ロジックを一箇所に集約）。
+    """
+    best_by_id: dict = {}
+    unidentified: list[tuple[float, dict]] = []
+
+    for elem in elements:
+        geometry = _elem_geometry(elem)
+        if not geometry:
+            continue
+        d = _point_to_way_dist_m(lat, lng, geometry)
+        if d == float("inf"):
+            continue
+        wid = elem.get("id")
+        if wid is None:
+            unidentified.append((d, elem))
+            continue
+        prev = best_by_id.get(wid)
+        if prev is None or d < prev[0]:
+            best_by_id[wid] = (d, elem)
+
+    ranked = list(best_by_id.values()) + unidentified
+    ranked.sort(key=lambda t: t[0])
+    return ranked
+
+
 async def get_bulk_way_data(points: list, radius: int = 20) -> list[dict]:
     """
     複数座標を1回のOverpassクエリでまとめて取得する（タグ＋ジオメトリ付き）。
 
     points: [[lng, lat], ...] 形式（GeoJSON座標順）
-    戻り値: 各座標に対応する {"tags": {...}, "geometry": [[lon, lat], ...]} のリスト
+    戻り値: 各座標に対応する以下の dict のリスト（points と同順）
 
-    Union構文で全座標を一括取得し、各座標に最も近いノードを持つ way を選択する。
-    中心点ではなく実ジオメトリの最近傍ノードで選択するため、
-    並行する対向車線 way の誤選択を低減できる。
+        {
+          "tags": {...},
+          "geometry": [[lon, lat], ...],
+          "match_way_id": int | None,      # rank1 の way id
+          "match_dist_m": float | None,    # rank1 の垂線距離（m）
+          "match_margin_m": float | None,  # rank1 と rank2 の垂線距離差（m）
+          "match_ambiguous": bool,         # マージンが MATCH_AMBIGUOUS_MARGIN_M 未満
+        }
+
+    Union構文で全座標を一括取得し、各座標について **点から way の線分への垂線距離**
+    が最小の way を選択する（point-to-curve matching）。ノード距離ではなく線分への
+    距離を使うため、ノードが疎な正しい車線を取りこぼして対向車線を誤選択する
+    問題を避けられる。
+
+    match_* キーは診断情報であり、選択そのものには影響しない。候補が1本以下の
+    場合 match_margin_m は None、match_ambiguous は False になる。候補が0本の場合は
+    tags/geometry が空で match_way_id / match_dist_m も None。
     """
     if not points:
         return []
@@ -202,22 +329,37 @@ out geom tags;
     elements = await _post_with_retry(query)
 
     result = []
+    ambiguous_count = 0
     for lng, lat in points:
-        best: dict = {"tags": {}, "geometry": []}
-        best_dist = float("inf")
-        for elem in elements:
-            geom_nodes = elem.get("geometry", [])
-            # 実ジオメトリの各ノードまでの最短距離で最近傍 way を選択
-            for node in geom_nodes:
-                d = (node["lat"] - lat) ** 2 + (node["lon"] - lng) ** 2
-                if d < best_dist:
-                    best_dist = d
-                    best = {
-                        "tags": elem.get("tags", {}),
-                        "geometry": [[n["lon"], n["lat"]] for n in geom_nodes],
-                    }
-        result.append(best)
+        ranked = _rank_way_candidates(lat, lng, elements)
 
+        if not ranked:
+            result.append({
+                "tags": {}, "geometry": [],
+                "match_way_id": None, "match_dist_m": None,
+                "match_margin_m": None, "match_ambiguous": False,
+            })
+            continue
+
+        rank1_dist, rank1_elem = ranked[0]
+        margin = (ranked[1][0] - rank1_dist) if len(ranked) >= 2 else None
+        ambiguous = margin is not None and margin < MATCH_AMBIGUOUS_MARGIN_M
+        if ambiguous:
+            ambiguous_count += 1
+
+        result.append({
+            "tags": rank1_elem.get("tags", {}),
+            "geometry": _elem_geometry(rank1_elem),
+            "match_way_id": rank1_elem.get("id"),
+            "match_dist_m": round(rank1_dist, 3),
+            "match_margin_m": None if margin is None else round(margin, 3),
+            "match_ambiguous": ambiguous,
+        })
+
+    logger.info(
+        "Overpass bulk: points=%d candidates=%d match_ambiguous=%d (margin<%.1fm)",
+        len(points), len(elements), ambiguous_count, MATCH_AMBIGUOUS_MARGIN_M,
+    )
     return result
 
 
