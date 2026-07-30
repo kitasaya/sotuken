@@ -1442,3 +1442,90 @@ GraphHopper（Docker）+ バックエンドを起動し実機で実行（`python
 `ground_truth_template.csv` の `osm_tags_raw` を見ながら `true_oneway_violation` /
 `true_two_step_required` を人手で判定 → `ground_truth.csv` にリネーム／上書き →
 `POST /api/experiment/ground-truth/compare` で Precision/Recall/F1 を確認。
+
+---
+
+## match_ambiguous の実装と非車道除外フィルタの是非判断（2026-07-30）
+
+RESEARCH.md 21.12〜21.13節に対応。マッチング曖昧性を診断情報として記録できるように
+し、保留していた非車道除外フィルタの採否をドライラン分析で決定した。
+
+### 前提として判明した問題
+
+RESEARCH.md 21.8節が「2026-07-25 に `get_bulk_way_data` を垂線距離ベースへ修正済み」
+と記録していたが、**その変更はリポジトリに存在しなかった**。`services/overpass.py` は
+ノード距離ベース（`(node["lat"]-lat)**2 + (node["lon"]-lng)**2`）のままで、
+`_point_to_segment_dist_m` も `get_bulk_way_data_with_id` も無く、
+`fix_verification.md` / `google_comparison_after_fix.csv` /
+`investigation_perpendicular_side_effects.md` / `rerun_r2_after_fix.py` /
+`ground_truth.csv` / `調査結果/` も未コミットだった。
+
+マージンは垂線距離の差として定義されるため、point-to-curve マッチングを
+`overpass.py` 内に独立に再実装したうえで①を実装した。
+
+### 実装内容（`services/overpass.py` のみ）
+
+- `MATCH_AMBIGUOUS_MARGIN_M = 2.0` をモジュール定数として公開
+- `_point_to_segment_dist_m` / `_point_to_way_dist_m` / `_rank_way_candidates` を追加。
+  `_rank_way_candidates` は **way id で重複除去する**（Union クエリ結果に同一 way が
+  複数含まれると rank2 が rank1 と同じになり、マージン0の偽の「曖昧」判定を生むため）
+- `get_bulk_way_data` の戻り値に `match_dist_m` / `match_margin_m` /
+  `match_ambiguous` / `match_way_id` を追加。既存キー `tags` / `geometry` と
+  公開シグネチャは不変
+
+**方向タイブレークは実装していない。** 測定対象が「進行方向が逆か（＝逆走）」で
+あるため、方向で候補を選ぶと循環論法になる（RESEARCH.md 21.11節）。角度は
+分析スクリプトの診断列に記録するのみ。
+
+### 追加したスクリプト
+
+| ファイル | 役割 |
+|---|---|
+| `scripts/route_match_probe.py` | 採点パイプラインを再現する共通基盤 |
+| `scripts/known_violations.py` | 現地確認済み18件の群分類表 |
+| `scripts/verify_match_margin.py` | 検証A/B/C。`fix_verification_v2.md` を生成 |
+| `scripts/dryrun_nonroad_filter.py` | ②のドライラン分析。`dryrun_nonroad_filter.md` を生成 |
+| `scripts/smoke_test_match_keys.py` | キー追加の非破壊性テスト（Overpass 不要・50ケース全成功） |
+
+### 検証結果
+
+- **A（マージン分布）**：想定外4地点は 0.505 / 1.179 / 1.518 / 1.746m で、
+  21.10節の報告値「0.50〜1.74m」を独立実装で再現。正常群の最小は 2.642m
+  （報告値の 2.75m をわずかに下回る）。断絶は 1.746 → 2.642 で、閾値2.0は内側。
+  15点すべてが期待どおりに分類された
+- **B（曖昧率）**：全379判定点のうち **188点（49.6%）** が `match_ambiguous=True`。
+  検出された oneway 違反12件のうち判定可能9件・曖昧3件
+- **C（自システムへの影響）**：15ペア中13ペアで距離が変化したが、13/15 が
+  `using_edge_ids=True`（`get_bulk_way_data` 未使用）であり、違反0・リルートなしの
+  ペアでも距離が動いていることから、原因は GraphHopper グラフの更新と判断。
+  横浜→みなとみらいの `+415.8m` は従来値と完全一致
+- **D（非破壊性）**：呼び出し4箇所はいずれも `tags` / `geometry` しか読まない。
+  smoke テスト50ケース全成功
+
+### 副次的に判明したこと
+
+- RESEARCH.md 21.9節の「A群3件消滅」は誤りで、**実際の消滅は2件**。
+  荻窪→阿佐ヶ谷 80835360 は隣接判定点 idx=10 で検出が継続していた
+- 既知18件に含まれない oneway 検出が2件ある（新宿→池袋 way 228180934、
+  川崎→武蔵小杉 way 992241606）。**両方とも `match_ambiguous=True`**
+- B群の保留2件（741785139・1429406683）と D群（151808609）は①適用後も検出が
+  継続しており、マージンも曖昧域ではない。誤マッチでは説明できない
+
+### ②非車道除外フィルタ：不採用
+
+`highway` が `footway`/`path`/`steps`/`pedestrian`/`corridor`/`platform` の候補を
+除外する案（`bicycle=yes`/`designated` は例外、候補0本ならフォールバック）を
+**実装せずドライランのみ**で評価した。
+
+C群3点は保持されたため事前に定めた不採用条件には該当しないが、以下の理由で不採用。
+
+- **B群への効果ゼロ**：除外された37点にB群のwayは1つも含まれない
+- **判定変化4点はすべて「新規出現」**（違反12→16）。うち3点は既知18件に無く、
+  新たな現地確認が必要になる。得られるのは A群 23690216 の復活1件のみ
+- **マッチング品質の悪化**：切替37点の垂線距離が中央値 +3.97m・平均 +15.3m・
+  最大 +125.4m 悪化。切替後10m超が13点、50m超が5点。最悪例は
+  `0.144m の footway` → `125.54m の primary`。フォールバックは一度も発動せず、
+  歯止めが効かない
+
+この結果は RESEARCH.md 24.3節（限界3）の主張を強化する。限界3は距離指標の変更でも
+highway 種別という幾何外の基準でも解決しない。
