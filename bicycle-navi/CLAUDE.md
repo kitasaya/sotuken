@@ -75,6 +75,19 @@
 - `check_sidewalk_violation` は引き続き呼び出さない
   （`sidewalk=no` は物理的事実のタグであり法的禁止ではない。目視判断可能で
   ナビ介入不要。復活禁止）
+- **最近傍 way 選択に `highway` 種別による候補除外を実装しない**
+  （非車道除外フィルタ。2026-07-30 不採用決定・復活禁止）
+  `footway`/`path`/`steps`/`pedestrian`/`corridor`/`platform` を候補から外す案を
+  15ペア379判定点でドライラン評価した結果、**誤検出は1件も減らず**（B群への効果ゼロ）、
+  **未検証の新規検出が3件増え**、**切替37点の垂線距離が中央値+3.97m・最大+125.4m 悪化**
+  した（`0.144m の footway` → `125.54m の primary` が最悪例）。候補が0本になる
+  フォールバックは一度も発動せず、遠方の車道を拾い続けるため歯止めが効かない。
+  詳細は `RESEARCH.md` 21.13節・`backend/data/dryrun_nonroad_filter.md`。
+  再検討したくなった場合は、まずこの実測を読むこと
+- **最近傍 way 選択に進行方向（travel_vector との角度）を使わない**
+  （測定対象が「進行方向が逆か＝逆走」であるため、方向で候補を選ぶと循環論法になる。
+  単路の一方通行を逆走している場合に逆走そのものを検出できなくなる。
+  `RESEARCH.md` 21.11節。角度は診断情報としてのみ記録してよい）
 - experiment.py / batch エンドポイントの **公開エンドポイント名** は維持
 - `external_route_scorer.py` は **採点専用**。`law_checker` の判定関数を共有して
   外部ルートを採点するのみで、`rerouter.py` / 経路探索には一切干渉しない
@@ -161,7 +174,23 @@ ground_truth.csv（渋谷→新宿6点）+ 偽陽性が観測された3点で検
 - ~~残り O-D ペアへ展開し `google_comparison.csv` の `google_*_violation_count` へ流し込む~~
   **完了（2026-07-07）**。`google_comparison.csv` は15ペア全行で system 4列・google 4列・
   scorer 3列が埋まった状態（詳細は `docs/CHANGELOG.md` の該当エントリ参照）。
-  Claude Code 側の残タスクは現時点でなし。
+- ~~マッチング曖昧性の記録（`match_ambiguous`）~~ **完了（2026-07-30）**
+  `get_bulk_way_data` を point-to-curve マッチングに変更し、戻り値に
+  `match_dist_m` / `match_margin_m` / `match_ambiguous` / `match_way_id` を追加。
+  閾値は `MATCH_AMBIGUOUS_MARGIN_M = 2.0`。**全379判定点の 49.6%（188点）が曖昧**で、
+  検出された oneway 違反12件のうち判定可能9件・曖昧3件。詳細は `RESEARCH.md` 21.12節。
+  再検証は `python3 scripts/verify_match_margin.py`、非破壊性テストは
+  `python3 scripts/smoke_test_match_keys.py`（Overpass 不要）。
+- ~~非車道除外フィルタの是非判断~~ **完了（2026-07-30・不採用）**。上記「不変の制約」参照。
+
+Claude Code 側の残タスクは現時点でなし。
+
+**⚠️ 注意：`RESEARCH.md` 21.8節が記録している 2026-07-25 の垂線距離修正はリポジトリに
+未コミットだった**（`fix_verification.md` / `google_comparison_after_fix.csv` /
+`investigation_perpendicular_side_effects.md` / `rerun_r2_after_fix.py` /
+`ground_truth.csv` / `調査結果/` も同様）。2026-07-30 に point-to-curve マッチングを
+独立に再実装している。これらのファイルを参照する指示を受けた場合は、まず現物の
+有無を確認すること。
 
 ---
 
