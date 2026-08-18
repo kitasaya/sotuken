@@ -47,7 +47,20 @@ cd 卒研
 
 ### 手順2: GraphHopperを起動
 
-> **注意**: 初回起動時はOSMデータのダウンロード＋グラフビルドが走るため、**30分〜1時間**かかる。
+> **⚠️ 再現性のためバージョン固定している**: イメージは `israelhikingmap/graphhopper:11.0`、
+> OSMデータは `graphhopper/kanto-260801.osm.pbf`（2026-08-01版）に固定。
+> `:latest` や `--url` に戻すと実験の再現性が失われる。
+> 経緯と更新手順は [`bicycle-navi/docs/SETUP.md`](bicycle-navi/docs/SETUP.md) の「固定方針」、
+> 来歴は [`bicycle-navi/docs/DATA_PROVENANCE.md`](bicycle-navi/docs/DATA_PROVENANCE.md) を参照。
+
+**初回のみ**、OSMデータを手動で取得する（約482MB・自動ダウンロードはしない）:
+
+```bash
+curl -L -o bicycle-navi/graphhopper/kanto-260801.osm.pbf https://download.geofabrik.de/asia/japan/kanto-260801.osm.pbf
+```
+
+> **注意**: 初回起動時はグラフビルドが走る（実測 **約1分**／2回目以降は約3秒）。
+> `/health` はビルド中でも 200 を返すため、完了判定には使えない。`docker-compose logs` で `Started Server` を確認すること。
 
 ```bash
 cd bicycle-navi
@@ -64,7 +77,10 @@ JSONレスポンスが返ってきたら成功。
 
 > **グラフキャッシュについて**: ビルド完了後、`graphhopper/default-gh/` にキャッシュが生成される。  
 > このキャッシュはgit管理対象外（`.gitignore`に記載）。  
-> 2回目以降の `docker-compose up` はキャッシュを再利用するため数秒で起動する。
+> 2回目以降の `docker-compose up` はキャッシュを再利用するため数秒で起動する。  
+> キャッシュがある限り pbf は読まれないため、pbf を差し替えても `default-gh/` を消さない限り反映されない。  
+> **イメージタグを変えた場合は `default-gh/` を必ず削除すること。** バージョン不一致時、
+> GraphHopper は自動再構築せず `Unexpected version for 'geometry'` で起動に失敗する。
 
 ---
 
@@ -239,7 +255,7 @@ export default defineConfig({
 | `.venv/` | Python仮想環境（環境依存） | `python -m venv .venv` → `pip install` |
 | `bicycle-navi/frontend/node_modules/` | npmパッケージ（大容量） | `npm install` |
 | `bicycle-navi/graphhopper/default-gh/` | GHグラフキャッシュ（バイナリ・大容量） | `docker-compose up` で自動生成 |
-| `bicycle-navi/graphhopper/*.osm.pbf` | OSMデータ（数百MB） | docker-compose起動時に自動ダウンロード |
+| `bicycle-navi/graphhopper/kanto-260801.osm.pbf` | OSMデータ（約482MB・2026-08-01版に固定） | **手動取得**（手順2参照・自動ダウンロードはしない） |
 | `.env` 等 | APIキーなどの機密情報（存在する場合） | 別途共有 |
 
 ---

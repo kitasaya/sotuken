@@ -1,4 +1,7 @@
 graphhopper:
+  # 以下2行は graphhopper.sh が起動時に -D で常に上書きするため実効性なし（記録として残置）。
+  #   datareader.file → docker-compose.yml の --input が -Ddw.graphhopper.datareader.file に入る
+  #   graph.location  → スクリプト既定の /data/default-gh が -Ddw.graphhopper.graph.location に入る
   datareader.file: /data/data.pbf
   graph.location: /data/default-gh
   graph.encoded_values: car_access, car_average_speed, country, road_class, roundabout, max_speed, foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed, road_environment, osm_way_id

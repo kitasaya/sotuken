@@ -1,14 +1,21 @@
 version: '3'
 services:
   graphhopper:
-    image: israelhikingmap/graphhopper:latest
+    # 【固定】11.0 は GraphHopper の最新リリース（2025-10-14）。
+    # :latest は master スナップショットで随時更新されるため使用しない。
+    # 実際に 2026-06-18 の自動更新で geometry version が 8→9 に変わり、
+    # 既存グラフが読めなくなった（docs/SETUP.md の固定方針を参照）。
+    image: israelhikingmap/graphhopper:11.0
     ports:
       - "8989:8989"
     volumes:
       - ./graphhopper:/data
     environment:
       - JAVA_OPTS=-Xmx4g -Xms1g
+    # 【固定】--url は使わない。--url はコンテナ内 /graphhopper/data.pbf に
+    # 毎回ダウンロードするため、ホストに残らず内容も日々変わる。
+    # ホストに保存済みの pbf を --input で参照する。
     command: >
-      --url https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf
+      --input /data/kanto-260801.osm.pbf
       --host 0.0.0.0
       -c /data/config.yml
