@@ -1,0 +1,1 @@
+label,way_id,fn_reason,needs_manual_check,point_lat,point_lng,osm_url,oneway,highway,name,osm_tags_raw,start_idx,end_idx,geom_nodes,trimmed_length_m,going_wrong_way,against_votes,direction_votes,angle_way_axis_vs_travel_deg,travel_vector_lng,travel_vector_lat,oneway_bicycle,cycleway,using_edge_ids,diagnosis_detail,match_way_id,match_dist_m,match_margin_m,match_ambiguous
