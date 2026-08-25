@@ -2,7 +2,9 @@ import contextvars
 import httpx
 import logging
 import math
-from collections import OrderedDict
+import os
+import re
+from collections import Counter, OrderedDict
 from typing import Optional
 from services.http_clients import get_client
 
@@ -29,15 +31,138 @@ MATCH_AMBIGUOUS_MARGIN_M = 2.0
 _M_PER_DEG_LAT = 110_540.0
 _M_PER_DEG_LNG_EQUATOR = 111_320.0
 
-# 順番に試すエンドポイント（メイン → 代替1 → 代替2）
+# 順番に試すエンドポイント（メイン → 代替）。2026-08-24 の実動確認で
+# Kumi は通常・atticとも5xx、後継Private.coffeeもatticが500だったため除外した。
 OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 OVERPASS_URL = OVERPASS_ENDPOINTS[0]  # 後方互換用
-# 1エンドポイントあたりの最大待機時間（秒）
-_PER_ENDPOINT_TIMEOUT = 10.0
+# attic は live より遅いため、クライアント側の待機時間を分ける。
+_LIVE_ENDPOINT_TIMEOUT = 10.0
+_ATTIC_ENDPOINT_TIMEOUT = 60.0
+
+OVERPASS_SNAPSHOT_DATE_ENV = "OVERPASS_SNAPSHOT_DATE"
+_ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+_snapshot_date_override: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "_snapshot_date_override", default=None
+)
+
+
+class OverpassUnavailableError(RuntimeError):
+    """全Overpassエンドポイントで判定用データを取得できなかった。"""
+
+
+def _validate_snapshot_date(value: Optional[str]) -> Optional[str]:
+    value = (value or "").strip()
+    if not value:
+        return None
+    if not _ISO_UTC_RE.fullmatch(value):
+        raise ValueError(
+            f"Overpass snapshot date must be YYYY-MM-DDThh:mm:ssZ: {value!r}"
+        )
+    return value
+
+
+def set_overpass_snapshot_date(value: Optional[str]) -> None:
+    """この実行コンテキストの取得時点を設定する。空なら live モード。"""
+    _snapshot_date_override.set(_validate_snapshot_date(value))
+
+
+def get_overpass_snapshot_date() -> Optional[str]:
+    """現在の取得時点を返す。None は live モード。"""
+    override = _snapshot_date_override.get()
+    if override is not None:
+        return override
+    return _validate_snapshot_date(os.getenv(OVERPASS_SNAPSHOT_DATE_ENV))
+
+
+def _query_at_configured_date(query: str) -> str:
+    snapshot_date = get_overpass_snapshot_date()
+    if not snapshot_date or "[date:" in query:
+        return query
+    semicolon = query.find(";")
+    if semicolon < 0:
+        raise ValueError("Overpass query has no global-settings terminator ';'")
+    return f'{query[:semicolon]}[date:"{snapshot_date}"]{query[semicolon:]}'
+
+
+def _endpoint_name(url: str) -> str:
+    if "overpass-api.de" in url:
+        return "overpass-api.de"
+    if "maps.mail.ru" in url:
+        return "maps.mail.ru"
+    return url
+
+
+_overpass_usage: contextvars.ContextVar[Optional[dict]] = contextvars.ContextVar(
+    "_overpass_usage", default=None
+)
+_last_successful_endpoint: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "_last_successful_endpoint", default=None
+)
+
+
+def reset_overpass_usage_stats() -> None:
+    """実行サマリ用のendpoint統計を初期化する。"""
+    _overpass_usage.set({
+        "queries": Counter(),
+        "failed_attempts": Counter(),
+        "decision_units": Counter(),
+    })
+
+
+def _usage_stats() -> dict:
+    stats = _overpass_usage.get()
+    if stats is None:
+        stats = {
+            "queries": Counter(),
+            "failed_attempts": Counter(),
+            "decision_units": Counter(),
+        }
+        _overpass_usage.set(stats)
+    return stats
+
+
+def _record_usage(kind: str, endpoint: Optional[str], count: int = 1) -> None:
+    if endpoint and count > 0:
+        _usage_stats()[kind][_endpoint_name(endpoint)] += count
+
+
+def record_last_overpass_decision_units(count: int) -> str:
+    """直前に成功した問い合わせ先へ判定対象数を記録し、短縮名を返す。"""
+    endpoint = _last_successful_endpoint.get()
+    _record_usage("decision_units", endpoint, count)
+    return _endpoint_name(endpoint or "unknown")
+
+
+def get_last_overpass_endpoint() -> str:
+    """直前に成功した問い合わせ先の短縮名を返す。"""
+    return _endpoint_name(_last_successful_endpoint.get() or "unknown")
+
+
+def get_overpass_usage_stats() -> dict:
+    stats = _usage_stats()
+    names = [_endpoint_name(url) for url in OVERPASS_ENDPOINTS]
+    return {
+        name: {
+            "queries": stats["queries"][name],
+            "failed_attempts": stats["failed_attempts"][name],
+            "decision_units": stats["decision_units"][name],
+        }
+        for name in names
+    }
+
+
+def format_overpass_usage_summary() -> str:
+    mode = get_overpass_snapshot_date() or "LIVE"
+    lines = [f"Overpass 利用サマリ（取得時点: {mode}）"]
+    for name, values in get_overpass_usage_stats().items():
+        lines.append(
+            f"  {name}: 判定対象={values['decision_units']} "
+            f"成功クエリ={values['queries']} 失敗試行={values['failed_attempts']}"
+        )
+    return "\n".join(lines)
 
 # Overpass 公開インスタンスは User-Agent の指定がないと 406 等で拒否することがある。
 # 学術用途であることを明示する識別子を付与する。
@@ -59,25 +184,31 @@ _overpass_circuit_broken: contextvars.ContextVar[bool] = contextvars.ContextVar(
 # ---------------------------------------------------------------------------
 # way 1 件あたり ~1KB として 10,000 件で約 10MB 程度を想定
 _WAY_CACHE_MAX = 10000
-_way_cache: "OrderedDict[int, dict]" = OrderedDict()
+_way_cache: "OrderedDict[tuple[str, int], dict]" = OrderedDict()
+
+
+def _way_cache_key(way_id: int) -> tuple[str, int]:
+    return (get_overpass_snapshot_date() or "LIVE", way_id)
 
 
 def _way_cache_get(way_id: int) -> Optional[dict]:
     """LRU としてアクセスを末尾に移動させつつエントリを返す。未キャッシュなら None。"""
-    entry = _way_cache.get(way_id)
+    key = _way_cache_key(way_id)
+    entry = _way_cache.get(key)
     if entry is None:
         return None
-    _way_cache.move_to_end(way_id)
+    _way_cache.move_to_end(key)
     return entry
 
 
 def _way_cache_put(way_id: int, entry: dict) -> None:
     """キャッシュに格納し、容量超過分は LRU で破棄する。"""
-    if way_id in _way_cache:
-        _way_cache.move_to_end(way_id)
-        _way_cache[way_id] = entry
+    key = _way_cache_key(way_id)
+    if key in _way_cache:
+        _way_cache.move_to_end(key)
+        _way_cache[key] = entry
         return
-    _way_cache[way_id] = entry
+    _way_cache[key] = entry
     if len(_way_cache) > _WAY_CACHE_MAX:
         _way_cache.popitem(last=False)
 
@@ -87,6 +218,11 @@ def clear_way_cache() -> None:
     _way_cache.clear()
 
 
+def reset_overpass_request_state() -> None:
+    """テストや独立バッチの境界で、回路遮断状態を初期化する。"""
+    _overpass_circuit_broken.set(False)
+
+
 async def get_way_tags(lat: float, lng: float, radius: int = 20) -> dict:
     """指定座標付近の道路タグを取得する（単一座標用・後方互換）"""
     query = f"""
@@ -94,22 +230,19 @@ async def get_way_tags(lat: float, lng: float, radius: int = 20) -> dict:
     way(around:{radius},{lat},{lng})[highway];
     out tags;
     """
-    client = get_client()
-    resp = await client.post(
-        OVERPASS_URL, data={"data": query},
-        headers=_OVERPASS_HEADERS, timeout=15.0,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    if data["elements"]:
-        return data["elements"][0].get("tags", {})
+    _last_successful_endpoint.set(None)
+    elements = await _post_with_retry(query)
+    _record_usage("decision_units", _last_successful_endpoint.get(), 1)
+    if elements:
+        return elements[0].get("tags", {})
     return {}
 
 
 async def _post_with_retry(query: str) -> list:
     """
     Overpass API へ POST する。失敗したら次のエンドポイントへ即切り替え（リトライなし）。
-    すべて失敗した場合は空リストを返す。最悪でも endpoints × timeout 秒で終わる。
+    すべて失敗した場合は OverpassUnavailableError を送出する。空の検索結果と
+    通信失敗を区別し、通信失敗が「違反0件」に化けることを防ぐ。
 
     同一リクエスト内で一度全エンドポイントが失敗した場合は、後続の呼び出しを
     即座にスキップする（_overpass_circuit_broken フラグ）。例えば by-ID 取得が
@@ -120,28 +253,40 @@ async def _post_with_retry(query: str) -> list:
     """
     if _overpass_circuit_broken.get():
         logger.info("Overpass: 同一リクエスト内で既に全失敗済み、スキップ")
-        return []
+        raise OverpassUnavailableError("Overpass circuit is open after all endpoints failed")
 
     client = get_client()
+    dated_query = _query_at_configured_date(query)
+    timeout = (
+        _ATTIC_ENDPOINT_TIMEOUT if get_overpass_snapshot_date()
+        else _LIVE_ENDPOINT_TIMEOUT
+    )
     for url in OVERPASS_ENDPOINTS:
         try:
             resp = await client.post(
-                url, data={"data": query},
+                url, data={"data": dated_query},
                 headers=_OVERPASS_HEADERS,
-                timeout=_PER_ENDPOINT_TIMEOUT,
+                timeout=timeout,
             )
             resp.raise_for_status()
+            _last_successful_endpoint.set(url)
+            _record_usage("queries", url)
             logger.info("Overpass 成功: %s", url)
             return resp.json().get("elements", [])
         except httpx.HTTPStatusError as e:
+            _record_usage("failed_attempts", url)
             logger.warning("Overpass %s → %d, 次のエンドポイントへ", url, e.response.status_code)
         except httpx.TimeoutException:
-            logger.warning("Overpass %s → タイムアウト(%ds), 次のエンドポイントへ", url, int(_PER_ENDPOINT_TIMEOUT))
+            _record_usage("failed_attempts", url)
+            logger.warning("Overpass %s → タイムアウト(%ds), 次のエンドポイントへ", url, int(timeout))
         except Exception as e:
+            _record_usage("failed_attempts", url)
             logger.warning("Overpass %s → エラー(%s), 次のエンドポイントへ", url, e)
-    logger.error("Overpass: 全エンドポイントで失敗。空結果を返します。")
+    logger.error("Overpass: 全エンドポイントで失敗。判定を失敗として終了します。")
     _overpass_circuit_broken.set(True)
-    return []
+    raise OverpassUnavailableError(
+        "All Overpass endpoints failed: " + ", ".join(OVERPASS_ENDPOINTS)
+    )
 
 
 async def get_way_tags_by_ids(way_ids: list[int]) -> dict[int, dict]:
@@ -150,10 +295,9 @@ async def get_way_tags_by_ids(way_ids: list[int]) -> dict[int, dict]:
 
     戻り値: {way_id: {"tags": tags_dict, "geometry": [[lon, lat], ...]}}
 
-    プロセス内 LRU キャッシュ（_way_cache）でヒットした way_id は Overpass を
-    呼ばずに返す。Overpass 呼び出しは未キャッシュ分のみ。Overpass が返さなかった
-    way_id は負キャッシュしない（次回再取得する）。これにより、全エンドポイント
-    失敗時に呼び出し側がフォールバック判定（空 dict）できる挙動を維持する。
+    プロセス内 LRU キャッシュ（基準日時 + way_id）でヒットした way_id は
+    Overpass を呼ばずに返す。Overpass が返さなかった way_id は負キャッシュしない。
+    全エンドポイント失敗時は例外を送出し、指定日時にwayが存在しない空結果と区別する。
     """
     if not way_ids:
         return {}
@@ -178,16 +322,29 @@ way(id:{ids_str});
 out tags geom;
 """
         overpass_called = 1
+        _last_successful_endpoint.set(None)
         elements = await _post_with_retry(query)
+        endpoint = _last_successful_endpoint.get()
         for elem in elements:
             if "id" not in elem:
                 continue
             wid = elem["id"]
             tags = elem.get("tags", {})
             geometry = [[n["lon"], n["lat"]] for n in elem.get("geometry", [])]
-            entry = {"tags": tags, "geometry": geometry}
+            entry = {
+                "tags": tags,
+                "geometry": geometry,
+                "overpass_endpoint": _endpoint_name(endpoint or "unknown"),
+            }
             _way_cache_put(wid, entry)
             result[wid] = entry
+        _record_usage("decision_units", endpoint, len(uncached_ids))
+
+    # キャッシュヒットは、そのタグを元々取得したendpointへ帰属させる。
+    uncached_set = set(uncached_ids)
+    for wid in way_ids:
+        if wid not in uncached_set and wid in result:
+            _record_usage("decision_units", result[wid].get("overpass_endpoint"), 1)
 
     logger.info(
         "Overpass by-ID: cache_hit=%d cache_miss=%d overpass_called=%d cache_size=%d",
@@ -326,7 +483,10 @@ async def get_bulk_way_data(points: list, radius: int = 20) -> list[dict]:
 out geom tags;
 """
 
+    _last_successful_endpoint.set(None)
     elements = await _post_with_retry(query)
+    endpoint = _last_successful_endpoint.get()
+    _record_usage("decision_units", endpoint, len(points))
 
     result = []
     ambiguous_count = 0
@@ -338,6 +498,7 @@ out geom tags;
                 "tags": {}, "geometry": [],
                 "match_way_id": None, "match_dist_m": None,
                 "match_margin_m": None, "match_ambiguous": False,
+                "overpass_endpoint": _endpoint_name(endpoint or "unknown"),
             })
             continue
 
@@ -354,6 +515,7 @@ out geom tags;
             "match_dist_m": round(rank1_dist, 3),
             "match_margin_m": None if margin is None else round(margin, 3),
             "match_ambiguous": ambiguous,
+            "overpass_endpoint": _endpoint_name(endpoint or "unknown"),
         })
 
     logger.info(

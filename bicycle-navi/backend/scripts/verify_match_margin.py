@@ -36,7 +36,14 @@ from scripts.known_violations import (
     group_of,
 )
 from scripts.route_match_probe import fmt, is_oneway_violation, median, probe_route
-from services.overpass import MATCH_AMBIGUOUS_MARGIN_M
+from services.experiment_settings import activate_experiment_overpass_date
+from services.overpass import (
+    MATCH_AMBIGUOUS_MARGIN_M,
+    format_overpass_usage_summary,
+    get_overpass_snapshot_date,
+    get_overpass_usage_stats,
+    reset_overpass_usage_stats,
+)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 INPUT_CSV = DATA_DIR / "google_routes_input.csv"
@@ -47,6 +54,8 @@ OUT_POINTS_CSV = DATA_DIR / "verify_match_margin_points.csv"
 OUT_ANALYZE_CSV = DATA_DIR / "verify_v2_analyze_route.csv"
 
 REQUEST_INTERVAL_S = 3.0
+PAIR_MAX_ATTEMPTS = 2
+PAIR_RETRY_WAIT_S = 5.0
 
 # RESEARCH.md 21.10節で報告されたマージンの範囲
 REPORTED_UNEXPECTED_RANGE = (0.50, 1.74)
@@ -84,7 +93,9 @@ def verify_group_of(label: str, sample_idx: int, node_rank1_way_id) -> str:
 # A・B: 判定点の収集
 # ---------------------------------------------------------------------------
 
-async def collect_points(labels: list[str] | None) -> tuple[list[dict], list[str], list[str]]:
+async def collect_points(
+    labels: list[str] | None,
+) -> tuple[list[dict], list[str], list[str], list[dict]]:
     with open(INPUT_CSV, encoding="utf-8", newline="") as f:
         input_rows = list(csv.DictReader(f))
 
@@ -98,22 +109,38 @@ async def collect_points(labels: list[str] | None) -> tuple[list[dict], list[str
     rows: list[dict] = []
     labels_run: list[str] = []
     skipped: list[str] = []
+    failures: list[dict] = []
 
     for i, row in enumerate(input_rows):
         label = row["label"]
         polyline = row.get("polyline", "").strip()
         if not polyline:
-            print(f"  [SKIP] {label}: polyline が空")
-            skipped.append(label)
+            error = "polyline が空"
+            print(f"  [ERROR] {label}: {error}")
+            failures.append({"label": label, "error": error})
             continue
 
         if i > 0:
             await asyncio.sleep(REQUEST_INTERVAL_S)
 
         print(f"  採点中: {label}", flush=True)
-        probes, _ = await probe_route(label, polyline)
+        probes = None
+        error = ""
+        for attempt in range(1, PAIR_MAX_ATTEMPTS + 1):
+            try:
+                probes, _ = await asyncio.create_task(probe_route(label, polyline))
+                break
+            except Exception as e:
+                error = f"{type(e).__name__}: {e}"
+                if attempt < PAIR_MAX_ATTEMPTS:
+                    print(f"    → 取得失敗（{attempt}/{PAIR_MAX_ATTEMPTS}）、{PAIR_RETRY_WAIT_S:.0f}秒後に再試行: {error}")
+                    await asyncio.sleep(PAIR_RETRY_WAIT_S)
+        if probes is None:
+            print(f"    → ERROR: {error}")
+            failures.append({"label": label, "error": error})
+            continue
         if not probes:
-            skipped.append(label)
+            failures.append({"label": label, "error": "判定点が0件"})
             continue
         if all(not p.candidates for p in probes):
             raise SystemExit(
@@ -148,18 +175,34 @@ async def collect_points(labels: list[str] | None) -> tuple[list[dict], list[str
                 "oneway_misaligned": misaligned,
                 # 診断専用（候補選択には使わない）
                 "diag_angle_deg": p.angle_to_travel_deg(p.rank1),
+                "overpass_endpoint": p.overpass_endpoint,
             })
 
         amb = sum(1 for r in rows if r["label"] == label and r["match_ambiguous"])
         print(f"    → 判定点={len(probes)} 曖昧={amb}")
         labels_run.append(label)
 
-    return rows, labels_run, skipped
+    return rows, labels_run, skipped, failures
 
 
 # ---------------------------------------------------------------------------
 # C: analyze_route(v3) の実行
 # ---------------------------------------------------------------------------
+
+
+def _decision_counts() -> dict[str, int]:
+    return {
+        name: values["decision_units"]
+        for name, values in get_overpass_usage_stats().items()
+    }
+
+
+def _endpoint_delta_text(before: dict[str, int]) -> str:
+    after = _decision_counts()
+    return "; ".join(
+        f"{name}={after.get(name, 0) - before.get(name, 0)}"
+        for name in after
+    )
 
 async def run_analyze_route() -> list[dict]:
     from services.route_analyzer import analyze_route
@@ -176,12 +219,27 @@ async def run_analyze_route() -> list[dict]:
     for p in pairs:
         label = p["label"]
         print(f"  analyze_route(v3): {label}", flush=True)
+        before_endpoint_counts = _decision_counts()
+        res = None
+        error = ""
         try:
-            res = await analyze_route(
-                float(p["origin_lat"]), float(p["origin_lng"]),
-                float(p["dest_lat"]), float(p["dest_lng"]),
-                algo_version="v3",
-            )
+            for attempt in range(1, PAIR_MAX_ATTEMPTS + 1):
+                try:
+                    res = await asyncio.create_task(
+                        analyze_route(
+                            float(p["origin_lat"]), float(p["origin_lng"]),
+                            float(p["dest_lat"]), float(p["dest_lng"]),
+                            algo_version="v3",
+                        )
+                    )
+                    break
+                except Exception as e:
+                    error = f"{type(e).__name__}: {e}"
+                    if attempt < PAIR_MAX_ATTEMPTS:
+                        print(f"    → 取得失敗（{attempt}/{PAIR_MAX_ATTEMPTS}）、{PAIR_RETRY_WAIT_S:.0f}秒後に再試行: {error}")
+                        await asyncio.sleep(PAIR_RETRY_WAIT_S)
+            if res is None:
+                raise RuntimeError(error)
         except Exception as e:
             print(f"    ⚠ 失敗: {e}")
             results.append({"label": label, "road_type": p["road_type"], "error": str(e)})
@@ -219,6 +277,7 @@ async def run_analyze_route() -> list[dict]:
             "rerouted": comp["rerouted"],
             "using_edge_ids": comp["using_edge_ids"],
             "violation_types": ",".join(sorted(comp["violation_types"])),
+            "overpass_endpoint_counts": _endpoint_delta_text(before_endpoint_counts),
             "error": "",
         })
         print(f"    → dist={comp['compliant_distance_m']}m violations={comp['violation_count']} "
@@ -245,6 +304,12 @@ def build_markdown(
     a("")
     a(f"生成日時: {ts}  ")
     a("生成スクリプト: `backend/scripts/verify_match_margin.py`")
+    a(f"Overpass取得時点: `{get_overpass_snapshot_date() or 'LIVE'}`")
+    a("")
+    a("| endpoint | 判定対象 | 成功クエリ | 失敗試行 |")
+    a("|---|---:|---:|---:|")
+    for name, values in get_overpass_usage_stats().items():
+        a(f"| {name} | {values['decision_units']} | {values['queries']} | {values['failed_attempts']} |")
     a("")
     a("## 前提（重要）")
     a("")
@@ -489,7 +554,7 @@ POINT_CSV_FIELDS = [
     "match_dist_m", "match_margin_m", "match_ambiguous",
     "verify_group", "known_group_node_rank1", "known_group_perp_rank1",
     "oneway_violation", "oneway_confidence", "oneway_misaligned",
-    "diag_angle_deg",
+    "diag_angle_deg", "overpass_endpoint",
 ]
 
 ANALYZE_CSV_FIELDS = [
@@ -499,37 +564,53 @@ ANALYZE_CSV_FIELDS = [
     "new_violation_count", "csv_system_violation_count",
     "new_violation_count_high_conf", "csv_system_violation_count_high_conf",
     "new_original_distance_m", "new_distance_diff_m",
-    "rerouted", "using_edge_ids", "violation_types", "error",
+    "rerouted", "using_edge_ids", "violation_types",
+    "overpass_endpoint_counts", "error",
 ]
 
 
 async def main(args) -> int:
+    settings = activate_experiment_overpass_date()
+    reset_overpass_usage_stats()
+    print(
+        "実験用Overpass取得時点: "
+        f"{settings['overpass_snapshot_date']} "
+        f"(GraphHopper: {settings['graphhopper_data_date']})\n"
+    )
     point_rows: list[dict] = []
     labels_run: list[str] = []
     skipped: list[str] = []
+    point_failures: list[dict] = []
 
     if not args.only_analyze_route:
         print(f"[A・B] 入力: {INPUT_CSV}\n")
-        point_rows, labels_run, skipped = await collect_points(args.label)
+        point_rows, labels_run, skipped, point_failures = await collect_points(args.label)
+        print(f"\n[A・Bサマリ] 成功={len(labels_run)}件 / 失敗={len(point_failures)}件")
+        if point_failures:
+            for failure in point_failures:
+                print(f"  - {failure['label']}: {failure['error']}")
+            print(format_overpass_usage_summary())
+            print("⚠ 部分結果は出力ファイルへ書き込みません。")
+            return 1
         if not point_rows:
             print("\n⚠ 判定点が得られませんでした。中止します。")
             return 1
-        with open(OUT_POINTS_CSV, "w", encoding="utf-8", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=POINT_CSV_FIELDS)
-            w.writeheader()
-            w.writerows(point_rows)
-        print(f"\n判定点の明細を書き出しました → {OUT_POINTS_CSV}")
 
     analyze_rows = None
     if not args.skip_analyze_route:
         print(f"\n[C] analyze_route(v3) を実行します（GraphHopper が必要）\n")
         analyze_rows = await run_analyze_route()
-        with open(OUT_ANALYZE_CSV, "w", encoding="utf-8", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=ANALYZE_CSV_FIELDS)
-            w.writeheader()
-            for r in analyze_rows:
-                w.writerow({k: r.get(k, "") for k in ANALYZE_CSV_FIELDS})
-        print(f"\nanalyze_route の結果を書き出しました → {OUT_ANALYZE_CSV}")
+        analyze_failures = [r for r in analyze_rows if r.get("error")]
+        print(
+            f"\n[Cサマリ] 成功={len(analyze_rows) - len(analyze_failures)}件 "
+            f"/ 失敗={len(analyze_failures)}件"
+        )
+        if analyze_failures:
+            for failure in analyze_failures:
+                print(f"  - {failure['label']}: {failure['error']}")
+            print(format_overpass_usage_summary())
+            print("⚠ 部分結果は出力ファイルへ書き込みません。")
+            return 1
 
     if args.only_analyze_route and OUT_POINTS_CSV.exists():
         # C だけ再実行した場合、A・B は前回の明細から復元して報告書を作り直す
@@ -553,9 +634,25 @@ async def main(args) -> int:
               "--only-analyze-route を外して実行してください。")
         return 1
 
+    if not args.only_analyze_route:
+        with open(OUT_POINTS_CSV, "w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=POINT_CSV_FIELDS)
+            w.writeheader()
+            w.writerows(point_rows)
+        print(f"\n判定点の明細を書き出しました → {OUT_POINTS_CSV}")
+
+    if analyze_rows is not None:
+        with open(OUT_ANALYZE_CSV, "w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=ANALYZE_CSV_FIELDS)
+            w.writeheader()
+            for r in analyze_rows:
+                w.writerow({k: r.get(k, "") for k in ANALYZE_CSV_FIELDS})
+        print(f"analyze_route の結果を書き出しました → {OUT_ANALYZE_CSV}")
+
     OUT_MD.write_text(
         build_markdown(point_rows, labels_run, skipped, analyze_rows), encoding="utf-8")
     print(f"報告書を書き出しました → {OUT_MD}")
+    print(format_overpass_usage_summary())
     print("\n既存CSV（google_comparison.csv 等）には一切書き込んでいません。")
     return 0
 

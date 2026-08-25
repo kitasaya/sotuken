@@ -77,6 +77,7 @@ class PointProbe:
     travel_vector: list
     candidates: list[Candidate] = field(default_factory=list)
     node_rank1_way_id: int | None = None   # ノード距離ベース（垂線距離修正前）の rank1
+    overpass_endpoint: str = ""
 
     @property
     def rank1(self) -> Candidate | None:
@@ -149,7 +150,9 @@ async def fetch_union_elements(points: list, radius: int = DEFAULT_RADIUS) -> li
 );
 out geom tags;
 """
-    return await overpass._post_with_retry(query)
+    elements = await overpass._post_with_retry(query)
+    overpass.record_last_overpass_decision_units(len(points))
+    return elements
 
 
 async def probe_route(
@@ -172,6 +175,7 @@ async def probe_route(
     travel_vectors = [_travel_vector_at(coords, i) for i in sampled_idx]
 
     elements = await fetch_union_elements(sampled_points, radius)
+    endpoint = overpass.get_last_overpass_endpoint()
 
     probes: list[PointProbe] = []
     for n, (route_idx, point, tv) in enumerate(zip(sampled_idx, sampled_points, travel_vectors)):
@@ -194,6 +198,7 @@ async def probe_route(
                 for dist, elem in ranked
             ],
             node_rank1_way_id=_node_dist_rank1(lat, lng, elements),
+            overpass_endpoint=endpoint,
         ))
     return probes, coords
 

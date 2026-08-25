@@ -120,9 +120,15 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
         unique_way_ids = list(way_id_info.keys())
         try:
             way_id_to_data = await get_way_tags_by_ids(unique_way_ids)
-            if not way_id_to_data and unique_way_ids:
-                # Overpass が無音で空を返した（全エンドポイント失敗）→ フォールバックへ
-                raise RuntimeError("Overpass returned empty for all %d way IDs" % len(unique_way_ids))
+            missing_way_ids = [wid for wid in unique_way_ids if wid not in way_id_to_data]
+            if missing_way_ids:
+                raise RuntimeError(
+                    "Overpass returned no data for %d/%d way IDs: %s"
+                    % (
+                        len(missing_way_ids), len(unique_way_ids),
+                        ",".join(str(wid) for wid in missing_way_ids[:10]),
+                    )
+                )
             check_points = [way_id_info[wid]["point"] for wid in unique_way_ids]
             tags_list = [way_id_to_data.get(wid, {}).get("tags", {}) for wid in unique_way_ids]
             geometries = []
@@ -150,24 +156,16 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                 two_step_wids.append(wid)
             logger.info("edge_idベース判定: %d ways, %.1f秒", len(unique_way_ids), time.perf_counter() - t0)
         except Exception as e:
-            logger.warning("Overpass by-ID取得失敗（road_classローカルタグで代替）: %s", e)
-            using_edge_ids = False
-            geometries = None
-            travel_vectors = None
-            # road_class ローカルタグで two_step_turn は継続検出
-            two_step_tags_arg = list(two_step_local_tags)
-            two_step_wids = []
+            # タグ取得失敗を road_class だけで継続すると、oneway=0 の偽成功になる。
+            # 呼び出し側でペア全体を ERROR として扱えるよう必ず伝播させる。
+            logger.error("Overpass by-ID取得失敗（判定を中止）: %s", e)
+            raise
 
     if not using_edge_ids:
         sampled = _sample(points)
         combined_pts = sampled + two_step_pts
-        overpass_ok = False
-        try:
-            combined_data = await get_bulk_way_data(combined_pts)
-            overpass_ok = True
-        except Exception as e:
-            logger.warning("Overpass一括取得失敗（road_classローカルタグで継続）: %s", e)
-            combined_data = [{"tags": {}, "geometry": []} for _ in combined_pts]
+        combined_data = await get_bulk_way_data(combined_pts)
+        overpass_ok = True
         sampled_data = combined_data[:len(sampled)]
         tags_list = [d["tags"] for d in sampled_data]
         geometries = [d["geometry"] for d in sampled_data]
@@ -228,11 +226,7 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
 
 async def _analyze_v1(route_data, points, origin_lat, origin_lng, dest_lat, dest_lng):
     sampled = _sample(points)
-    try:
-        tags_list = await get_bulk_way_tags(sampled)
-    except Exception as e:
-        logger.warning("Overpass一括取得失敗（チェックをスキップ）: %s", e)
-        tags_list = [{} for _ in sampled]
+    tags_list = await get_bulk_way_tags(sampled)
 
     # v1: 進行方向照合なし・右折 instruction 限定なし（全サンプル点を渡す）
     (oneway_violations, two_step_violations, recommendations) = await asyncio.gather(

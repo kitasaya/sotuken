@@ -117,11 +117,12 @@ async def enrich_with_osm_tags(rows: list[dict]) -> None:
     if not way_ids:
         return
 
-    try:
-        tags_map = await get_way_tags_by_ids(way_ids)
-    except Exception as e:
-        print(f"  ⚠ Overpass 一括取得に失敗: {e}")
-        tags_map = {}
+    tags_map = await get_way_tags_by_ids(way_ids)
+    missing = [way_id for way_id in way_ids if way_id not in tags_map]
+    if missing:
+        raise RuntimeError(
+            f"Overpass returned no data for {len(missing)} way IDs: {missing[:10]}"
+        )
 
     for r in rows:
         if r["way_id"] in ("", None):
@@ -130,13 +131,14 @@ async def enrich_with_osm_tags(rows: list[dict]) -> None:
         r["osm_tags_raw"] = OVERPASS_FAIL_NOTE if entry is None else format_osm_tags(entry.get("tags", {}))
 
 
-async def main(base_url: str) -> None:
+async def main(base_url: str) -> int:
     with open(OD_PAIRS_CSV, encoding="utf-8", newline="") as f:
         od_rows = list(csv.DictReader(f))
 
     print(f"対象 O-D ペア: {len(od_rows)} 件（{base_url}/api/route）")
 
     all_rows: list[dict] = []
+    failures: list[dict] = []
     async with httpx.AsyncClient() as client:
         for od_row in od_rows:
             label = od_row["label"]
@@ -144,15 +146,26 @@ async def main(base_url: str) -> None:
             try:
                 route_result = await fetch_route(client, base_url, od_row)
             except Exception as e:
-                print(f"  ⚠ {label}: /api/route 呼び出し失敗 ({e})。この label をスキップします。")
+                print(f"  ⚠ {label}: /api/route 呼び出し失敗 ({e})")
+                failures.append({"label": label, "error": str(e)})
                 continue
             rows = build_rows_for_label(label, route_result)
             all_rows.extend(rows)
             n_viol = 0 if rows[0]["notes"] == NO_VIOLATION_NOTE else len(rows)
             print(f"    → violations={n_viol}")
 
+    print(f"\n[経路取得サマリ] 成功={len(od_rows) - len(failures)}件 / 失敗={len(failures)}件")
+    if failures:
+        print("⚠ 部分結果は ground_truth_template.csv へ書き込みません。")
+        return 1
+
     print("\nOverpass から OSM 生タグを取得中...")
-    await enrich_with_osm_tags(all_rows)
+    try:
+        await enrich_with_osm_tags(all_rows)
+    except Exception as e:
+        print(f"⚠ Overpassタグ取得失敗: {type(e).__name__}: {e}")
+        print("⚠ 既存の ground_truth_template.csv は変更しません。")
+        return 1
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_CSV, "w", encoding="utf-8", newline="") as f:
@@ -168,6 +181,7 @@ async def main(base_url: str) -> None:
     print(f"  対象ラベル数: {n_labels} / {len(od_rows)}")
     print(f"  way_id 取得成功: {n_way_id_ok} 行")
     print(f"  way_id フォールバック（空欄）: {n_fallback} 行")
+    return 0
 
 
 if __name__ == "__main__":
@@ -179,4 +193,4 @@ if __name__ == "__main__":
         help="バックエンドAPIのベースURL（デフォルト: http://localhost:8000）",
     )
     args = parser.parse_args()
-    asyncio.run(main(args.base_url))
+    sys.exit(asyncio.run(main(args.base_url)))

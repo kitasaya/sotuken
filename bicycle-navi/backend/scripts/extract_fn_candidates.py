@@ -65,10 +65,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.route_match_probe import fmt
 from services.external_route_scorer import _turn_angle_deg, _way_axis_vector
+from services.experiment_settings import activate_experiment_overpass_date
 from services.graphhopper import GH_BASE
 from services.http_clients import close_client
 from services.law_checker import _check_direction, _dot2d, _geom_length_m
-from services.overpass import MATCH_AMBIGUOUS_MARGIN_M, get_bulk_way_data, get_way_tags_by_ids
+from services.overpass import (
+    MATCH_AMBIGUOUS_MARGIN_M,
+    format_overpass_usage_summary,
+    get_overpass_snapshot_date,
+    get_overpass_usage_stats,
+    get_bulk_way_data,
+    get_way_tags_by_ids,
+    reset_overpass_usage_stats,
+)
 from services.route_analyzer import _trim_geometry, analyze_route
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -87,6 +96,8 @@ CYCLEWAY_EXEMPT_VALUES = ("opposite", "opposite_lane", "opposite_track")
 SHORT_SEGMENT_M = 20.0
 
 REQUEST_INTERVAL_S = 3.0
+PAIR_MAX_ATTEMPTS = 2
+PAIR_RETRY_WAIT_S = 5.0
 
 # fn_reason（優先順）と、人手確認の要否
 FN_REASONS = ["bicycle_exempt", "forward_travel", "short_segment", "tag_fetch_failed", "unknown"]
@@ -113,6 +124,7 @@ CSV_FIELDNAMES = [
     "going_wrong_way", "against_votes", "direction_votes",
     "angle_way_axis_vs_travel_deg", "travel_vector_lng", "travel_vector_lat",
     "oneway_bicycle", "cycleway", "using_edge_ids", "diagnosis_detail",
+    "overpass_endpoint",
     # unknown 候補のみ補足取得する最近傍マッチ診断（21.12節の match_* と同じ意味）
     "match_way_id", "match_dist_m", "match_margin_m", "match_ambiguous",
 ]
@@ -355,6 +367,7 @@ def build_way_record(label: str, way_id: int, info: dict, entry: dict,
         "angle_deg": angle_deg,
         "using_edge_ids": using_edge_ids,
         "tags_available": bool(entry),
+        "overpass_endpoint": entry.get("overpass_endpoint", "") if entry else "",
     }
 
 
@@ -407,13 +420,22 @@ async def collect(od_rows: list[dict], interval_s: float) -> tuple[list[dict], l
         # 各ペアを独立タスクで走らせ、Overpass のサーキットブレーカ
         # （_overpass_circuit_broken は ContextVar）をペア間で持ち越さない。
         # FastAPI がリクエストごとにタスクを分けているのと同じ条件にする。
-        try:
-            pair = await asyncio.create_task(run_pair(od_row))
-        except Exception as e:
-            print(f"    ⚠ 失敗: {type(e).__name__}: {e}")
+        pair = None
+        pair_error = ""
+        for attempt in range(1, PAIR_MAX_ATTEMPTS + 1):
+            try:
+                pair = await asyncio.create_task(run_pair(od_row))
+                break
+            except Exception as e:
+                pair_error = f"{type(e).__name__}: {e}"
+                if attempt < PAIR_MAX_ATTEMPTS:
+                    print(f"    → 取得失敗（{attempt}/{PAIR_MAX_ATTEMPTS}）、{PAIR_RETRY_WAIT_S:.0f}秒後に再試行: {pair_error}")
+                    await asyncio.sleep(PAIR_RETRY_WAIT_S)
+        if pair is None:
+            print(f"    ⚠ 失敗: {pair_error}")
             pair_rows.append({
                 "label": label, "road_type": od_row.get("road_type", ""),
-                "error": f"{type(e).__name__}: {e}",
+                "error": pair_error,
                 "original_distance_m": None, "n_ways": 0, "n_segments": 0,
                 "n_oneway_ways": 0, "n_detected": 0, "n_fn": 0,
                 "using_edge_ids": None, "rerouted": None, "n_tag_missing": 0,
@@ -423,11 +445,48 @@ async def collect(od_rows: list[dict], interval_s: float) -> tuple[list[dict], l
         way_ids = sorted(pair["way_id_info"].keys())
 
         # Step 2: 通過 way のタグを取得（判定器と同じ関数・同じキャッシュを使う）
-        try:
-            tags_map = await asyncio.create_task(get_way_tags_by_ids(way_ids))
-        except Exception as e:
-            print(f"    ⚠ Overpass タグ取得に失敗: {e}")
-            tags_map = {}
+        tags_map = None
+        tag_error = ""
+        for attempt in range(1, PAIR_MAX_ATTEMPTS + 1):
+            try:
+                tags_map = await asyncio.create_task(get_way_tags_by_ids(way_ids))
+                break
+            except Exception as e:
+                tag_error = f"{type(e).__name__}: {e}"
+                if attempt < PAIR_MAX_ATTEMPTS:
+                    print(f"    → タグ取得失敗（{attempt}/{PAIR_MAX_ATTEMPTS}）、{PAIR_RETRY_WAIT_S:.0f}秒後に再試行: {tag_error}")
+                    await asyncio.sleep(PAIR_RETRY_WAIT_S)
+        if tags_map is None:
+            print(f"    ⚠ Overpass タグ取得に失敗: {tag_error}")
+            pair_rows.append({
+                "label": label, "road_type": od_row.get("road_type", ""),
+                "error": tag_error,
+                "original_distance_m": pair["original_distance_m"],
+                "n_ways": len(way_ids), "n_segments": pair["n_segments"],
+                "n_oneway_ways": 0, "n_detected": 0, "n_fn": 0,
+                "using_edge_ids": pair["using_edge_ids"],
+                "rerouted": pair["rerouted"], "n_tag_missing": len(way_ids),
+            })
+            continue
+
+        missing_way_ids = [wid for wid in way_ids if wid not in tags_map]
+        if missing_way_ids:
+            error = (
+                f"Overpass returned no data for {len(missing_way_ids)} way IDs: "
+                + ",".join(str(wid) for wid in missing_way_ids[:10])
+            )
+            print(f"    ⚠ {error}")
+            pair_rows.append({
+                "label": label, "road_type": od_row.get("road_type", ""),
+                "error": error,
+                "original_distance_m": pair["original_distance_m"],
+                "n_ways": len(way_ids), "n_segments": pair["n_segments"],
+                "n_oneway_ways": 0, "n_detected": 0, "n_fn": 0,
+                "using_edge_ids": pair["using_edge_ids"],
+                "rerouted": pair["rerouted"],
+                "n_tag_missing": len(missing_way_ids),
+            })
+            continue
 
         n_oneway = 0
         n_fn = 0
@@ -527,6 +586,7 @@ def write_csv(fn_candidates: list[dict]) -> None:
                 "cycleway": c["tags"].get("cycleway", ""),
                 "using_edge_ids": c["using_edge_ids"],
                 "diagnosis_detail": c["diagnosis_detail"],
+                "overpass_endpoint": c["overpass_endpoint"],
                 "match_way_id": c["match_way_id"],
                 "match_dist_m": c["match_dist_m"],
                 "match_margin_m": c["match_margin_m"],
@@ -578,6 +638,12 @@ def build_markdown(gh_info: dict, started_at: str, pair_rows: list[dict],
     a("")
     a("生成スクリプト: `backend/scripts/extract_fn_candidates.py`  ")
     a(f"明細CSV: `backend/data/{OUT_CSV.name}`")
+    a(f"Overpass取得時点: `{get_overpass_snapshot_date() or 'LIVE'}`")
+    a("")
+    a("| endpoint | 判定対象 | 成功クエリ | 失敗試行 |")
+    a("|---|---:|---:|---:|")
+    for name, values in get_overpass_usage_stats().items():
+        a(f"| {name} | {values['decision_units']} | {values['queries']} | {values['failed_attempts']} |")
     a("")
 
     # ---- A ---------------------------------------------------------------
@@ -812,6 +878,13 @@ def build_markdown(gh_info: dict, started_at: str, pair_rows: list[dict],
 
 
 async def main(labels: list[str] | None, interval_s: float) -> int:
+    settings = activate_experiment_overpass_date()
+    reset_overpass_usage_stats()
+    print(
+        "実験用Overpass取得時点: "
+        f"{settings['overpass_snapshot_date']} "
+        f"(GraphHopper: {settings['graphhopper_data_date']})"
+    )
     with open(OD_PAIRS_CSV, encoding="utf-8", newline="") as f:
         od_rows = list(csv.DictReader(f))
     od_total = len(od_rows)
@@ -837,6 +910,18 @@ async def main(labels: list[str] | None, interval_s: float) -> int:
     finally:
         await close_client()
 
+    err_pairs = [p for p in pair_rows if p["error"]]
+    print(
+        f"\n[実行サマリ] 成功={len(pair_rows) - len(err_pairs)}件 "
+        f"/ 失敗={len(err_pairs)}件"
+    )
+    print(format_overpass_usage_summary())
+    if err_pairs:
+        for pair in err_pairs:
+            print(f"  - {pair['label']}: {pair['error']}")
+        print("⚠ 部分結果は既存のFN出力へ書き込みません。")
+        return 1
+
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     write_csv(fn_candidates)
     OUT_MD.write_text(
@@ -853,9 +938,6 @@ async def main(labels: list[str] | None, interval_s: float) -> int:
     print(f"  FN候補: {len(fn_candidates)}")
     for r in FN_REASONS:
         print(f"    {r}: {counts[r]}")
-    if any(p["error"] for p in pair_rows):
-        print("  ⚠ 失敗したペアがあります。レポート末尾を確認してください。")
-        return 1
     return 0
 
 

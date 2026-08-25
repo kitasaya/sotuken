@@ -47,6 +47,90 @@ docker inspect israelhikingmap/graphhopper:11.0 --format '{{range .RepoDigests}}
 | edges / nodes | 5,151,885 / 3,795,369 |
 | `/info` の応答 | `version: 11.0`, `data_date: 2026-08-01T20:21:21Z` |
 
+### 2026-08-24 全実験再実行
+
+8/1基準グラフへの固定後、R2、マージン分布、FN候補抽出、ground truthテンプレートを
+再実行した。詳細と旧記録との差分は
+[`../backend/data/rerun_260801_summary.md`](../backend/data/rerun_260801_summary.md) を参照。
+
+| 再生成ファイル | 内容 |
+|---|---|
+| `backend/data/google_comparison.csv` | 15ペアのsystem 4列とGoogle採点列 |
+| `backend/data/fix_verification_v2.md` | マージン分布・曖昧率・15ペア再確認 |
+| `backend/data/verify_match_margin_points.csv` | 379判定点のマッチング明細 |
+| `backend/data/verify_v2_analyze_route.csv` | 15ペアの `analyze_route(v3)` 明細 |
+| `backend/data/fn_candidates_oneway.md` | FN候補抽出レポート |
+| `backend/data/fn_candidates_oneway.csv` | FN候補253件の明細 |
+| `backend/data/ground_truth_template.csv` | 人手判定用テンプレート（17行） |
+| `backend/data/rerun_260801_summary.md` | 再実行記録・旧記録との差分・既知18検出点の追跡 |
+
+再実行時の確認値:
+
+- `datareader.data.date=2026-08-01T20:21:21Z`
+- R2 system違反11件、Google採点14件（oneway 12 / two-step 2）
+- 曖昧率188/379 = 49.6%
+- FN診断対象253件（自転車除外15、順走238、要人手確認0）
+- 現地確認済み18検出点（16 unique way）は6/4→8/1でway version・対象タグ・ノード列の変更0件
+
+**初回再実行時の注意（現在は解消済み）:** GraphHopperの経路グラフは8/1 PBFに固定されているが、当時のコードの
+Overpass取得には日付指定がない。この再実行の判定用タグ・geometryは実行日
+（2026-08-24）のlive OSMから取得した。既知16 wayのみ、公式OSM履歴と8/1時点の
+Overpass履歴照会を追加実施し、6/4→8/1に変更がないことを確認した。
+
+### 2026-08-24 判定用Overpassの時点固定修正
+
+上記の「経路グラフは8/1、判定タグは実行日のlive」という時点差を解消した。
+実験用設定は [`../backend/data/experiment_settings.json`](../backend/data/experiment_settings.json)
+に置き、次の2値を同一にする。値が異なる場合、実験スクリプトは開始時に失敗する。
+
+| 設定 | 現在値 |
+|---|---|
+| `graphhopper_data_date` | `2026-08-01T20:21:21Z` |
+| `overpass_snapshot_date` | `2026-08-01T20:21:21Z` |
+
+取得モードは次の2つである。
+
+- **実験モード:** `score_google_routes.py`、`verify_match_margin.py`、
+  `extract_fn_candidates.py` が上記設定を読み、クエリに
+  `[date:"2026-08-01T20:21:21Z"]` を付ける。
+- **実運用モード:** FastAPI通常起動では実験設定を読み込まない。
+  環境変数 `OVERPASS_SNAPSHOT_DATE` が未指定ならlive OSMを参照する。
+  必要な場合だけ同環境変数で任意の履歴日時へ固定できる。
+
+#### 使用エンドポイント
+
+8/1時点のway `138533178`を使った事前確認結果に基づき、次の2系統だけを使用する。
+
+| endpoint | 8/1 attic実動確認 | 単一wayテスト所要時間 |
+|---|---|---:|
+| `https://overpass-api.de/api/interpreter` | 成功 | 約10.3秒 |
+| `https://maps.mail.ru/osm/tools/overpass/api/interpreter` | 成功 | 約18.6秒 |
+
+旧3系統目の `overpass.kumi.systems` は通常・atticともHTTP 500/502となり、
+後継と案内されている `overpass.private.coffee` もatticテストがHTTP 500だった。
+実動確認できない系統を増やすより、確認済み2系統へ限定する方針とした。
+
+取得結果には使用endpointを記録し、各実験の標準出力・明細・再実行報告に
+endpoint別の判定対象数、成功クエリ数、失敗試行数を残す。両系統が失敗した場合は
+`OverpassUnavailableError` としてペア全体を失敗させ、タグ空欄や違反0件として継続しない。
+一部失敗時は成果物を上書きせず、成功件数・失敗件数を表示して非ゼロ終了する。
+
+速度対策として、点ベース採点は1ルートの全判定点をUnionクエリで一括取得し、
+edge_idベース採点は1ルートの全way IDを1クエリで取得する。wayタグのLRUキャッシュは
+`(取得日時, way_id)` をキーとし、liveと履歴タグの混在を防ぎながらFN抽出の再取得を省く。
+379判定点を379回逐次問い合わせる実装ではない。
+
+修正後、R2、マージン分布、FN候補抽出を8/1 atticタグで再実行した。
+
+- R2 system: 15/15成功、違反11件
+- R2 Google: 15/15成功、違反14件（oneway 12 / two-step 2）
+- マージン: 188/379点 = 49.6%
+- FN候補: 253件（タグ欠落0、要人手確認0）
+- 8/24 liveタグ版からの数値差: なし
+
+詳細は [`../backend/data/rerun_260801_summary.md`](../backend/data/rerun_260801_summary.md)
+を参照。
+
 ---
 
 ## 履歴
