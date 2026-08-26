@@ -1,0 +1,17 @@
+﻿scope,metric,value
+all_379,n,379
+all_379,min,0.002
+all_379,p25,0.338
+all_379,median,0.781
+all_379,p75,1.389
+all_379,p95,2.97
+all_379,max,9.889
+all_379,mean,1.055
+margin_ge_10m,n,38
+margin_ge_10m,min,0.012
+margin_ge_10m,p25,0.294
+margin_ge_10m,median,0.653
+margin_ge_10m,p75,1.739
+margin_ge_10m,p95,3.827
+margin_ge_10m,max,5.229
+margin_ge_10m,mean,1.215

@@ -1,0 +1,9 @@
+﻿scope,pattern,count,pct_within_scope
+all,(a) 同一道路の分離ウェイ,11,2.9
+all,(b) 車道と並走する歩道・自転車道,64,16.89
+all,(c) 交差点付近の交差・接続way,288,75.99
+all,(d) その他,16,4.22
+margin_lt_2m,(a) 同一道路の分離ウェイ,4,2.13
+margin_lt_2m,(b) 車道と並走する歩道・自転車道,11,5.85
+margin_lt_2m,(c) 交差点付近の交差・接続way,169,89.89
+margin_lt_2m,(d) その他,4,2.13
