@@ -140,7 +140,7 @@ async def main():
     n_groundtruth_points = len(rows)
 
     # --- 追加検証: 40m間隔リサンプリングの実走査で偽陽性が観測された3点
-    # （R2-auto 実地検証で way_id レベルまで原因特定済み）。修正前(_is_way_misaligned 導入前)の
+    # （R2-auto の検証で way_id レベルまで原因特定済み）。修正前(_is_way_misaligned 導入前)の
     # 挙動と修正後を同じ3点で再照合する。ground_truth.csv には oneway=True の正例が無いため、
     # この3点をベースライン表の oneway 正例（の裏返し=FP源）として別途含める。
     fp_points = [

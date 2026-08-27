@@ -456,8 +456,8 @@ async def get_bulk_way_data(points: list, radius: int = 20) -> list[dict]:
           "geometry": [[lon, lat], ...],
           "match_way_id": int | None,      # rank1 の way id
           "match_dist_m": float | None,    # rank1 の垂線距離（m）
-          "match_margin_m": float | None,  # rank1 と rank2 の垂線距離差（m）
-          "match_ambiguous": bool,         # マージンが MATCH_AMBIGUOUS_MARGIN_M 未満
+          "match_margin_m": float | None,  # way ID重複除去後のrank1と次点wayの垂線距離差（m）
+          "match_ambiguous": bool,         # 次点wayとの幾何的近接フラグ。対応信頼度ではない
         }
 
     Union構文で全座標を一括取得し、各座標について **点から way の線分への垂線距離**

@@ -67,7 +67,7 @@ Algorithm 2はpoint-to-curveにheadingを加え、Algorithm 3はさらに接続�
 
 > Quddus et al.（2007）はマップマッチングをgeometric、topological、probabilistic、advancedの4群に整理しており、White et al.（2000）が扱うpoint-to-point、point-to-curve、curve-to-curveは、このうち古典的な幾何方式内の区分である。本研究の旧実装はway上のノードへの距離を用いる点でpoint-to-pointに、現行実装はwayを構成する有限線分への最小距離を用いる点でpoint-to-curveに相当する。ただし単純point-to-curveも近接する並行道路では対応先が振動しうる[White et al., 2000, p.96]。
 
-> 旧方式で現地確認した18検出点の診断では、主たる原因として分離wayの誤対応を7事例で同定した。現行方式への変更後、5事例は非検出となったが2事例は残存した。この結果は本研究データ上の実測であり、White et al.（2000）の一般的結論には帰属させない。
+> 旧方式で検出しストリートビュー画像を目視確認した18検出点の診断では、主たる原因として分離wayの誤対応を7事例で同定した。現行方式への変更後、5事例は非検出となったが2事例は残存した。この結果は本研究データ上の実測であり、White et al.（2000）の一般的結論には帰属させない。
 
 ## 6. 芋づる式に辿れる文献
 

@@ -181,7 +181,7 @@ async def score_external_route(coords: list, *, sample_interval_m: float = 40.0)
 
     # ③.5 oneway 限定：最近傍マッチが travel_vector と大きく食い違う（交差する別 way を
     # 誤って拾った）場合はタグを無効化し、check_oneway_violation に渡さない。
-    # 座標逆引き方式に内在する誤マッチ対策（R2-auto 実地検証で確認・way_id レベルで原因特定済み）。
+    # 座標逆引き方式に内在する誤マッチ対策（R2-auto の検証で確認・way_id レベルで原因特定済み）。
     oneway_tags_list = [
         {} if _is_way_misaligned(geom, tv) else tags
         for tags, geom, tv in zip(tags_list, geometries, travel_vectors)

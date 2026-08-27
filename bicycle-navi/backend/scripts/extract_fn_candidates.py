@@ -763,7 +763,7 @@ def build_markdown(gh_info: dict, started_at: str, pair_rows: list[dict],
     a("## D. 人手確認が必要なFN候補の一覧")
     a("")
     a("この表がそのまま人手判定の作業リストになる。`osm_url` を開き、"
-      "現地（Street View）と OSM タグを突き合わせて真の見逃しかどうかを判定する。")
+      "Street View画像上の標識・道路状況と OSM タグを突き合わせて真の見逃しかどうかを判定する。")
     a("")
     if not manual:
         a("**該当なし。** 全FN候補が `bicycle_exempt` / `forward_travel`"
@@ -841,8 +841,8 @@ def build_markdown(gh_info: dict, started_at: str, pair_rows: list[dict],
     a("**この値の読み方（注意）：**")
     a("")
     a("- 分子の D は「検出された件数」であり、**真陽性の件数ではない**。"
-      "現地確認で偽陽性と判明した分だけ分子は下がる。R1 の Precision 側"
-      "（現地確認済みの分類）を確定させてから改めて計算すること。")
+      "Street View画像等の独立確認で偽陽性と判明した分だけ分子は下がる。R1 の Precision 側"
+      "（独立確認済みの分類）を確定させてから改めて計算すること。")
     a("- 分母は **OSM に `oneway` タグがある way に限定**されている。"
       "「現地は一方通行だがタグがない」道（限界1・A群と同じ構造）は最初から"
       "母集団に入らないため、この Recall は現実基準の Recall の**上限側**に偏る。")
