@@ -9,21 +9,21 @@
 A. Hackeloeer, K. Klasing, J. M. Krisp, and L. Meng, “Comparison of Point Matching Techniques for Road Network Matching,” *The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences*, XL-2/W1, pp.87–92, 2013. DOI: 10.5194/isprsarchives-XL-2-W1-87-2013.
 
 - 確認経路：著者公開のCC BY全文
-- 個別ノート：`精読ノート_Hackeloeerほか2013.md`
+- 個別ノート：`docs/文献/精読ノート/精読ノート_Hackeloeerほか2013.md`
 
 ### Volz（2006）
 
 Steffen Volz, “An Iterative Approach for Matching Multiple Representations of Street Data,” *The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences*, XXXVI-2/W40, pp.101–110, 2006.
 
 - 確認経路：ResearchGateの著者公開全文テキスト、ISPRSアーカイブの一次書誌
-- 個別ノート：`精読ノート_Volz2006.md`
+- 個別ノート：`docs/文献/精読ノート/精読ノート_Volz2006.md`
 
 ### Yang et al.（2013）
 
 Bisheng Yang, Yunfei Zhang, and Xuechen Luan, “A Probabilistic Relaxation Approach for Matching Road Networks,” *International Journal of Geographical Information Science*, 27(2), pp.319–338, 2013. DOI: 10.1080/13658816.2012.683486.
 
 - 確認経路：ResearchGate公開全文、武漢大学の著者所属ページ
-- 個別ノート：`精読ノート_Yangほか2013.md`
+- 個別ノート：`docs/文献/精読ノート/精読ノート_Yangほか2013.md`
 - 出版社サイトへの自動アクセス・出版社PDF取得は行っていない。
 
 ## 2. 書誌・要旨のみ確認し、本文未取得の文献

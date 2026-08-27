@@ -50,7 +50,7 @@ ambiguous = margin is not None and margin < MATCH_AMBIGUOUS_MARGIN_M
 
 ### 2.3 距離の単位
 
-`_point_to_way_dist_m`はwayを構成する全有限線分への距離の最小値を返す（同ファイル400–406行）。`match_margin_m`はこのメートル距離同士の差である。詳細な線分距離・座標変換は `実装確認_最近傍way選択.md` を参照。
+`_point_to_way_dist_m`はwayを構成する全有限線分への距離の最小値を返す（同ファイル400–406行）。`match_margin_m`はこのメートル距離同士の差である。詳細な線分距離・座標変換は `docs/分析/実装確認_最近傍way選択.md` を参照。
 
 ## 3. 実データ検算
 
