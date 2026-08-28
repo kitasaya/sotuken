@@ -3,6 +3,10 @@
 日本の交通法規に準拠した自転車ナビゲーションシステム。
 卒業研究（青山学院大学・宮治研究室）のシステム実装プロジェクト。
 
+2026-08-28以後の測定値の正は `../docs/測定結果_凍結版.md` と
+`backend/data/measurement_freeze_20260828.csv` である。以下の旧CSV名は実装史・再生成先としてのみ読み、削減済み中間出力が必要な場合はtag
+`measurement-freeze-20260828`を参照する。
+
 実装の主要フェーズ（機能実装・性能向上・UI改善）はほぼ完了し、
 現在は **評価データの収集と論文執筆** を中心とするフェーズに移行している。
 
@@ -81,7 +85,7 @@
   **未検証の新規検出が3件増え**、**切替37点の垂線距離が中央値+3.97m・最大+125.4m 悪化**
   した（`0.144m の footway` → `125.54m の primary` が最悪例）。候補が0本になる
   フォールバックは一度も発動せず、遠方の車道を拾い続けるため歯止めが効かない。
-  詳細は `RESEARCH.md` 21.13節・`backend/data/dryrun_nonroad_filter.md`。
+  詳細は `RESEARCH.md` 21.13節。削減前の明細はtag `measurement-freeze-20260828`。
   再検討したくなった場合は、まずこの実測を読むこと
 - **最近傍 way 選択に進行方向（travel_vector との角度）を使わない**
   （測定対象が「進行方向が逆か＝逆走」であるため、方向で候補を選ぶと循環論法になる。
@@ -245,7 +249,7 @@ Claude Code 側の残タスクは現時点でなし。
   ground_truth.csv はルーティングロジック変更（F1修正等）で前提が古くなったため
   2026-07-10 に破棄。下準備として `backend/scripts/prepare_ground_truth.py`
   （Claude Code 実装）で15O-Dペア全件の `way_id`/座標/OSM生タグを抽出した
-  `backend/data/ground_truth_template.csv` を生成済み。次は Masaya がこのテンプレートを
+  `backend/data/ground_truth.csv` を現行候補表として再構築済み。次は Masaya がこの表を
   見ながら `true_oneway_violation`/`true_two_step_required` を人手判定し
   `ground_truth.csv` にリネームする作業。
 - **R2：google_comparison.csv の記入** — **完了（2026-07-07）**。Google Maps の距離・時間、

@@ -1,8 +1,0 @@
-﻿point_id,feature_way_id,distance_from_point_m,feature_tags
-P02,204339317,17.686,barrier=guard_rail
-P02,204339601,16.158,barrier=guard_rail
-P02,204339621,19.481,barrier=guard_rail
-P02,281216406,10.202,barrier=guard_rail
-P11,24398923,13.915,railway=rail
-P11,399827726,17.515,railway=rail
-P14,1123050668,6.062,barrier=hedge

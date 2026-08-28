@@ -49,19 +49,16 @@ docker inspect israelhikingmap/graphhopper:11.0 --format '{{range .RepoDigests}}
 
 ### 2026-08-24 全実験再実行
 
-8/1基準グラフへの固定後、R2、マージン分布、FN候補抽出、ground truthテンプレートを
-再実行した。詳細と旧記録との差分は
-[`../backend/data/rerun_260801_summary.md`](../backend/data/rerun_260801_summary.md) を参照。
+8/1基準グラフへの固定後、R2、マージン分布、FN候補抽出、ground truth候補表を
+再実行した。2026-08-28の正は `../../docs/測定結果_凍結版.md`、削減前の中間出力は
+tag `measurement-freeze-20260828` を参照する。
 
 | 再生成ファイル | 内容 |
 |---|---|
-| `backend/data/google_comparison.csv` | 15ペアのsystem 4列とGoogle採点列 |
-| `backend/data/fix_verification_v2.md` | マージン分布・曖昧率・15ペア再確認 |
-| `backend/data/verify_match_margin_points.csv` | 379判定点のマッチング明細 |
+| `backend/data/measurement_freeze_20260828.csv` | 8指標の機械可読な正 |
+| `backend/data/measurement_freeze_od_20260828.csv` | R1入力座標とR2 polyline端点 |
 | `backend/data/verify_v2_analyze_route.csv` | 15ペアの `analyze_route(v3)` 明細 |
-| `backend/data/fn_candidates_oneway.md` | FN候補抽出レポート |
-| `backend/data/fn_candidates_oneway.csv` | FN候補253件の明細 |
-| `backend/data/ground_truth_template.csv` | 人手判定用テンプレート（17行） |
+| `backend/data/ground_truth.csv` | 現行候補表（17行、人手真値は未入力） |
 | `backend/data/rerun_260801_summary.md` | 再実行記録・旧記録との差分・既知18検出点の追跡 |
 
 再実行時の確認値:
