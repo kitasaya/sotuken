@@ -1549,3 +1549,26 @@ highway 種別という幾何外の基準でも解決しない。
 d1中央値は全点0.781m、margin 10m以上では0.653mであり、数m規模の系統オフセット仮説は
 支持されなかった。2mはd1から導かず、量子化上限約1.437mを上回り偽の違反断定を避ける
 保守的な運用値として扱う。
+
+---
+
+## バッチ15：方向照合の事前検証（2026-08-28）
+
+判定ロジックを変更せず、実装前の分析だけを実施した。
+
+- 新宿→池袋について、`google_comparison.csv` に `rerouted` 列がないことを確認。
+  実値の出典である `verify_v2_analyze_route.csv` では `False`
+- アプリと同じNominatimで「新宿駅」「池袋駅」を検索すると、実験ODから
+  315.326m・205.715m離れたため、実動作確認とCSVは別ODとして扱うと判断
+- 旧方式16way・18点＋現行方式の新規2way・2点について、raw polylineの進行方向と
+  rank1/rank2の最近傍局所線分の方向差を算出
+- B群rank1は0.408–174.722°、C群は169.909–179.578°で範囲が重なり、判定は **(b)**
+- rank1/rank2の90°組み合わせでもB群とC群が重なったため、方向照合は不採用
+- 直接参照するpolyline点が5m未満の対象は0/20点
+
+成果物は `scripts/analyze_od_geocode_mismatch.py`、
+`scripts/analyze_direction_difference.py`、`data/od_geocode_mismatch.json`、
+`data/direction_difference_points.csv`、`data/direction_difference_summary.json`、
+`data/direction_difference_distribution.png`。分析文書は
+`docs/分析/分析_OD不整合.md` と `docs/分析/分析_方向差分布.md`。
+`docs/構成/実装方針_方向照合.md` は、判定が (b) のため作成していない。

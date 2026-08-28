@@ -1,0 +1,93 @@
+{
+  "population": {
+    "description": "旧方式で16way・18点＋現行方式で新規に検出した2way・2点（計18way・20点）",
+    "A": 6,
+    "B": 10,
+    "C": 4
+  },
+  "direction_rule": "raw polylineの直前点→当該点。始点は当該点→直後点。直接参照点が5m未満なら同じ方向へ外側の点まで延長",
+  "nearest_segment_rule": "services.overpass._point_to_way_dist_mで最短の局所線分",
+  "percentile_rule": "sorted values, linear interpolation at (n-1)*p",
+  "stats": {
+    "A": {
+      "rank1": {
+        "n": 6,
+        "min": 1.104,
+        "p25": 23.038,
+        "median": 126.029,
+        "p75": 173.639,
+        "max": 178.519
+      },
+      "rank2": {
+        "n": 6,
+        "min": 79.615,
+        "p25": 96.318,
+        "median": 118.243,
+        "p75": 161.948,
+        "max": 176.339
+      }
+    },
+    "B": {
+      "rank1": {
+        "n": 10,
+        "min": 0.408,
+        "p25": 1.726,
+        "median": 8.634,
+        "p75": 164.214,
+        "max": 174.722
+      },
+      "rank2": {
+        "n": 10,
+        "min": 0.614,
+        "p25": 11.481,
+        "median": 72.269,
+        "p75": 174.851,
+        "max": 179.37
+      }
+    },
+    "C": {
+      "rank1": {
+        "n": 4,
+        "min": 169.909,
+        "p25": 176.091,
+        "median": 178.653,
+        "p75": 179.261,
+        "max": 179.578
+      },
+      "rank2": {
+        "n": 4,
+        "min": 1.456,
+        "p25": 21.726,
+        "median": 80.18,
+        "p75": 135.87,
+        "max": 147.845
+      }
+    }
+  },
+  "rank1_B_C_ranges_overlap": true,
+  "B3_decision": "(b)",
+  "extended_direction_point_count": 0,
+  "direct_neighbor_under_5m_count": 0,
+  "quadrant_counts_at_90_deg": {
+    "A": {
+      "rank1_ge_90_rank2_lt_90": 0,
+      "rank1_ge_90_rank2_ge_90": 3,
+      "rank1_lt_90_rank2_lt_90": 1,
+      "rank1_lt_90_rank2_ge_90": 2
+    },
+    "B": {
+      "rank1_ge_90_rank2_lt_90": 3,
+      "rank1_ge_90_rank2_ge_90": 1,
+      "rank1_lt_90_rank2_lt_90": 2,
+      "rank1_lt_90_rank2_ge_90": 4
+    },
+    "C": {
+      "rank1_ge_90_rank2_lt_90": 2,
+      "rank1_ge_90_rank2_ge_90": 2,
+      "rank1_lt_90_rank2_lt_90": 0,
+      "rank1_lt_90_rank2_ge_90": 0
+    }
+  },
+  "csv": "backend/data/direction_difference_points.csv",
+  "image": "backend/data/direction_difference_distribution.png"
+}
