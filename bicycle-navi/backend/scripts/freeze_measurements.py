@@ -26,7 +26,6 @@ DATA = BACKEND / "data"
 GOOGLE_INPUT = DATA / "google_routes_input.csv"
 OD_PAIRS = DATA / "od_pairs.csv"
 GOOGLE_COMPARISON = DATA / "google_comparison.csv"
-DISPLAY_DISTANCES = DATA / "route_display_distances_freeze_20260828.csv"
 R1_ROUTES = DATA / "verify_v2_analyze_route.csv"
 MARGIN_POINTS = DATA / "verify_match_margin_points.csv"
 DECISION_POINTS = DATA / "decision_ambiguity_points.csv"
@@ -256,17 +255,16 @@ def main() -> None:
         detail="検出1 + 未検出診断253。unique wayは238",
         source_input="measurement-freeze-20260828:fn_candidates_oneway.csv")
 
-    # 距離のみ。Google Maps表示距離と本システム返却距離を使う。
-    display_by_label = {row["label"]: row for row in load_csv(DISPLAY_DISTANCES)}
+    # 距離は同一エンジン・同一OD・同一設定で、法規制約の有無だけを変えて比較する。
     for route in r1_rows:
-        r1_distance = float(route["new_distance_m"])
-        google_distance = float(display_by_label[route["label"]]["google_display_distance_m"])
-        diff = r1_distance - google_distance
-        add(rows, 5, "pair", "本システム返却距離−Google表示距離", value=f"{diff:.1f}", unit="m",
+        unconstrained = float(route["new_original_distance_m"])
+        constrained = float(route["new_distance_m"])
+        diff = constrained - unconstrained
+        add(rows, 5, "pair", "法規制約による距離差", value=f"{diff:.1f}", unit="m",
             label=route["label"], road_type=route["road_type"],
-            detail=(f"本システム={r1_distance:.1f}m; Google表示={google_distance:.1f}m; "
+            detail=(f"制約なし={unconstrained:.1f}m; 法規準拠={constrained:.1f}m; "
                     f"差={diff:.1f}m"),
-            source_input="route_display_distances_freeze_20260828.csv")
+            source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
     reroute_diffs = [float(row["new_distance_diff_m"]) for row in r1_rows]
     add(rows, 5, "summary", "R1内部のリルート距離差ゼロ", value=sum(d == 0 for d in reroute_diffs),
         numerator=sum(d == 0 for d in reroute_diffs), denominator=15, unit="pair",

@@ -57,7 +57,6 @@ tag `measurement-freeze-20260828` を参照する。
 |---|---|
 | `backend/data/measurement_freeze_20260828.csv` | 8指標の機械可読な正 |
 | `backend/data/measurement_freeze_od_20260828.csv` | R1入力座標とR2 polyline端点 |
-| `backend/data/route_display_distances_freeze_20260828.csv` | Google Maps表示距離と本システム返却距離。Google値はcommit `cb14177`から抽出 |
 
 再実行時の確認値:
 

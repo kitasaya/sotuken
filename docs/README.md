@@ -23,7 +23,6 @@
 - 人が読む正：`docs/測定結果_凍結版.md`
 - 機械可読の正：`bicycle-navi/backend/data/measurement_freeze_20260828.csv`
 - OD座標：`bicycle-navi/backend/data/measurement_freeze_od_20260828.csv`
-- Google表示距離と本システム返却距離：`bicycle-navi/backend/data/route_display_distances_freeze_20260828.csv`
 - 固定入力：`google_routes_input.csv`、`od_pairs.csv`、`experiment_settings.json`、`kanto-260801.osm.pbf`
 - 削減前の再測定中間出力：tag `measurement-freeze-20260828`
 
