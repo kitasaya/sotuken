@@ -49,7 +49,7 @@ docker inspect israelhikingmap/graphhopper:11.0 --format '{{range .RepoDigests}}
 
 ### 2026-08-24 全実験再実行
 
-8/1基準グラフへの固定後、R2、マージン分布、FN候補抽出、ground truth候補表を
+8/1基準グラフへの固定後、R2、マージン分布、FN候補抽出を
 再実行した。2026-08-28の正は `../../docs/測定結果_凍結版.md`、削減前の中間出力は
 tag `measurement-freeze-20260828` を参照する。
 
@@ -57,9 +57,7 @@ tag `measurement-freeze-20260828` を参照する。
 |---|---|
 | `backend/data/measurement_freeze_20260828.csv` | 8指標の機械可読な正 |
 | `backend/data/measurement_freeze_od_20260828.csv` | R1入力座標とR2 polyline端点 |
-| `backend/data/verify_v2_analyze_route.csv` | 15ペアの `analyze_route(v3)` 明細 |
-| `backend/data/ground_truth.csv` | 現行候補表（17行、人手真値は未入力） |
-| `backend/data/rerun_260801_summary.md` | 再実行記録・旧記録との差分・既知18検出点の追跡 |
+| `backend/data/route_display_distances_freeze_20260828.csv` | Google Maps表示距離と本システム返却距離。Google値はcommit `cb14177`から抽出 |
 
 再実行時の確認値:
 
@@ -125,8 +123,7 @@ edge_idベース採点は1ルートの全way IDを1クエリで取得する。wa
 - FN候補: 253件（タグ欠落0、要人手確認0）
 - 8/24 liveタグ版からの数値差: なし
 
-詳細は [`../backend/data/rerun_260801_summary.md`](../backend/data/rerun_260801_summary.md)
-を参照。
+凍結した結果と旧値との差分は`../../docs/測定結果_凍結版.md`を参照する。削減した再実行明細が必要な場合はtag `measurement-freeze-20260828`から取得する。
 
 ---
 

@@ -1,0 +1,16 @@
+label,road_type,google_display_distance_m,system_returned_distance_m,difference_m,google_display_source_commit,freeze_source_ref
+渋谷→新宿,幹線道路中心,3600.0,4439.5,839.5,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+東京→渋谷,幹線道路中心,7200.0,8242.5,1042.5,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+新宿→池袋,幹線道路中心,4600.0,5331.5,731.5,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+品川→東京,幹線道路中心,6900.0,7685.9,785.9,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+渋谷→六本木,幹線道路中心,2700.0,3409.2,709.2,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+下北沢→三軒茶屋,住宅街中心,2200.0,2233.1,33.1,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+高円寺→中野,住宅街中心,1500.0,1903.3,403.3,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+荻窪→阿佐ヶ谷,住宅街中心,1500.0,1428.8,-71.2,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+自由が丘→等々力,住宅街中心,2200.0,2105.7,-94.3,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+浦和→さいたま新都心,住宅街中心,4600.0,4427.7,-172.3,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+吉祥寺→三鷹,混在型,1700.0,3988.6,2288.6,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+立川→国分寺,混在型,7100.0,6758.4,-341.6,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+横浜→みなとみらい,混在型,1400.0,2697.6,1297.6,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+川崎→武蔵小杉,混在型,6500.0,8049.3,1549.3,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv
+千葉→幕張本郷,混在型,12200.0,8416.1,-3783.9,cb14177d9de373edd45502f618aca597564107f6,measurement-freeze-20260828:google_comparison.csv

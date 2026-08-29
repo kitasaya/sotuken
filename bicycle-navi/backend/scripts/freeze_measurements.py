@@ -6,13 +6,14 @@
 生成物:
   backend/data/measurement_freeze_20260828.csv
   backend/data/measurement_freeze_od_20260828.csv
-  backend/data/ground_truth.csv
 """
 
 from __future__ import annotations
 
 import csv
+import io
 import math
+import subprocess
 from collections import Counter
 from pathlib import Path
 from statistics import median
@@ -25,13 +26,12 @@ DATA = BACKEND / "data"
 GOOGLE_INPUT = DATA / "google_routes_input.csv"
 OD_PAIRS = DATA / "od_pairs.csv"
 GOOGLE_COMPARISON = DATA / "google_comparison.csv"
+DISPLAY_DISTANCES = DATA / "route_display_distances_freeze_20260828.csv"
 R1_ROUTES = DATA / "verify_v2_analyze_route.csv"
 MARGIN_POINTS = DATA / "verify_match_margin_points.csv"
 DECISION_POINTS = DATA / "decision_ambiguity_points.csv"
 DECISION_LAYER2 = DATA / "decision_ambiguity_layer2.csv"
 FN_CANDIDATES = DATA / "fn_candidates_oneway.csv"
-GT_TEMPLATE = DATA / "ground_truth_template.csv"
-GT_OUTPUT = DATA / "ground_truth.csv"
 OUTPUT = DATA / "measurement_freeze_20260828.csv"
 OD_OUTPUT = DATA / "measurement_freeze_od_20260828.csv"
 OLD_RECORD = ROOT / "docs" / "検証記録" / "検証記録_18点.md"
@@ -44,8 +44,17 @@ FIELDS = [
 
 
 def load_csv(path: Path) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8-sig", newline="") as stream:
-        return list(csv.DictReader(stream))
+    if path.exists():
+        with path.open(encoding="utf-8-sig", newline="") as stream:
+            return list(csv.DictReader(stream))
+    relative = path.relative_to(ROOT).as_posix()
+    content = subprocess.run(
+        ["git", "show", f"measurement-freeze-20260828:{relative}"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8-sig")
+    return list(csv.DictReader(io.StringIO(content)))
 
 
 def truthy(value: str) -> bool:
@@ -128,20 +137,6 @@ def percentile(values: list[float], p: float) -> float:
     return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
 
 
-def write_ground_truth() -> tuple[int, int, int]:
-    rows = load_csv(GT_TEMPLATE)
-    if GT_OUTPUT.exists():
-        existing = load_csv(GT_OUTPUT)
-        if any(r.get("true_oneway_violation") or r.get("true_two_step_required") for r in existing):
-            raise RuntimeError("ground_truth.csv contains human labels; refusing to overwrite")
-    with GT_OUTPUT.open("w", encoding="utf-8-sig", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-    detected = sum(bool(row["detected_rule"]) for row in rows)
-    return len(rows), len({row["label"] for row in rows}), detected
-
-
 def main() -> None:
     rows: list[dict[str, str]] = []
     groups, validation_ways = validation_groups()
@@ -210,8 +205,6 @@ def main() -> None:
 
     # R1の提示ルート。一方通行だけを対象とし、リルート後未採点の1ペアを明示する。
     r1_rows = load_csv(R1_ROUTES)
-    gt_template = load_csv(GT_TEMPLATE)
-    initial_oneway = Counter(row["label"] for row in gt_template if row["detected_rule"] == "oneway")
     measured_r1_labels = []
     for route in r1_rows:
         rerouted = truthy(route["rerouted"])
@@ -219,23 +212,23 @@ def main() -> None:
             add(rows, 2, "pair", "R1提示ルートの一方通行違反", value="", unit="count",
                 status="unmeasured", label=route["label"], road_type=route["road_type"],
                 detail="リルート後準拠ルートのgeometry未保存。Docker起動失敗のため再取得不可",
-                source_input="verify_v2_analyze_route.csv")
+                source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
         else:
-            count = initial_oneway[route["label"]]
+            count = int("oneway" in route["violation_types"].split(";"))
             measured_r1_labels.append(route["label"])
             add(rows, 2, "pair", "R1提示ルートの一方通行違反", value=count,
                 numerator=count, denominator=1, unit="count", label=route["label"],
                 road_type=route["road_type"], detail="rerouted=Falseのため提示ルート=判定済み初期ルート",
-                source_input="verify_v2_analyze_route.csv;ground_truth_template.csv")
+                source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
     add(rows, 2, "summary", "R1提示ルートの一方通行違反", value=0, numerator=0,
         denominator=len(measured_r1_labels), unit="count", status="partial",
         detail="14/15ペアを測定。横浜→みなとみらいは未測定",
-        source_input="verify_v2_analyze_route.csv;ground_truth_template.csv")
+        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
 
     # 違反ゼロペアはR1とR2を対称な精度比較として扱わず、定義別に記録する。
     add(rows, 3, "summary", "R1一方通行違反ゼロペア", value=14, numerator=14,
         denominator=14, unit="pair", status="partial", detail="測定済み14ペア内。1ペア未測定",
-        source_input="verify_v2_analyze_route.csv;ground_truth_template.csv")
+        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
     google_rows = load_csv(GOOGLE_COMPARISON)
     r2_zero_oneway = sum(int(row["google_oneway_violation_count"]) == 0 for row in google_rows)
     r2_zero_total = sum(int(row["google_total_violation_count"]) == 0 for row in google_rows)
@@ -261,31 +254,30 @@ def main() -> None:
     add(rows, 4, "summary", "タグ付きoneway通過", value=len(fn_rows) + 1,
         numerator=len(fn_rows) + 1, denominator=662, unit="traversal",
         detail="検出1 + 未検出診断253。unique wayは238",
-        source_input="fn_candidates_oneway.csv;rerun_260801_summary.md")
+        source_input="measurement-freeze-20260828:fn_candidates_oneway.csv")
 
-    # 距離のみ。R2は保存polylineの復号距離を使い、手入力の丸め距離は使わない。
-    google_by_label = {row["label"]: row for row in google_rows}
+    # 距離のみ。Google Maps表示距離と本システム返却距離を使う。
+    display_by_label = {row["label"]: row for row in load_csv(DISPLAY_DISTANCES)}
     for route in r1_rows:
-        google = google_by_label[route["label"]]
         r1_distance = float(route["new_distance_m"])
-        r2_distance = float(google["scorer_route_distance_m"])
-        diff = r1_distance - r2_distance
-        add(rows, 5, "pair", "R1・R2距離差", value=f"{diff:.1f}", unit="m",
+        google_distance = float(display_by_label[route["label"]]["google_display_distance_m"])
+        diff = r1_distance - google_distance
+        add(rows, 5, "pair", "本システム返却距離−Google表示距離", value=f"{diff:.1f}", unit="m",
             label=route["label"], road_type=route["road_type"],
-            detail=(f"R1={r1_distance:.1f}m; R2={r2_distance:.1f}m; "
-                    f"R1-R2={diff:.1f}m; R2分母差率={diff / r2_distance * 100:.1f}%"),
-            source_input="verify_v2_analyze_route.csv;google_comparison.csv")
+            detail=(f"本システム={r1_distance:.1f}m; Google表示={google_distance:.1f}m; "
+                    f"差={diff:.1f}m"),
+            source_input="route_display_distances_freeze_20260828.csv")
     reroute_diffs = [float(row["new_distance_diff_m"]) for row in r1_rows]
     add(rows, 5, "summary", "R1内部のリルート距離差ゼロ", value=sum(d == 0 for d in reroute_diffs),
         numerator=sum(d == 0 for d in reroute_diffs), denominator=15, unit="pair",
-        source_input="verify_v2_analyze_route.csv")
+        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
     yokohama = next(row for row in r1_rows if row["label"] == "横浜→みなとみらい")
     original = float(yokohama["new_original_distance_m"])
     reroute_diff = float(yokohama["new_distance_diff_m"])
     add(rows, 5, "summary", "R1内部のリルート距離増", value=f"{reroute_diff:.1f}",
         numerator=f"{reroute_diff:.1f}", denominator=f"{original:.1f}", unit="m",
         label=yokohama["label"], detail=f"{reroute_diff / original * 100:.1f}%",
-        source_input="verify_v2_analyze_route.csv")
+        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
 
     # 曖昧性の三段階。
     decision_rows = load_csv(DECISION_POINTS)
@@ -321,11 +313,9 @@ def main() -> None:
         add(rows, 7, "threshold", f"現行oneway 12点:判定不能<{threshold:.1f}m", value=detected_count,
             numerator=detected_count, denominator=12, unit="point", source_input="verify_match_margin_points.csv")
 
-    gt_rows, gt_labels, gt_detected = write_ground_truth()
-    add(rows, 8, "summary", "ground_truth.csv再構築行", value=gt_rows, numerator=gt_rows,
-        denominator=gt_labels, unit="row", status="candidate_only",
-        detail=f"15ラベル、検出候補{gt_detected}行。true_*は人手未入力のため精度指標は未測定",
-        source_input="ground_truth_template.csv")
+    add(rows, 8, "summary", "検出結果の真偽検証", value="実施", unit="method",
+        detail="検出された全点をStreet Viewで確認。Precision・Recall・F1による評価は行わない",
+        source_input="検証記録_18点.md;検証記録_新規2点.md")
 
     with OUTPUT.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS)
@@ -334,7 +324,6 @@ def main() -> None:
 
     print(f"wrote {OUTPUT}: {len(rows)} data rows")
     print(f"wrote {OD_OUTPUT}: {len(od_output_rows)} data rows")
-    print(f"wrote {GT_OUTPUT}: {gt_rows} data rows; human truth labels remain blank")
 
 
 if __name__ == "__main__":

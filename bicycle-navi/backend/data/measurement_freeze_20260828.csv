@@ -17,23 +17,23 @@
 1,group_summary,,,R2 oneway C群,4,4,12,point,measured,,検証記録_18点.md;検証記録_新規2点.md
 1,summary,,,R2 two_step_turn検出点,2,2,23,point,measured,,decision_ambiguity_layer2.csv
 1,summary,,,R2検出合計,14,,,point,measured,oneway 12点とtwo_step_turn 2点は分母が異なるため単一率にしない,verify_match_margin_points.csv;decision_ambiguity_layer2.csv
-2,pair,渋谷→新宿,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,東京→渋谷,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,新宿→池袋,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,品川→東京,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,渋谷→六本木,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,下北沢→三軒茶屋,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,高円寺→中野,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,荻窪→阿佐ヶ谷,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,自由が丘→等々力,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,浦和→さいたま新都心,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,吉祥寺→三鷹,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,立川→国分寺,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,横浜→みなとみらい,混在型,R1提示ルートの一方通行違反,,,,count,unmeasured,リルート後準拠ルートのgeometry未保存。Docker起動失敗のため再取得不可,verify_v2_analyze_route.csv
-2,pair,川崎→武蔵小杉,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,pair,千葉→幕張本郷,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,verify_v2_analyze_route.csv;ground_truth_template.csv
-2,summary,,,R1提示ルートの一方通行違反,0,0,14,count,partial,14/15ペアを測定。横浜→みなとみらいは未測定,verify_v2_analyze_route.csv;ground_truth_template.csv
-3,summary,,,R1一方通行違反ゼロペア,14,14,14,pair,partial,測定済み14ペア内。1ペア未測定,verify_v2_analyze_route.csv;ground_truth_template.csv
+2,pair,渋谷→新宿,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,東京→渋谷,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,新宿→池袋,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,品川→東京,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,渋谷→六本木,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,下北沢→三軒茶屋,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,高円寺→中野,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,荻窪→阿佐ヶ谷,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,自由が丘→等々力,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,浦和→さいたま新都心,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,吉祥寺→三鷹,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,立川→国分寺,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,横浜→みなとみらい,混在型,R1提示ルートの一方通行違反,,,,count,unmeasured,リルート後準拠ルートのgeometry未保存。Docker起動失敗のため再取得不可,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,川崎→武蔵小杉,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,pair,千葉→幕張本郷,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,rerouted=Falseのため提示ルート=判定済み初期ルート,measurement-freeze-20260828:verify_v2_analyze_route.csv
+2,summary,,,R1提示ルートの一方通行違反,0,0,14,count,partial,14/15ペアを測定。横浜→みなとみらいは未測定,measurement-freeze-20260828:verify_v2_analyze_route.csv
+3,summary,,,R1一方通行違反ゼロペア,14,14,14,pair,partial,測定済み14ペア内。1ペア未測定,measurement-freeze-20260828:verify_v2_analyze_route.csv
 3,summary,,,R2一方通行検出ゼロペア,6,6,15,pair,measured,R1との精度の直接比較には使わない,google_comparison.csv
 3,summary,,,R2全検出ゼロペア,5,5,15,pair,measured,onewayとtwo_step_turnの合計が0,google_comparison.csv
 4,category,,,タグ付きoneway未検出:bicycle_exempt,15,15,253,traversal,measured,,fn_candidates_oneway.csv
@@ -42,24 +42,24 @@
 4,category,,,タグ付きoneway未検出:tag_fetch_failed,0,0,253,traversal,measured,,fn_candidates_oneway.csv
 4,category,,,タグ付きoneway未検出:unknown,0,0,253,traversal,measured,,fn_candidates_oneway.csv
 4,summary,,,タグ空間内の未説明未検出,0,0,253,traversal,measured,Recallとは呼ばない。OSMにonewayタグがない実在規制は母集団外,fn_candidates_oneway.csv
-4,summary,,,タグ付きoneway通過,254,254,662,traversal,measured,検出1 + 未検出診断253。unique wayは238,fn_candidates_oneway.csv;rerun_260801_summary.md
-5,pair,渋谷→新宿,幹線道路中心,R1・R2距離差,848.3,,,m,measured,R1=4439.5m; R2=3591.2m; R1-R2=848.3m; R2分母差率=23.6%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,東京→渋谷,幹線道路中心,R1・R2距離差,981.4,,,m,measured,R1=8242.5m; R2=7261.1m; R1-R2=981.4m; R2分母差率=13.5%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,新宿→池袋,幹線道路中心,R1・R2距離差,745.5,,,m,measured,R1=5331.5m; R2=4586.0m; R1-R2=745.5m; R2分母差率=16.3%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,品川→東京,幹線道路中心,R1・R2距離差,816.3,,,m,measured,R1=7685.9m; R2=6869.6m; R1-R2=816.3m; R2分母差率=11.9%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,渋谷→六本木,幹線道路中心,R1・R2距離差,546.6,,,m,measured,R1=3409.2m; R2=2862.6m; R1-R2=546.6m; R2分母差率=19.1%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,下北沢→三軒茶屋,住宅街中心,R1・R2距離差,-7.4,,,m,measured,R1=2233.1m; R2=2240.5m; R1-R2=-7.4m; R2分母差率=-0.3%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,高円寺→中野,住宅街中心,R1・R2距離差,460.4,,,m,measured,R1=1903.3m; R2=1442.9m; R1-R2=460.4m; R2分母差率=31.9%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,荻窪→阿佐ヶ谷,住宅街中心,R1・R2距離差,-29.0,,,m,measured,R1=1428.8m; R2=1457.8m; R1-R2=-29.0m; R2分母差率=-2.0%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,自由が丘→等々力,住宅街中心,R1・R2距離差,-65.4,,,m,measured,R1=2105.7m; R2=2171.1m; R1-R2=-65.4m; R2分母差率=-3.0%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,浦和→さいたま新都心,住宅街中心,R1・R2距離差,-199.6,,,m,measured,R1=4427.7m; R2=4627.3m; R1-R2=-199.6m; R2分母差率=-4.3%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,吉祥寺→三鷹,混在型,R1・R2距離差,2299.7,,,m,measured,R1=3988.6m; R2=1688.9m; R1-R2=2299.7m; R2分母差率=136.2%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,立川→国分寺,混在型,R1・R2距離差,-345.1,,,m,measured,R1=6758.4m; R2=7103.5m; R1-R2=-345.1m; R2分母差率=-4.9%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,横浜→みなとみらい,混在型,R1・R2距離差,1293.7,,,m,measured,R1=2697.6m; R2=1403.9m; R1-R2=1293.7m; R2分母差率=92.2%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,川崎→武蔵小杉,混在型,R1・R2距離差,1516.5,,,m,measured,R1=8049.3m; R2=6532.8m; R1-R2=1516.5m; R2分母差率=23.2%,verify_v2_analyze_route.csv;google_comparison.csv
-5,pair,千葉→幕張本郷,混在型,R1・R2距離差,-3718.8,,,m,measured,R1=8416.1m; R2=12134.9m; R1-R2=-3718.8m; R2分母差率=-30.6%,verify_v2_analyze_route.csv;google_comparison.csv
-5,summary,,,R1内部のリルート距離差ゼロ,14,14,15,pair,measured,,verify_v2_analyze_route.csv
-5,summary,横浜→みなとみらい,,R1内部のリルート距離増,419.9,419.9,2277.7,m,measured,18.4%,verify_v2_analyze_route.csv
+4,summary,,,タグ付きoneway通過,254,254,662,traversal,measured,検出1 + 未検出診断253。unique wayは238,measurement-freeze-20260828:fn_candidates_oneway.csv
+5,pair,渋谷→新宿,幹線道路中心,本システム返却距離−Google表示距離,839.5,,,m,measured,本システム=4439.5m; Google表示=3600.0m; 差=839.5m,route_display_distances_freeze_20260828.csv
+5,pair,東京→渋谷,幹線道路中心,本システム返却距離−Google表示距離,1042.5,,,m,measured,本システム=8242.5m; Google表示=7200.0m; 差=1042.5m,route_display_distances_freeze_20260828.csv
+5,pair,新宿→池袋,幹線道路中心,本システム返却距離−Google表示距離,731.5,,,m,measured,本システム=5331.5m; Google表示=4600.0m; 差=731.5m,route_display_distances_freeze_20260828.csv
+5,pair,品川→東京,幹線道路中心,本システム返却距離−Google表示距離,785.9,,,m,measured,本システム=7685.9m; Google表示=6900.0m; 差=785.9m,route_display_distances_freeze_20260828.csv
+5,pair,渋谷→六本木,幹線道路中心,本システム返却距離−Google表示距離,709.2,,,m,measured,本システム=3409.2m; Google表示=2700.0m; 差=709.2m,route_display_distances_freeze_20260828.csv
+5,pair,下北沢→三軒茶屋,住宅街中心,本システム返却距離−Google表示距離,33.1,,,m,measured,本システム=2233.1m; Google表示=2200.0m; 差=33.1m,route_display_distances_freeze_20260828.csv
+5,pair,高円寺→中野,住宅街中心,本システム返却距離−Google表示距離,403.3,,,m,measured,本システム=1903.3m; Google表示=1500.0m; 差=403.3m,route_display_distances_freeze_20260828.csv
+5,pair,荻窪→阿佐ヶ谷,住宅街中心,本システム返却距離−Google表示距離,-71.2,,,m,measured,本システム=1428.8m; Google表示=1500.0m; 差=-71.2m,route_display_distances_freeze_20260828.csv
+5,pair,自由が丘→等々力,住宅街中心,本システム返却距離−Google表示距離,-94.3,,,m,measured,本システム=2105.7m; Google表示=2200.0m; 差=-94.3m,route_display_distances_freeze_20260828.csv
+5,pair,浦和→さいたま新都心,住宅街中心,本システム返却距離−Google表示距離,-172.3,,,m,measured,本システム=4427.7m; Google表示=4600.0m; 差=-172.3m,route_display_distances_freeze_20260828.csv
+5,pair,吉祥寺→三鷹,混在型,本システム返却距離−Google表示距離,2288.6,,,m,measured,本システム=3988.6m; Google表示=1700.0m; 差=2288.6m,route_display_distances_freeze_20260828.csv
+5,pair,立川→国分寺,混在型,本システム返却距離−Google表示距離,-341.6,,,m,measured,本システム=6758.4m; Google表示=7100.0m; 差=-341.6m,route_display_distances_freeze_20260828.csv
+5,pair,横浜→みなとみらい,混在型,本システム返却距離−Google表示距離,1297.6,,,m,measured,本システム=2697.6m; Google表示=1400.0m; 差=1297.6m,route_display_distances_freeze_20260828.csv
+5,pair,川崎→武蔵小杉,混在型,本システム返却距離−Google表示距離,1549.3,,,m,measured,本システム=8049.3m; Google表示=6500.0m; 差=1549.3m,route_display_distances_freeze_20260828.csv
+5,pair,千葉→幕張本郷,混在型,本システム返却距離−Google表示距離,-3783.9,,,m,measured,本システム=8416.1m; Google表示=12200.0m; 差=-3783.9m,route_display_distances_freeze_20260828.csv
+5,summary,,,R1内部のリルート距離差ゼロ,14,14,15,pair,measured,,measurement-freeze-20260828:verify_v2_analyze_route.csv
+5,summary,横浜→みなとみらい,,R1内部のリルート距離増,419.9,419.9,2277.7,m,measured,18.4%,measurement-freeze-20260828:verify_v2_analyze_route.csv
 6,summary,,,幾何的曖昧,188,188,379,point,measured,2.0m閾値; 49.60%,decision_ambiguity_points.csv
 6,summary,,,判定影響曖昧,150,150,379,point,measured,2.0m閾値; 39.58%,decision_ambiguity_points.csv
 6,summary,,,違反有無反転,12,12,379,point,measured,2.0m閾値; 3.17%,decision_ambiguity_points.csv
@@ -79,4 +79,4 @@
 7,threshold,,,現行oneway 12点:判定不能<2.0m,3,3,12,point,measured,,verify_match_margin_points.csv
 7,threshold,,,全379判定点:margin<2.5m,216,216,379,point,measured,,decision_ambiguity_points.csv
 7,threshold,,,現行oneway 12点:判定不能<2.5m,4,4,12,point,measured,,verify_match_margin_points.csv
-8,summary,,,ground_truth.csv再構築行,17,17,15,row,candidate_only,15ラベル、検出候補11行。true_*は人手未入力のため精度指標は未測定,ground_truth_template.csv
+8,summary,,,検出結果の真偽検証,実施,,,method,measured,検出された全点をStreet Viewで確認。Precision・Recall・F1による評価は行わない,検証記録_18点.md;検証記録_新規2点.md
