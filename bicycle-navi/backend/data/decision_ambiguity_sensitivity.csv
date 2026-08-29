@@ -1,0 +1,11 @@
+﻿threshold_m,denominator_points,geometric_count,geometric_pct,decision_impact_count,decision_impact_pct,violation_flip_count,violation_flip_pct,source
+0.5,379,61,16.09,50,13.19,3,0.79,measurement-freeze-20260828:decision_ambiguity_points.csv
+1.0,379,117,30.87,95,25.07,5,1.32,measurement-freeze-20260828:decision_ambiguity_points.csv
+1.5,379,156,41.16,127,33.51,6,1.58,measurement-freeze-20260828:decision_ambiguity_points.csv
+2.0,379,188,49.6,150,39.58,12,3.17,measurement-freeze-20260828:decision_ambiguity_points.csv
+2.5,379,216,56.99,173,45.65,16,4.22,measurement-freeze-20260828:decision_ambiguity_points.csv
+3.0,379,236,62.27,189,49.87,17,4.49,measurement-freeze-20260828:decision_ambiguity_points.csv
+4.0,379,268,70.71,214,56.46,20,5.28,measurement-freeze-20260828:decision_ambiguity_points.csv
+5.0,379,298,78.63,235,62.01,24,6.33,measurement-freeze-20260828:decision_ambiguity_points.csv
+7.5,379,333,87.86,263,69.39,32,8.44,measurement-freeze-20260828:decision_ambiguity_points.csv
+10.0,379,341,89.97,269,70.98,35,9.23,measurement-freeze-20260828:decision_ambiguity_points.csv

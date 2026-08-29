@@ -1,0 +1,11 @@
+﻿threshold_m,all_points_denominator,all_points_below_count,all_points_below_pct,current_oneway_denominator,current_oneway_unavailable_count,current_oneway_unavailable_pct,source
+0.5,379,61,16.09,12,0,0.0,measurement-freeze-20260828:verify_match_margin_points.csv
+1.0,379,117,30.87,12,0,0.0,measurement-freeze-20260828:verify_match_margin_points.csv
+1.5,379,156,41.16,12,0,0.0,measurement-freeze-20260828:verify_match_margin_points.csv
+2.0,379,188,49.6,12,3,25.0,measurement-freeze-20260828:verify_match_margin_points.csv
+2.5,379,216,56.99,12,4,33.33,measurement-freeze-20260828:verify_match_margin_points.csv
+3.0,379,236,62.27,12,5,41.67,measurement-freeze-20260828:verify_match_margin_points.csv
+4.0,379,268,70.71,12,8,66.67,measurement-freeze-20260828:verify_match_margin_points.csv
+5.0,379,298,78.63,12,10,83.33,measurement-freeze-20260828:verify_match_margin_points.csv
+7.5,379,333,87.86,12,11,91.67,measurement-freeze-20260828:verify_match_margin_points.csv
+10.0,379,341,89.97,12,11,91.67,measurement-freeze-20260828:verify_match_margin_points.csv
