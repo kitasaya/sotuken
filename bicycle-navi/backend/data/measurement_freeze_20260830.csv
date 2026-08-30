@@ -1,0 +1,82 @@
+﻿metric_no,record_type,label,road_type,item,value,numerator,denominator,unit,status,detail,source_input
+1,point,渋谷→新宿,,R2 oneway検出点,1,1,379,point,measured,point_id=P01; group=A; way_id=138533178; sample_idx=18; margin_m=4.062,verify_match_margin_points.csv
+1,point,新宿→池袋,,R2 oneway検出点,1,1,379,point,measured,point_id=N01; group=B; way_id=228180934; sample_idx=22; margin_m=1.518,verify_match_margin_points.csv
+1,point,品川→東京,,R2 oneway検出点,1,1,379,point,measured,point_id=P05; group=B; way_id=741785139; sample_idx=18; margin_m=5.018,verify_match_margin_points.csv
+1,point,荻窪→阿佐ヶ谷,,R2 oneway検出点,1,1,379,point,measured,point_id=P07'; group=A; way_id=80835360; sample_idx=10; margin_m=1.598,verify_match_margin_points.csv
+1,point,自由が丘→等々力,,R2 oneway検出点,1,1,379,point,measured,point_id=P08; group=A; way_id=350353685; sample_idx=2; margin_m=2.91,verify_match_margin_points.csv
+1,point,立川→国分寺,,R2 oneway検出点,1,1,379,point,measured,point_id=P10; group=C; way_id=853388885; sample_idx=0; margin_m=3.984,verify_match_margin_points.csv
+1,point,立川→国分寺,,R2 oneway検出点,1,1,379,point,measured,point_id=P11; group=B; way_id=1429406683; sample_idx=3; margin_m=2.222,verify_match_margin_points.csv
+1,point,横浜→みなとみらい,,R2 oneway検出点,1,1,379,point,measured,point_id=P12; group=C; way_id=28413948; sample_idx=1; margin_m=3.696,verify_match_margin_points.csv
+1,point,横浜→みなとみらい,,R2 oneway検出点,1,1,379,point,measured,point_id=P13; group=C; way_id=28413948; sample_idx=2; margin_m=4.19,verify_match_margin_points.csv
+1,point,川崎→武蔵小杉,,R2 oneway検出点,1,1,379,point,measured,point_id=N02; group=B; way_id=992241606; sample_idx=5; margin_m=1.577,verify_match_margin_points.csv
+1,point,千葉→幕張本郷,,R2 oneway検出点,1,1,379,point,measured,point_id=P17; group=A; way_id=142222817; sample_idx=76; margin_m=18.649,verify_match_margin_points.csv
+1,point,千葉→幕張本郷,,R2 oneway検出点,1,1,379,point,measured,point_id=P18; group=C; way_id=151808609; sample_idx=96; margin_m=3.605,verify_match_margin_points.csv
+1,summary,,,R2 oneway検出点,12,12,379,point,measured,40m間隔の379判定点,verify_match_margin_points.csv
+1,group_summary,,,R2 oneway A群,4,4,12,point,measured,,検証記録_18点.md;検証記録_新規2点.md
+1,group_summary,,,R2 oneway B群,4,4,12,point,measured,,検証記録_18点.md;検証記録_新規2点.md
+1,group_summary,,,R2 oneway C群,4,4,12,point,measured,,検証記録_18点.md;検証記録_新規2点.md
+1,summary,,,R2 two_step_turn検出点,2,2,23,point,measured,,decision_ambiguity_layer2.csv
+1,summary,,,R2検出合計,14,,,point,measured,oneway 12点とtwo_step_turn 2点は分母が異なるため単一率にしない,verify_match_margin_points.csv;decision_ambiguity_layer2.csv
+2,pair,渋谷→新宿,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,東京→渋谷,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,新宿→池袋,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,品川→東京,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,渋谷→六本木,幹線道路中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,下北沢→三軒茶屋,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,高円寺→中野,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,荻窪→阿佐ヶ谷,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,自由が丘→等々力,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,浦和→さいたま新都心,住宅街中心,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,吉祥寺→三鷹,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,立川→国分寺,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,横浜→みなとみらい,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,川崎→武蔵小杉,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,pair,千葉→幕張本郷,混在型,R1提示ルートの一方通行違反,0,0,1,count,measured,閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、条件A=条件Bの標準bikeルート,batch21_exclusion_comparison.csv
+2,summary,,,R1提示ルートの一方通行違反,0,0,15,count,measured,15/15ペアを修正後コード・固定PBFで測定,batch21_exclusion_comparison.csv
+3,summary,,,R1一方通行違反ゼロペア,15,15,15,pair,measured,,batch21_exclusion_comparison.csv
+3,summary,,,R2一方通行検出ゼロペア,6,6,15,pair,measured,R1との精度の直接比較には使わない,google_comparison.csv
+3,summary,,,R2全検出ゼロペア,5,5,15,pair,measured,onewayとtwo_step_turnの合計が0,google_comparison.csv
+4,category,,,タグ付きoneway未検出:bicycle_exempt,15,15,254,traversal,measured,,batch21_tagged_oneway_traversals.csv
+4,category,,,タグ付きoneway未検出:forward_travel,239,239,254,traversal,measured,,batch21_tagged_oneway_traversals.csv
+4,category,,,タグ付きoneway未検出:short_segment,0,0,254,traversal,measured,,batch21_tagged_oneway_traversals.csv
+4,category,,,タグ付きoneway未検出:tag_fetch_failed,0,0,254,traversal,measured,,batch21_tagged_oneway_traversals.csv
+4,category,,,タグ付きoneway未検出:unknown,0,0,254,traversal,measured,,batch21_tagged_oneway_traversals.csv
+4,summary,,,タグ空間内の未説明未検出,0,0,254,traversal,measured,Recallとは呼ばない。OSMにonewayタグがない実在規制は母集団外,batch21_tagged_oneway_traversals.csv
+4,summary,,,タグ付きoneway通過,254,254,662,traversal,measured,検出0 + 非検出診断254。閉ループ修正によりway 28413951はforward_travelへ移動,batch21_tagged_oneway_traversals.csv
+5,pair,渋谷→新宿,幹線道路中心,法規制約による距離差,0.0,,,m,measured,制約なし=4439.5m; 法規準拠=4439.5m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,東京→渋谷,幹線道路中心,法規制約による距離差,0.0,,,m,measured,制約なし=8242.5m; 法規準拠=8242.5m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,新宿→池袋,幹線道路中心,法規制約による距離差,0.0,,,m,measured,制約なし=5331.5m; 法規準拠=5331.5m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,品川→東京,幹線道路中心,法規制約による距離差,0.0,,,m,measured,制約なし=7685.9m; 法規準拠=7685.9m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,渋谷→六本木,幹線道路中心,法規制約による距離差,0.0,,,m,measured,制約なし=3409.2m; 法規準拠=3409.2m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,下北沢→三軒茶屋,住宅街中心,法規制約による距離差,0.0,,,m,measured,制約なし=2233.1m; 法規準拠=2233.1m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,高円寺→中野,住宅街中心,法規制約による距離差,0.0,,,m,measured,制約なし=1903.3m; 法規準拠=1903.3m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,荻窪→阿佐ヶ谷,住宅街中心,法規制約による距離差,0.0,,,m,measured,制約なし=1428.8m; 法規準拠=1428.8m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,自由が丘→等々力,住宅街中心,法規制約による距離差,0.0,,,m,measured,制約なし=2105.7m; 法規準拠=2105.7m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,浦和→さいたま新都心,住宅街中心,法規制約による距離差,0.0,,,m,measured,制約なし=4427.7m; 法規準拠=4427.7m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,吉祥寺→三鷹,混在型,法規制約による距離差,0.0,,,m,measured,制約なし=3988.6m; 法規準拠=3988.6m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,立川→国分寺,混在型,法規制約による距離差,0.0,,,m,measured,制約なし=6758.4m; 法規準拠=6758.4m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,横浜→みなとみらい,混在型,法規制約による距離差,0.0,,,m,measured,制約なし=2277.7m; 法規準拠=2277.7m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,川崎→武蔵小杉,混在型,法規制約による距離差,0.0,,,m,measured,制約なし=8049.3m; 法規準拠=8049.3m; 差=0.0m,batch21_exclusion_comparison.csv
+5,pair,千葉→幕張本郷,混在型,法規制約による距離差,0.0,,,m,measured,制約なし=8416.1m; 法規準拠=8416.1m; 差=0.0m,batch21_exclusion_comparison.csv
+5,summary,,,R1内部のリルート距離差ゼロ,15,15,15,pair,measured,,batch21_exclusion_comparison.csv
+5,summary,,,R1内部の最大距離差,0.0,0.0,15,m,measured,条件Bの違反0件のためcustom_model areasは全ペアで未発動,batch21_exclusion_comparison.csv
+6,summary,,,幾何的曖昧,188,188,379,point,measured,2.0m閾値; 49.60%,decision_ambiguity_points.csv
+6,summary,,,判定影響曖昧,150,150,379,point,measured,2.0m閾値; 39.58%,decision_ambiguity_points.csv
+6,summary,,,違反有無反転,12,12,379,point,measured,2.0m閾値; 3.17%,decision_ambiguity_points.csv
+7,distribution,,,全379判定点:min,0.001,,379,m,measured,,decision_ambiguity_points.csv
+7,distribution,,,全379判定点:p25,0.836,,379,m,measured,,decision_ambiguity_points.csv
+7,distribution,,,全379判定点:median,2.047,,379,m,measured,,decision_ambiguity_points.csv
+7,distribution,,,全379判定点:p75,4.540,,379,m,measured,,decision_ambiguity_points.csv
+7,distribution,,,全379判定点:max,75.688,,379,m,measured,,decision_ambiguity_points.csv
+7,distribution,,,現行oneway検出12点:min,1.518,,12,m,measured,,verify_match_margin_points.csv
+7,distribution,,,現行oneway検出12点:p25,2.066,,12,m,measured,,verify_match_margin_points.csv
+7,distribution,,,現行oneway検出12点:median,3.651,,12,m,measured,,verify_match_margin_points.csv
+7,distribution,,,現行oneway検出12点:p75,4.094,,12,m,measured,,verify_match_margin_points.csv
+7,distribution,,,現行oneway検出12点:max,18.649,,12,m,measured,,verify_match_margin_points.csv
+7,threshold,,,全379判定点:margin<1.5m,156,156,379,point,measured,,decision_ambiguity_points.csv
+7,threshold,,,現行oneway 12点:判定不能<1.5m,0,0,12,point,measured,,verify_match_margin_points.csv
+7,threshold,,,全379判定点:margin<2.0m,188,188,379,point,measured,,decision_ambiguity_points.csv
+7,threshold,,,現行oneway 12点:判定不能<2.0m,3,3,12,point,measured,,verify_match_margin_points.csv
+7,threshold,,,全379判定点:margin<2.5m,216,216,379,point,measured,,decision_ambiguity_points.csv
+7,threshold,,,現行oneway 12点:判定不能<2.5m,4,4,12,point,measured,,verify_match_margin_points.csv
+8,summary,,,検出結果の真偽検証,実施,,,method,measured,検出された全点をStreet Viewで確認。Precision・Recall・F1による評価は行わない,検証記録_18点.md;検証記録_新規2点.md

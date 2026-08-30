@@ -1,11 +1,11 @@
-"""2026-08-28 測定凍結用の集約スクリプト。
+"""2026-08-30 Batch 21 測定凍結用の集約スクリプト。
 
 判定ロジックは呼び出さず、固定PBF・固定attic条件で再生成済みの明細CSVを
 検算して、論文参照用の一つの長形式CSVとOD端点CSVを生成する。
 
 生成物:
-  backend/data/measurement_freeze_20260828.csv
-  backend/data/measurement_freeze_od_20260828.csv
+  backend/data/measurement_freeze_20260830.csv
+  backend/data/measurement_freeze_od_20260830.csv
 """
 
 from __future__ import annotations
@@ -26,13 +26,13 @@ DATA = BACKEND / "data"
 GOOGLE_INPUT = DATA / "google_routes_input.csv"
 OD_PAIRS = DATA / "od_pairs.csv"
 GOOGLE_COMPARISON = DATA / "google_comparison.csv"
-R1_ROUTES = DATA / "verify_v2_analyze_route.csv"
+R1_ROUTES = DATA / "batch21_exclusion_comparison.csv"
 MARGIN_POINTS = DATA / "verify_match_margin_points.csv"
 DECISION_POINTS = DATA / "decision_ambiguity_points.csv"
 DECISION_LAYER2 = DATA / "decision_ambiguity_layer2.csv"
-FN_CANDIDATES = DATA / "fn_candidates_oneway.csv"
-OUTPUT = DATA / "measurement_freeze_20260828.csv"
-OD_OUTPUT = DATA / "measurement_freeze_od_20260828.csv"
+FN_CANDIDATES = DATA / "batch21_tagged_oneway_traversals.csv"
+OUTPUT = DATA / "measurement_freeze_20260830.csv"
+OD_OUTPUT = DATA / "measurement_freeze_od_20260830.csv"
 OLD_RECORD = ROOT / "docs" / "検証記録" / "検証記録_18点.md"
 NEW_RECORD = ROOT / "docs" / "検証記録" / "検証記録_新規2点.md"
 
@@ -202,32 +202,25 @@ def main() -> None:
         unit="point", detail="oneway 12点とtwo_step_turn 2点は分母が異なるため単一率にしない",
         source_input="verify_match_margin_points.csv;decision_ambiguity_layer2.csv")
 
-    # R1の提示ルート。一方通行だけを対象とし、リルート後未採点の1ペアを明示する。
+    # R1の提示ルート。一方通行だけを対象とし、修正後の15ペアを全件記録する。
     r1_rows = load_csv(R1_ROUTES)
-    measured_r1_labels = []
     for route in r1_rows:
-        rerouted = truthy(route["rerouted"])
-        if rerouted:
-            add(rows, 2, "pair", "R1提示ルートの一方通行違反", value="", unit="count",
-                status="unmeasured", label=route["label"], road_type=route["road_type"],
-                detail="リルート後準拠ルートのgeometry未保存。Docker起動失敗のため再取得不可",
-                source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
-        else:
-            count = int("oneway" in route["violation_types"].split(";"))
-            measured_r1_labels.append(route["label"])
-            add(rows, 2, "pair", "R1提示ルートの一方通行違反", value=count,
-                numerator=count, denominator=1, unit="count", label=route["label"],
-                road_type=route["road_type"], detail="rerouted=Falseのため提示ルート=判定済み初期ルート",
-                source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
+        count = int(route["condition_a_oneway_count"])
+        add(rows, 2, "pair", "R1提示ルートの一方通行違反", value=count,
+            numerator=count, denominator=1, unit="count", label=route["label"],
+            road_type=route["road_type"],
+            detail=("閉ループ修正後。条件Bで違反0のためcustom_model areasは未発動、"
+                    "条件A=条件Bの標準bikeルート"),
+            source_input="batch21_exclusion_comparison.csv")
     add(rows, 2, "summary", "R1提示ルートの一方通行違反", value=0, numerator=0,
-        denominator=len(measured_r1_labels), unit="count", status="partial",
-        detail="14/15ペアを測定。横浜→みなとみらいは未測定",
-        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
+        denominator=15, unit="count", status="measured",
+        detail="15/15ペアを修正後コード・固定PBFで測定",
+        source_input="batch21_exclusion_comparison.csv")
 
     # 違反ゼロペアはR1とR2を対称な精度比較として扱わず、定義別に記録する。
-    add(rows, 3, "summary", "R1一方通行違反ゼロペア", value=14, numerator=14,
-        denominator=14, unit="pair", status="partial", detail="測定済み14ペア内。1ペア未測定",
-        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
+    add(rows, 3, "summary", "R1一方通行違反ゼロペア", value=15, numerator=15,
+        denominator=15, unit="pair", status="measured",
+        source_input="batch21_exclusion_comparison.csv")
     google_rows = load_csv(GOOGLE_COMPARISON)
     r2_zero_oneway = sum(int(row["google_oneway_violation_count"]) == 0 for row in google_rows)
     r2_zero_total = sum(int(row["google_total_violation_count"]) == 0 for row in google_rows)
@@ -240,42 +233,40 @@ def main() -> None:
 
     # タグ空間内の網羅性。実在規制のタグ欠落は母集団外。
     fn_rows = load_csv(FN_CANDIDATES)
-    fn_counts = Counter(row["fn_reason"] for row in fn_rows)
+    fn_counts = Counter(row["result"] for row in fn_rows)
     for reason in ("bicycle_exempt", "forward_travel", "short_segment", "tag_fetch_failed", "unknown"):
         add(rows, 4, "category", f"タグ付きoneway未検出:{reason}", value=fn_counts[reason],
             numerator=fn_counts[reason], denominator=len(fn_rows), unit="traversal",
-            source_input="fn_candidates_oneway.csv")
+            source_input="batch21_tagged_oneway_traversals.csv")
     unresolved = sum(fn_counts[key] for key in ("short_segment", "tag_fetch_failed", "unknown"))
     add(rows, 4, "summary", "タグ空間内の未説明未検出", value=unresolved,
         numerator=unresolved, denominator=len(fn_rows), unit="traversal",
         detail="Recallとは呼ばない。OSMにonewayタグがない実在規制は母集団外",
-        source_input="fn_candidates_oneway.csv")
-    add(rows, 4, "summary", "タグ付きoneway通過", value=len(fn_rows) + 1,
-        numerator=len(fn_rows) + 1, denominator=662, unit="traversal",
-        detail="検出1 + 未検出診断253。unique wayは238",
-        source_input="measurement-freeze-20260828:fn_candidates_oneway.csv")
+        source_input="batch21_tagged_oneway_traversals.csv")
+    add(rows, 4, "summary", "タグ付きoneway通過", value=len(fn_rows),
+        numerator=len(fn_rows), denominator=662, unit="traversal",
+        detail=(f"検出{fn_counts['detected']} + 非検出診断{len(fn_rows) - fn_counts['detected']}。"
+                "閉ループ修正によりway 28413951はforward_travelへ移動"),
+        source_input="batch21_tagged_oneway_traversals.csv")
 
     # 距離は同一エンジン・同一OD・同一設定で、法規制約の有無だけを変えて比較する。
     for route in r1_rows:
-        unconstrained = float(route["new_original_distance_m"])
-        constrained = float(route["new_distance_m"])
+        unconstrained = float(route["condition_b_distance_m"])
+        constrained = float(route["condition_a_distance_m"])
         diff = constrained - unconstrained
         add(rows, 5, "pair", "法規制約による距離差", value=f"{diff:.1f}", unit="m",
             label=route["label"], road_type=route["road_type"],
             detail=(f"制約なし={unconstrained:.1f}m; 法規準拠={constrained:.1f}m; "
                     f"差={diff:.1f}m"),
-            source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
-    reroute_diffs = [float(row["new_distance_diff_m"]) for row in r1_rows]
+            source_input="batch21_exclusion_comparison.csv")
+    reroute_diffs = [float(row["a_minus_b_m"]) for row in r1_rows]
     add(rows, 5, "summary", "R1内部のリルート距離差ゼロ", value=sum(d == 0 for d in reroute_diffs),
         numerator=sum(d == 0 for d in reroute_diffs), denominator=15, unit="pair",
-        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
-    yokohama = next(row for row in r1_rows if row["label"] == "横浜→みなとみらい")
-    original = float(yokohama["new_original_distance_m"])
-    reroute_diff = float(yokohama["new_distance_diff_m"])
-    add(rows, 5, "summary", "R1内部のリルート距離増", value=f"{reroute_diff:.1f}",
-        numerator=f"{reroute_diff:.1f}", denominator=f"{original:.1f}", unit="m",
-        label=yokohama["label"], detail=f"{reroute_diff / original * 100:.1f}%",
-        source_input="measurement-freeze-20260828:verify_v2_analyze_route.csv")
+        source_input="batch21_exclusion_comparison.csv")
+    add(rows, 5, "summary", "R1内部の最大距離差", value=f"{max(reroute_diffs):.1f}",
+        numerator=f"{max(reroute_diffs):.1f}", denominator=15, unit="m",
+        detail="条件Bの違反0件のためcustom_model areasは全ペアで未発動",
+        source_input="batch21_exclusion_comparison.csv")
 
     # 曖昧性の三段階。
     decision_rows = load_csv(DECISION_POINTS)

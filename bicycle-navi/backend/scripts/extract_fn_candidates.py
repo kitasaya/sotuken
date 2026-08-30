@@ -56,6 +56,7 @@ import argparse
 import asyncio
 import csv
 import datetime
+import math
 import sys
 from pathlib import Path
 
@@ -63,7 +64,6 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scripts.route_match_probe import fmt
 from services.external_route_scorer import _turn_angle_deg, _way_axis_vector
 from services.experiment_settings import activate_experiment_overpass_date
 from services.graphhopper import GH_BASE
@@ -87,6 +87,19 @@ OUT_CSV = DATA_DIR / "fn_candidates_oneway.csv"
 
 # GraphHopper のビルド済みグラフのメタデータ（/info が使えない場合のフォールバック）
 GH_PROPERTIES = Path(__file__).parent.parent.parent / "graphhopper" / "default-gh" / "properties.txt"
+
+
+def fmt(value, nd: int = 2, dash: str = "—") -> str:
+    """削減済み中間スクリプトに依存しないMarkdown表向け整形。"""
+    if value is None or value == "":
+        return dash
+    if isinstance(value, bool):
+        return "はい" if value else "いいえ"
+    if isinstance(value, float):
+        if math.isinf(value):
+            return "∞"
+        return f"{value:.{nd}f}"
+    return str(value)
 
 # law_checker.check_oneway_violation が違反判定の対象とする oneway 値
 ONEWAY_VALUES = ("yes", "true", "1", "-1")
@@ -317,7 +330,8 @@ def build_way_record(label: str, way_id: int, info: dict, entry: dict,
 
     if p_start is not None and p_end is not None:
         travel_vector = [p_end[0] - p_start[0], p_end[1] - p_start[1]]
-        geom = _trim_geometry(raw_geom, p_start, p_end) if raw_geom else []
+        route_segment = points[start_idx:end_idx + 1]
+        geom = _trim_geometry(raw_geom, p_start, p_end, route_segment) if raw_geom else []
     else:
         travel_vector = None
         geom = raw_geom

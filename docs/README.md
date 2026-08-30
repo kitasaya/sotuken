@@ -1,6 +1,6 @@
 # 卒業論文執筆用ドキュメント入口
 
-測定は2026-08-28に凍結した。測定値の正は `docs/測定結果_凍結版.md` だけであり、数値台帳やRESEARCHへ同じ測定値を重複記載しない。削減前の中間ファイルはGit tag `measurement-freeze-20260828` から復元できる。
+測定は2026-08-30に再凍結した。測定値の正は `docs/測定結果_凍結版.md` だけであり、数値台帳やRESEARCHへ同じ測定値を重複記載しない。現行再測定はGit tag `measurement-freeze-2`、旧凍結はtag `measurement-freeze-20260828`から復元できる。
 
 ## 論文執筆時に参照するファイルはこれだけ
 
@@ -33,6 +33,7 @@
 - OD座標：`bicycle-navi/backend/data/measurement_freeze_od_20260828.csv`
 - 固定入力：`google_routes_input.csv`、`od_pairs.csv`、`experiment_settings.json`、`kanto-260801.osm.pbf`
 - 削減前の再測定中間出力：tag `measurement-freeze-20260828`
+- 閉ループ修正後の再測定・A/B比較：tag `measurement-freeze-2`
 
 ## 配置ルール
 

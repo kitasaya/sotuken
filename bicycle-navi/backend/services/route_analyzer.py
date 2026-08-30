@@ -15,7 +15,34 @@ from services.rerouter import get_compliant_route
 logger = logging.getLogger(__name__)
 
 
-def _trim_geometry(geom: list, p_start: list, p_end: list) -> list:
+def _point_to_segment_dist_sq(point: list, a: list, b: list) -> float:
+    """経緯度平面上で点と有限線分の距離二乗を返す（候補弧の比較専用）。"""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    denom = dx * dx + dy * dy
+    if denom == 0:
+        return (point[0] - a[0]) ** 2 + (point[1] - a[1]) ** 2
+    t = ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / denom
+    t = max(0.0, min(1.0, t))
+    qx, qy = a[0] + t * dx, a[1] + t * dy
+    return (point[0] - qx) ** 2 + (point[1] - qy) ** 2
+
+
+def _arc_fit_score(arc: list, route_segment: list) -> float:
+    """ルート座標列が候補弧へどれだけ近いかを距離二乗和で評価する。"""
+    if len(arc) < 2:
+        return float("inf")
+    return sum(
+        min(_point_to_segment_dist_sq(point, a, b) for a, b in zip(arc, arc[1:]))
+        for point in route_segment
+    )
+
+
+def _trim_geometry(
+    geom: list,
+    p_start: list,
+    p_end: list,
+    route_segment: list | None = None,
+) -> list:
     """OSM way ジオメトリをルートが通過した区間のノード列にクリップする。
     p_start / p_end に最も近いノードを両端とし、その間のサブリストを返す。
     """
@@ -25,12 +52,34 @@ def _trim_geometry(geom: list, p_start: list, p_end: list) -> list:
     def dist_sq(a, b):
         return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
-    i_s = min(range(len(geom)), key=lambda i: dist_sq(geom[i], p_start))
-    i_e = min(range(len(geom)), key=lambda i: dist_sq(geom[i], p_end))
+    # 非閉ループは従来ロジックをそのまま維持する。
+    if geom[0] != geom[-1] or len(geom) < 4:
+        i_s = min(range(len(geom)), key=lambda i: dist_sq(geom[i], p_start))
+        i_e = min(range(len(geom)), key=lambda i: dist_sq(geom[i], p_end))
 
-    lo, hi = min(i_s, i_e), max(i_s, i_e)
-    trimmed = geom[lo: hi + 1]
-    return trimmed if len(trimmed) >= 2 else geom
+        lo, hi = min(i_s, i_e), max(i_s, i_e)
+        trimmed = geom[lo: hi + 1]
+        return trimmed if len(trimmed) >= 2 else geom
+
+    # 閉ループは末尾の重複ノードを除き、始終点間の2つの弧を作る。
+    # 実ルート座標列への距離二乗和が小さい弧を採用することで、先頭と末尾が
+    # 同一座標でも、実際に通った側のセグメント列を選べる。
+    ring = geom[:-1]
+    i_s = min(range(len(ring)), key=lambda i: dist_sq(ring[i], p_start))
+    i_e = min(range(len(ring)), key=lambda i: dist_sq(ring[i], p_end))
+
+    def forward_arc(start: int, end: int) -> list:
+        if start <= end:
+            return ring[start:end + 1]
+        return ring[start:] + ring[:end + 1]
+
+    arc_start_to_end = forward_arc(i_s, i_e)
+    arc_end_to_start = forward_arc(i_e, i_s)
+    route_segment = route_segment or [p_start, p_end]
+    candidates = [arc for arc in (arc_start_to_end, arc_end_to_start) if len(arc) >= 2]
+    if not candidates:
+        return geom
+    return min(candidates, key=lambda arc: _arc_fit_score(arc, route_segment))
 
 
 async def analyze_route(
@@ -139,7 +188,8 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                 p_end = points[min(info["end_idx"], len(points) - 1)]
                 travel_vectors.append([p_end[0] - p_start[0], p_end[1] - p_start[1]])
                 raw_geom = way_id_to_data.get(wid, {}).get("geometry", [])
-                geometries.append(_trim_geometry(raw_geom, p_start, p_end))
+                route_segment = points[info["start_idx"]:min(info["end_idx"], len(points) - 1) + 1]
+                geometries.append(_trim_geometry(raw_geom, p_start, p_end, route_segment))
             # 右折地点のタグを way_id_to_data から解決（二分探索 O(N log M)）
             start_indices = [int(seg[0]) for seg in way_id_details]
             for i, idx in enumerate(two_step_idxs):

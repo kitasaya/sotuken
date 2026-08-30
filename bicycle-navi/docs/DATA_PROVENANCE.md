@@ -51,7 +51,7 @@ docker inspect israelhikingmap/graphhopper:11.0 --format '{{range .RepoDigests}}
 
 8/1基準グラフへの固定後、R2、マージン分布、FN候補抽出を
 再実行した。2026-08-28の正は `../../docs/測定結果_凍結版.md`、削減前の中間出力は
-tag `measurement-freeze-20260828` を参照する。
+現行再測定はtag `measurement-freeze-2`、旧凍結履歴はtag `measurement-freeze-20260828`を参照する。
 
 | 再生成ファイル | 内容 |
 |---|---|
@@ -122,7 +122,7 @@ edge_idベース採点は1ルートの全way IDを1クエリで取得する。wa
 - FN候補: 253件（タグ欠落0、要人手確認0）
 - 8/24 liveタグ版からの数値差: なし
 
-凍結した結果と旧値との差分は`../../docs/測定結果_凍結版.md`を参照する。削減した再実行明細が必要な場合はtag `measurement-freeze-20260828`から取得する。
+凍結した結果と旧値との差分は`../../docs/測定結果_凍結版.md`を参照する。バッチ21再実行明細はtag `measurement-freeze-2`、それ以前の削減済み明細はtag `measurement-freeze-20260828`から取得する。
 
 ---
 

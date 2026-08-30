@@ -1,0 +1,16 @@
+﻿label,road_type,condition_a_distance_m,condition_b_distance_m,a_minus_b_m,condition_a_oneway_count,condition_a_oneway_way_ids,condition_b_oneway_count,condition_b_oneway_way_ids,custom_model_area_invoked,route_geometry_identical,condition_b_contains_way_28413948,condition_b_contains_way_28413951
+渋谷→新宿,幹線道路中心,4439.5,4439.5,0.0,0,,0,,False,True,False,False
+東京→渋谷,幹線道路中心,8242.5,8242.5,0.0,0,,0,,False,True,False,False
+新宿→池袋,幹線道路中心,5331.5,5331.5,0.0,0,,0,,False,True,False,False
+品川→東京,幹線道路中心,7685.9,7685.9,0.0,0,,0,,False,True,False,False
+渋谷→六本木,幹線道路中心,3409.2,3409.2,0.0,0,,0,,False,True,False,False
+下北沢→三軒茶屋,住宅街中心,2233.1,2233.1,0.0,0,,0,,False,True,False,False
+高円寺→中野,住宅街中心,1903.3,1903.3,0.0,0,,0,,False,True,False,False
+荻窪→阿佐ヶ谷,住宅街中心,1428.8,1428.8,0.0,0,,0,,False,True,False,False
+自由が丘→等々力,住宅街中心,2105.7,2105.7,0.0,0,,0,,False,True,False,False
+浦和→さいたま新都心,住宅街中心,4427.7,4427.7,0.0,0,,0,,False,True,False,False
+吉祥寺→三鷹,混在型,3988.6,3988.6,0.0,0,,0,,False,True,False,False
+立川→国分寺,混在型,6758.4,6758.4,0.0,0,,0,,False,True,False,False
+横浜→みなとみらい,混在型,2277.7,2277.7,0.0,0,,0,,False,True,False,True
+川崎→武蔵小杉,混在型,8049.3,8049.3,0.0,0,,0,,False,True,False,False
+千葉→幕張本郷,混在型,8416.1,8416.1,0.0,0,,0,,False,True,False,False
