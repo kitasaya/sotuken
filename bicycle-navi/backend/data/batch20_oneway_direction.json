@@ -1,0 +1,2363 @@
+{
+  "inputs": {
+    "pbf": "bicycle-navi\\graphhopper\\kanto-260801.osm.pbf",
+    "google_input": "bicycle-navi\\backend\\data\\google_routes_input.csv",
+    "graphhopper_distance_m": 2277.718,
+    "documented_decision_point_lng_lat": [
+      139.623297,
+      35.464037
+    ],
+    "review_point_lng_lat": [
+      139.6233374,
+      35.4643064
+    ],
+    "google_polyline": "{umwEobesYH@BDN[`BrAnBDJMnAj@BUnEe@jEcAxAkABYEcB^kF_@sFqB{SfMcJ"
+  },
+  "target_way": {
+    "way_id": 28413951,
+    "tags": {
+      "highway": "primary",
+      "name": "県道80号",
+      "name:en": "Prefectural Route 80",
+      "name:ja": "県道80号",
+      "official_name": "主要地方道 神奈川県80号線 横浜駅根岸線",
+      "oneway": "yes",
+      "ref": "80",
+      "wikidata": "Q11542980",
+      "wikipedia": "ja:横浜市主要地方道80号横浜駅根岸線"
+    },
+    "bicycle_related_tags": {},
+    "geometry": [
+      [
+        139.6226918,
+        35.4634263
+      ],
+      [
+        139.62270510000002,
+        35.463464
+      ],
+      [
+        139.6227167,
+        35.4634972
+      ],
+      [
+        139.62275390000002,
+        35.463589400000004
+      ],
+      [
+        139.62307280000002,
+        35.463973800000005
+      ],
+      [
+        139.6232382,
+        35.4641602
+      ],
+      [
+        139.6232827,
+        35.464181800000006
+      ],
+      [
+        139.62334990000002,
+        35.4641905
+      ],
+      [
+        139.6233331,
+        35.4641103
+      ],
+      [
+        139.6232972,
+        35.4640369
+      ],
+      [
+        139.6232136,
+        35.4639363
+      ],
+      [
+        139.62319060000002,
+        35.4639089
+      ],
+      [
+        139.62286840000002,
+        35.463526300000005
+      ],
+      [
+        139.6227719,
+        35.463466600000004
+      ],
+      [
+        139.62274490000001,
+        35.463453
+      ],
+      [
+        139.6226918,
+        35.4634263
+      ]
+    ],
+    "start": [
+      139.6226918,
+      35.4634263
+    ],
+    "end": [
+      139.6226918,
+      35.4634263
+    ],
+    "documented_decision_point_position": {
+      "distance_m": 0.02094226292191472,
+      "segment_index_zero_based": 8,
+      "segment_number_one_based": 9,
+      "segment_fraction": 0.999587194457406,
+      "distance_from_start_m": 124.83343260372685,
+      "segment_start": [
+        139.6233331,
+        35.4641103
+      ],
+      "segment_end": [
+        139.6232972,
+        35.4640369
+      ],
+      "way_length_m": 213.126212530386
+    },
+    "actual_graphhopper_decision_point_lng_lat": [
+      139.623297,
+      35.464037
+    ],
+    "actual_graphhopper_decision_point_position": {
+      "distance_m": 0.02094226292191472,
+      "segment_index_zero_based": 8,
+      "segment_number_one_based": 9,
+      "segment_fraction": 0.999587194457406,
+      "distance_from_start_m": 124.83343260372685,
+      "segment_start": [
+        139.6233331,
+        35.4641103
+      ],
+      "segment_end": [
+        139.6232972,
+        35.4640369
+      ],
+      "way_length_m": 213.126212530386
+    },
+    "review_point_position": {
+      "distance_m": 12.937118534907139,
+      "segment_index_zero_based": 6,
+      "segment_number_one_based": 7,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 107.00488846757037,
+      "segment_start": [
+        139.6232827,
+        35.464181800000006
+      ],
+      "segment_end": [
+        139.62334990000002,
+        35.4641905
+      ],
+      "way_length_m": 213.126212530386
+    }
+  },
+  "review_point_nearest_highways": [
+    {
+      "way_id": 28413949,
+      "highway": "unclassified",
+      "distance_m": 1.005958453379559,
+      "segment_index_zero_based": 6,
+      "segment_number_one_based": 7,
+      "segment_fraction": 0.6334118481621875,
+      "distance_from_start_m": 90.95300272652814,
+      "segment_start": [
+        139.62334610000002,
+        35.4645069
+      ],
+      "segment_end": [
+        139.62334990000002,
+        35.4641905
+      ],
+      "way_length_m": 103.8509515387982
+    },
+    {
+      "way_id": 1083959346,
+      "highway": "footway",
+      "distance_m": 7.439877250478705,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 0.0,
+      "distance_from_start_m": 0.0,
+      "segment_start": [
+        139.6232703,
+        35.464345
+      ],
+      "segment_end": [
+        139.6232821,
+        35.4644439
+      ],
+      "way_length_m": 11.048981594052965
+    },
+    {
+      "way_id": 1083959345,
+      "highway": "footway",
+      "distance_m": 8.881077908484396,
+      "segment_index_zero_based": 7,
+      "segment_number_one_based": 8,
+      "segment_fraction": 0.5142580005071913,
+      "distance_from_start_m": 135.71708886701518,
+      "segment_start": [
+        139.62324990000002,
+        35.4644357
+      ],
+      "segment_end": [
+        139.62322980000002,
+        35.4641948
+      ],
+      "way_length_m": 196.34589196011834
+    },
+    {
+      "way_id": 548992506,
+      "highway": "steps",
+      "distance_m": 10.511541137068887,
+      "segment_index_zero_based": 1,
+      "segment_number_one_based": 2,
+      "segment_fraction": 0.8039770620126779,
+      "distance_from_start_m": 17.812727832303857,
+      "segment_start": [
+        139.6234571,
+        35.4643942
+      ],
+      "segment_end": [
+        139.6234525,
+        35.4642811
+      ],
+      "way_length_m": 23.66229796388222
+    },
+    {
+      "way_id": 822751397,
+      "highway": "steps",
+      "distance_m": 11.209212502591752,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 0.0,
+      "distance_from_start_m": 0.0,
+      "segment_start": [
+        139.6234416,
+        35.464252
+      ],
+      "segment_end": [
+        139.62340890000002,
+        35.4641644
+      ],
+      "way_length_m": 10.180926252939294
+    },
+    {
+      "way_id": 28413951,
+      "highway": "primary",
+      "distance_m": 12.937118534907139,
+      "segment_index_zero_based": 6,
+      "segment_number_one_based": 7,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 107.00488846757037,
+      "segment_start": [
+        139.6232827,
+        35.464181800000006
+      ],
+      "segment_end": [
+        139.62334990000002,
+        35.4641905
+      ],
+      "way_length_m": 213.126212530386
+    },
+    {
+      "way_id": 822751398,
+      "highway": "footway",
+      "distance_m": 14.169564966122975,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 0.5749294410113889,
+      "distance_from_start_m": 7.733458046141377,
+      "segment_start": [
+        139.6234992,
+        35.464245500000004
+      ],
+      "segment_end": [
+        139.62348930000002,
+        35.4643662
+      ],
+      "way_length_m": 30.468732188165095
+    },
+    {
+      "way_id": 871884637,
+      "highway": "footway",
+      "distance_m": 15.279675748263713,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 0.0,
+      "distance_from_start_m": 0.0,
+      "segment_start": [
+        139.62348930000002,
+        35.4643662
+      ],
+      "segment_end": [
+        139.623568,
+        35.464305700000004
+      ],
+      "way_length_m": 9.800918886339415
+    },
+    {
+      "way_id": 548992501,
+      "highway": "footway",
+      "distance_m": 15.40380720476191,
+      "segment_index_zero_based": 3,
+      "segment_number_one_based": 4,
+      "segment_fraction": 0.39655295368715177,
+      "distance_from_start_m": 102.91530380738047,
+      "segment_start": [
+        139.6234992,
+        35.464245500000004
+      ],
+      "segment_end": [
+        139.62340890000002,
+        35.4641644
+      ],
+      "way_length_m": 212.83443868902208
+    },
+    {
+      "way_id": 247836470,
+      "highway": "service",
+      "distance_m": 19.436629801217705,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 36.49420136077125,
+      "segment_start": [
+        139.6230443,
+        35.4638682
+      ],
+      "segment_end": [
+        139.6232687,
+        35.4641408
+      ],
+      "way_length_m": 36.49420136077125
+    }
+  ],
+  "decision_point_nearest_highways": [
+    {
+      "way_id": 28413951,
+      "highway": "primary",
+      "distance_m": 0.02094226292191472,
+      "segment_index_zero_based": 8,
+      "segment_number_one_based": 9,
+      "segment_fraction": 0.999587194457406,
+      "distance_from_start_m": 124.83343260372685,
+      "segment_start": [
+        139.6233331,
+        35.4641103
+      ],
+      "segment_end": [
+        139.6232972,
+        35.4640369
+      ],
+      "way_length_m": 213.126212530386
+    },
+    {
+      "way_id": 548992501,
+      "highway": "footway",
+      "distance_m": 3.540549747804418,
+      "segment_index_zero_based": 4,
+      "segment_number_one_based": 5,
+      "segment_fraction": 0.7652771158458143,
+      "distance_from_start_m": 127.31597731082186,
+      "segment_start": [
+        139.62340890000002,
+        35.4641644
+      ],
+      "segment_end": [
+        139.6233094,
+        35.463981100000005
+      ],
+      "way_length_m": 212.83443868902208
+    },
+    {
+      "way_id": 247836477,
+      "highway": "service",
+      "distance_m": 4.7700054572468,
+      "segment_index_zero_based": 2,
+      "segment_number_one_based": 3,
+      "segment_fraction": 0.3936621988053127,
+      "distance_from_start_m": 10.037440524572833,
+      "segment_start": [
+        139.6232569,
+        35.4640703
+      ],
+      "segment_end": [
+        139.62323510000002,
+        35.464027300000005
+      ],
+      "way_length_m": 37.92942061291467
+    },
+    {
+      "way_id": 247836470,
+      "highway": "service",
+      "distance_m": 8.556387233625692,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 0.776419199905125,
+      "distance_from_start_m": 28.334798621706536,
+      "segment_start": [
+        139.6230443,
+        35.4638682
+      ],
+      "segment_end": [
+        139.6232687,
+        35.4641408
+      ],
+      "way_length_m": 36.49420136077125
+    },
+    {
+      "way_id": 1083959345,
+      "highway": "footway",
+      "distance_m": 15.232353963296799,
+      "segment_index_zero_based": 8,
+      "segment_number_one_based": 9,
+      "segment_fraction": 0.3757645587683902,
+      "distance_from_start_m": 159.38389812028296,
+      "segment_start": [
+        139.62322980000002,
+        35.4641948
+      ],
+      "segment_end": [
+        139.62304640000002,
+        35.463989000000005
+      ],
+      "way_length_m": 196.34589196011834
+    },
+    {
+      "way_id": 822751401,
+      "highway": "footway",
+      "distance_m": 17.197394302928398,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 1.6923083077292944,
+      "segment_start": [
+        139.6231751,
+        35.4639174
+      ],
+      "segment_end": [
+        139.62319060000002,
+        35.4639089
+      ],
+      "way_length_m": 5.893701143742349
+    },
+    {
+      "way_id": 822751402,
+      "highway": "footway",
+      "distance_m": 17.28417381351526,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 8.093053481545304,
+      "segment_start": [
+        139.6231011,
+        35.4639582
+      ],
+      "segment_end": [
+        139.6231751,
+        35.4639174
+      ],
+      "way_length_m": 8.093053481545304
+    },
+    {
+      "way_id": 822751397,
+      "highway": "steps",
+      "distance_m": 17.418007677638336,
+      "segment_index_zero_based": 0,
+      "segment_number_one_based": 1,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 10.180926252939294,
+      "segment_start": [
+        139.6234416,
+        35.464252
+      ],
+      "segment_end": [
+        139.62340890000002,
+        35.4641644
+      ],
+      "way_length_m": 10.180926252939294
+    },
+    {
+      "way_id": 28413949,
+      "highway": "unclassified",
+      "distance_m": 17.72806071984789,
+      "segment_index_zero_based": 6,
+      "segment_number_one_based": 7,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 103.8509515387982,
+      "segment_start": [
+        139.62334610000002,
+        35.4645069
+      ],
+      "segment_end": [
+        139.62334990000002,
+        35.4641905
+      ],
+      "way_length_m": 103.8509515387982
+    },
+    {
+      "way_id": 822751400,
+      "highway": "footway",
+      "distance_m": 19.787620492543063,
+      "segment_index_zero_based": 1,
+      "segment_number_one_based": 2,
+      "segment_fraction": 1.0,
+      "distance_from_start_m": 6.022857490882332,
+      "segment_start": [
+        139.62307280000002,
+        35.463973800000005
+      ],
+      "segment_end": [
+        139.6231011,
+        35.4639582
+      ],
+      "way_length_m": 6.022857490882332
+    }
+  ],
+  "nearby_oneway_ways_within_100m_of_documented_or_review_point": [
+    {
+      "way_id": 28413951,
+      "oneway": "yes",
+      "tags": {
+        "highway": "primary",
+        "name": "県道80号",
+        "name:en": "Prefectural Route 80",
+        "name:ja": "県道80号",
+        "official_name": "主要地方道 神奈川県80号線 横浜駅根岸線",
+        "oneway": "yes",
+        "ref": "80",
+        "wikidata": "Q11542980",
+        "wikipedia": "ja:横浜市主要地方道80号横浜駅根岸線"
+      },
+      "geometry": [
+        [
+          139.6226918,
+          35.4634263
+        ],
+        [
+          139.62270510000002,
+          35.463464
+        ],
+        [
+          139.6227167,
+          35.4634972
+        ],
+        [
+          139.62275390000002,
+          35.463589400000004
+        ],
+        [
+          139.62307280000002,
+          35.463973800000005
+        ],
+        [
+          139.6232382,
+          35.4641602
+        ],
+        [
+          139.6232827,
+          35.464181800000006
+        ],
+        [
+          139.62334990000002,
+          35.4641905
+        ],
+        [
+          139.6233331,
+          35.4641103
+        ],
+        [
+          139.6232972,
+          35.4640369
+        ],
+        [
+          139.6232136,
+          35.4639363
+        ],
+        [
+          139.62319060000002,
+          35.4639089
+        ],
+        [
+          139.62286840000002,
+          35.463526300000005
+        ],
+        [
+          139.6227719,
+          35.463466600000004
+        ],
+        [
+          139.62274490000001,
+          35.463453
+        ],
+        [
+          139.6226918,
+          35.4634263
+        ]
+      ],
+      "direction_start": [
+        139.6226918,
+        35.4634263
+      ],
+      "direction_end": [
+        139.6226918,
+        35.4634263
+      ],
+      "distance_to_documented_decision_point_m": 0.02094226292191472,
+      "distance_to_review_point_m": 12.937118534907139
+    },
+    {
+      "way_id": 28413949,
+      "oneway": "yes",
+      "tags": {
+        "highway": "unclassified",
+        "lanes": "1",
+        "oneway": "yes",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.6230269,
+          35.4647711
+        ],
+        [
+          139.6231189,
+          35.4648793
+        ],
+        [
+          139.6231557,
+          35.464885100000004
+        ],
+        [
+          139.6233194,
+          35.4647936
+        ],
+        [
+          139.6233444,
+          35.4647674
+        ],
+        [
+          139.6233445,
+          35.464598200000005
+        ],
+        [
+          139.62334610000002,
+          35.4645069
+        ],
+        [
+          139.62334990000002,
+          35.4641905
+        ]
+      ],
+      "direction_start": [
+        139.6230269,
+        35.4647711
+      ],
+      "direction_end": [
+        139.62334990000002,
+        35.4641905
+      ],
+      "distance_to_documented_decision_point_m": 17.72806071984789,
+      "distance_to_review_point_m": 1.005958453379559
+    },
+    {
+      "way_id": 247836477,
+      "oneway": "yes",
+      "tags": {
+        "highway": "service",
+        "layer": "-1",
+        "oneway": "yes",
+        "service": "driveway",
+        "source": "Bing",
+        "tunnel": "yes"
+      },
+      "geometry": [
+        [
+          139.6232687,
+          35.4641408
+        ],
+        [
+          139.62327050000002,
+          35.4641129
+        ],
+        [
+          139.6232569,
+          35.4640703
+        ],
+        [
+          139.62323510000002,
+          35.464027300000005
+        ],
+        [
+          139.62307750000002,
+          35.463845400000004
+        ]
+      ],
+      "direction_start": [
+        139.6232687,
+        35.4641408
+      ],
+      "direction_end": [
+        139.62307750000002,
+        35.463845400000004
+      ],
+      "distance_to_documented_decision_point_m": 4.7700054572468,
+      "distance_to_review_point_m": 19.436629801217705
+    },
+    {
+      "way_id": 247836470,
+      "oneway": "yes",
+      "tags": {
+        "highway": "service",
+        "layer": "-1",
+        "oneway": "yes",
+        "service": "driveway",
+        "source": "Bing",
+        "tunnel": "yes"
+      },
+      "geometry": [
+        [
+          139.6230443,
+          35.4638682
+        ],
+        [
+          139.6232687,
+          35.4641408
+        ]
+      ],
+      "direction_start": [
+        139.6230443,
+        35.4638682
+      ],
+      "direction_end": [
+        139.6232687,
+        35.4641408
+      ],
+      "distance_to_documented_decision_point_m": 8.556387233625692,
+      "distance_to_review_point_m": 19.436629801217705
+    },
+    {
+      "way_id": 169700012,
+      "oneway": "yes",
+      "tags": {
+        "highway": "unclassified",
+        "maxspeed": "30",
+        "oneway": "yes",
+        "source": "Bing",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.62368840000002,
+          35.464224300000005
+        ],
+        [
+          139.6236762,
+          35.4643037
+        ],
+        [
+          139.6236333,
+          35.4643577
+        ],
+        [
+          139.62354530000002,
+          35.464461
+        ],
+        [
+          139.62351610000002,
+          35.4645254
+        ],
+        [
+          139.6235026,
+          35.465510200000004
+        ],
+        [
+          139.62351230000002,
+          35.4656249
+        ]
+      ],
+      "direction_start": [
+        139.62368840000002,
+        35.464224300000005
+      ],
+      "direction_end": [
+        139.62351230000002,
+        35.4656249
+      ],
+      "distance_to_documented_decision_point_m": 41.11306739124564,
+      "distance_to_review_point_m": 25.269407673132566
+    },
+    {
+      "way_id": 247836474,
+      "oneway": "yes",
+      "tags": {
+        "highway": "service",
+        "layer": "-1",
+        "oneway": "yes",
+        "service": "driveway",
+        "source": "Bing"
+      },
+      "geometry": [
+        [
+          139.62307750000002,
+          35.463845400000004
+        ],
+        [
+          139.6228273,
+          35.4635497
+        ]
+      ],
+      "direction_start": [
+        139.62307750000002,
+        35.463845400000004
+      ],
+      "direction_end": [
+        139.6228273,
+        35.4635497
+      ],
+      "distance_to_documented_decision_point_m": 29.139064966481726,
+      "distance_to_review_point_m": 56.40669127826496
+    },
+    {
+      "way_id": 247836472,
+      "oneway": "yes",
+      "tags": {
+        "highway": "service",
+        "layer": "-1",
+        "oneway": "yes",
+        "service": "driveway",
+        "source": "Bing"
+      },
+      "geometry": [
+        [
+          139.62279370000002,
+          35.4635698
+        ],
+        [
+          139.6230443,
+          35.4638682
+        ]
+      ],
+      "direction_start": [
+        139.62279370000002,
+        35.4635698
+      ],
+      "direction_end": [
+        139.6230443,
+        35.4638682
+      ],
+      "distance_to_documented_decision_point_m": 29.59851979741321,
+      "distance_to_review_point_m": 55.487051361879175
+    },
+    {
+      "way_id": 217857906,
+      "oneway": "yes",
+      "tags": {
+        "alt_name": "東海道",
+        "alt_name:en": "Tokaido",
+        "alt_name:es": "Tokaido",
+        "alt_name:ja": "東海道",
+        "highway": "trunk",
+        "lanes": "2",
+        "maxspeed": "60",
+        "name": "国道1号",
+        "name:en": "National Highway Route 1",
+        "name:ja": "国道1号",
+        "oneway": "yes",
+        "ref": "1",
+        "source": "Bing 2010",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.62368840000002,
+          35.464224300000005
+        ],
+        [
+          139.62367360000002,
+          35.4651324
+        ],
+        [
+          139.6236725,
+          35.465287000000004
+        ],
+        [
+          139.6236834,
+          35.4654109
+        ],
+        [
+          139.62371100000001,
+          35.465546100000005
+        ],
+        [
+          139.6237551,
+          35.4656807
+        ],
+        [
+          139.62380760000002,
+          35.465799000000004
+        ],
+        [
+          139.6238563,
+          35.4658851
+        ],
+        [
+          139.623915,
+          35.4659703
+        ],
+        [
+          139.6239672,
+          35.466048
+        ]
+      ],
+      "direction_start": [
+        139.62368840000002,
+        35.464224300000005
+      ],
+      "direction_end": [
+        139.6239672,
+        35.466048
+      ],
+      "distance_to_documented_decision_point_m": 41.11306739124564,
+      "distance_to_review_point_m": 31.664598316877857
+    },
+    {
+      "way_id": 28413952,
+      "oneway": "yes",
+      "tags": {
+        "highway": "unclassified",
+        "lanes": "1",
+        "oneway": "yes"
+      },
+      "geometry": [
+        [
+          139.6231414,
+          35.464708800000004
+        ],
+        [
+          139.6233445,
+          35.464598200000005
+        ]
+      ],
+      "direction_start": [
+        139.6231414,
+        35.464708800000004
+      ],
+      "direction_end": [
+        139.6233445,
+        35.464598200000005
+      ],
+      "distance_to_documented_decision_point_m": 62.550697981683115,
+      "distance_to_review_point_m": 32.45305050651036
+    },
+    {
+      "way_id": 247833177,
+      "oneway": "yes",
+      "tags": {
+        "alt_name": "東海道",
+        "alt_name:en": "Tokaido",
+        "alt_name:es": "Tokaido",
+        "alt_name:ja": "東海道",
+        "highway": "trunk",
+        "lanes": "2",
+        "maxspeed": "60",
+        "name": "国道1号",
+        "name:en": "National Highway Route 1",
+        "name:ja": "国道1号",
+        "oneway": "yes",
+        "ref": "1",
+        "source": "Bing 2010",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.62370320000002,
+          35.4635132
+        ],
+        [
+          139.62368840000002,
+          35.464224300000005
+        ]
+      ],
+      "direction_start": [
+        139.62370320000002,
+        35.4635132
+      ],
+      "direction_end": [
+        139.62368840000002,
+        35.464224300000005
+      ],
+      "distance_to_documented_decision_point_m": 35.79544863714327,
+      "distance_to_review_point_m": 33.07345842374873
+    },
+    {
+      "way_id": 32404414,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway",
+        "layer": "2",
+        "maxspeed": "60",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "name": "首都高速神奈川1号横羽線",
+        "name:en": "Kanagawa Route 1 Yokohane Line",
+        "name:es": "Ruta 1 Yokohane (Kanagawa)",
+        "name:ja": "首都高速神奈川1号横羽線",
+        "name:ko": "수도고속도로 요코하네선",
+        "name:ru": "Шоссе Канагава-1 - линия Йокохане",
+        "oneway": "yes",
+        "ref": "K1",
+        "smoothness": "excellent",
+        "source": "Bing 2014",
+        "surface": "asphalt",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.62713910000002,
+          35.4559054
+        ],
+        [
+          139.6261296,
+          35.457038600000004
+        ],
+        [
+          139.6254658,
+          35.4578457
+        ],
+        [
+          139.6246059,
+          35.458910100000004
+        ],
+        [
+          139.6242726,
+          35.4593312
+        ],
+        [
+          139.6241746,
+          35.4594638
+        ],
+        [
+          139.6240983,
+          35.459575
+        ],
+        [
+          139.6240028,
+          35.4597434
+        ],
+        [
+          139.6239525,
+          35.459836100000004
+        ],
+        [
+          139.6239037,
+          35.459943700000004
+        ],
+        [
+          139.6238692,
+          35.4600315
+        ],
+        [
+          139.62383780000002,
+          35.4601192
+        ],
+        [
+          139.6238054,
+          35.4602293
+        ],
+        [
+          139.6237685,
+          35.460406400000004
+        ],
+        [
+          139.6237537,
+          35.460523300000006
+        ],
+        [
+          139.6237431,
+          35.4607071
+        ],
+        [
+          139.6237456,
+          35.4609526
+        ],
+        [
+          139.62375550000002,
+          35.461210200000004
+        ],
+        [
+          139.62377750000002,
+          35.461931
+        ],
+        [
+          139.6237921,
+          35.462314500000005
+        ],
+        [
+          139.6237797,
+          35.4633042
+        ],
+        [
+          139.62376600000002,
+          35.4645559
+        ]
+      ],
+      "direction_start": [
+        139.62713910000002,
+        35.4559054
+      ],
+      "direction_end": [
+        139.62376600000002,
+        35.4645559
+      ],
+      "distance_to_documented_decision_point_m": 42.98812112610948,
+      "distance_to_review_point_m": 39.06223454815112
+    },
+    {
+      "way_id": 28413948,
+      "oneway": "yes",
+      "tags": {
+        "highway": "unclassified",
+        "lanes": "1",
+        "oneway": "yes"
+      },
+      "geometry": [
+        [
+          139.6227719,
+          35.463466600000004
+        ],
+        [
+          139.6227618,
+          35.463472200000005
+        ],
+        [
+          139.6227277,
+          35.4634911
+        ],
+        [
+          139.6227167,
+          35.4634972
+        ],
+        [
+          139.6226425,
+          35.4635383
+        ],
+        [
+          139.6226014,
+          35.4635728
+        ],
+        [
+          139.6226283,
+          35.463861
+        ],
+        [
+          139.6226404,
+          35.4641193
+        ],
+        [
+          139.6226742,
+          35.4641788
+        ],
+        [
+          139.6230734,
+          35.464635
+        ],
+        [
+          139.6231414,
+          35.464708800000004
+        ]
+      ],
+      "direction_start": [
+        139.6227719,
+        35.463466600000004
+      ],
+      "direction_end": [
+        139.6231414,
+        35.464708800000004
+      ],
+      "distance_to_documented_decision_point_m": 55.08363154893934,
+      "distance_to_review_point_m": 40.67696500142627
+    },
+    {
+      "way_id": 247838151,
+      "oneway": "yes",
+      "tags": {
+        "highway": "motorway_link",
+        "oneway": "yes",
+        "source": "Bing",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.62384400000002,
+          35.463536000000005
+        ],
+        [
+          139.62383490000002,
+          35.4643096
+        ],
+        [
+          139.6237997,
+          35.464709400000004
+        ],
+        [
+          139.6237596,
+          35.464877900000005
+        ],
+        [
+          139.62367360000002,
+          35.4651324
+        ]
+      ],
+      "direction_start": [
+        139.62384400000002,
+        35.463536000000005
+      ],
+      "direction_end": [
+        139.62367360000002,
+        35.4651324
+      ],
+      "distance_to_documented_decision_point_m": 49.00362996395586,
+      "distance_to_review_point_m": 44.96649625418511
+    },
+    {
+      "way_id": 34994498,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway_link",
+        "layer": "3",
+        "maxspeed": "40",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "name": "首都高速神奈川2号三ツ沢線",
+        "name:en": "Kanagawa Route 2 Mitsuzawa Line",
+        "name:es": "Ruta 2 Mitsuzawa (Kanagawa)",
+        "name:ja": "首都高速神奈川2号三ツ沢線",
+        "name:ko": "수도고속도로 미쓰자와선",
+        "name:ru": "Шоссе Канагава-2 - линия Мицудзава",
+        "oneway": "yes",
+        "ref": "K2",
+        "smoothness": "excellent",
+        "source": "Bing 2014",
+        "surface": "asphalt",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.62376600000002,
+          35.4645559
+        ],
+        [
+          139.6236991,
+          35.464971000000006
+        ],
+        [
+          139.62368070000002,
+          35.4651343
+        ],
+        [
+          139.623681,
+          35.4652893
+        ],
+        [
+          139.6236972,
+          35.465408100000005
+        ],
+        [
+          139.6237307,
+          35.4655398
+        ],
+        [
+          139.6237721,
+          35.4656686
+        ],
+        [
+          139.6238141,
+          35.4657776
+        ],
+        [
+          139.62391050000002,
+          35.465979700000005
+        ],
+        [
+          139.6239887,
+          35.4661173
+        ],
+        [
+          139.6242436,
+          35.466523200000005
+        ],
+        [
+          139.6242962,
+          35.466618600000004
+        ],
+        [
+          139.62433130000002,
+          35.4667079
+        ],
+        [
+          139.6243564,
+          35.466798100000005
+        ],
+        [
+          139.6243681,
+          35.4668888
+        ],
+        [
+          139.6243655,
+          35.466976200000005
+        ],
+        [
+          139.6243489,
+          35.467066
+        ],
+        [
+          139.6243173,
+          35.467154
+        ],
+        [
+          139.624274,
+          35.4672374
+        ],
+        [
+          139.6242233,
+          35.467309900000004
+        ]
+      ],
+      "direction_start": [
+        139.62376600000002,
+        35.4645559
+      ],
+      "direction_end": [
+        139.6242233,
+        35.467309900000004
+      ],
+      "distance_to_documented_decision_point_m": 71.64736804371533,
+      "distance_to_review_point_m": 47.71163146277227
+    },
+    {
+      "way_id": 340606284,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway",
+        "layer": "3",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "name": "首都高速神奈川1号横羽線",
+        "name:en": "Kanagawa Route 1 Yokohane Line",
+        "name:es": "Ruta 1 Yokohane (Kanagawa)",
+        "name:ja": "首都高速神奈川1号横羽線",
+        "name:ko": "수도고속도로 요코하네선",
+        "name:ru": "Шоссе Канагава-1 - линия Йокохане",
+        "oneway": "yes",
+        "ref": "K1",
+        "smoothness": "excellent",
+        "source": "Bing 2014",
+        "surface": "asphalt",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.62376600000002,
+          35.4645559
+        ],
+        [
+          139.6237663,
+          35.4649257
+        ],
+        [
+          139.6237739,
+          35.465093200000005
+        ],
+        [
+          139.62379180000002,
+          35.465228
+        ],
+        [
+          139.62382,
+          35.4653501
+        ],
+        [
+          139.6238501,
+          35.4654881
+        ],
+        [
+          139.6238973,
+          35.4656311
+        ],
+        [
+          139.62396560000002,
+          35.465793000000005
+        ]
+      ],
+      "direction_start": [
+        139.62376600000002,
+        35.4645559
+      ],
+      "direction_end": [
+        139.62396560000002,
+        35.465793000000005
+      ],
+      "distance_to_documented_decision_point_m": 71.64736804371533,
+      "distance_to_review_point_m": 47.71163146277227
+    },
+    {
+      "way_id": 39744132,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "destination": "横浜公園;湾岸線",
+        "destination:en": "Yokohamakoen;Bayshore-route",
+        "foot": "no",
+        "highway": "motorway_link",
+        "lanes": "1",
+        "layer": "2",
+        "maxspeed": "40",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "name": "首都高速神奈川2号三ツ沢線",
+        "name:en": "Kanagawa Route 2 Mitsuzawa Line",
+        "name:es": "Ruta 2 Mitsuzawa (Kanagawa)",
+        "name:ja": "首都高速神奈川2号三ツ沢線",
+        "name:ko": "수도고속도로 미쓰자와선",
+        "name:ru": "Шоссе Канагава-2 - линия Мицудзава",
+        "oneway": "yes",
+        "ref": "K2",
+        "smoothness": "excellent",
+        "source": "Bing 2014",
+        "surface": "paved",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.62185,
+          35.467921100000005
+        ],
+        [
+          139.62310390000002,
+          35.4677522
+        ],
+        [
+          139.6234641,
+          35.4676962
+        ],
+        [
+          139.62360650000002,
+          35.4676713
+        ],
+        [
+          139.62373010000002,
+          35.4676409
+        ],
+        [
+          139.6238337,
+          35.4676059
+        ],
+        [
+          139.6239348,
+          35.467565400000005
+        ],
+        [
+          139.6240239,
+          35.4675227
+        ],
+        [
+          139.624111,
+          35.4674676
+        ],
+        [
+          139.62419630000002,
+          35.467401800000005
+        ],
+        [
+          139.6242659,
+          35.467327000000004
+        ],
+        [
+          139.6243241,
+          35.4672494
+        ],
+        [
+          139.62436540000002,
+          35.4671666
+        ],
+        [
+          139.6243964,
+          35.4670754
+        ],
+        [
+          139.62441570000001,
+          35.4669778
+        ],
+        [
+          139.6244178,
+          35.4668853
+        ],
+        [
+          139.6244068,
+          35.4667955
+        ],
+        [
+          139.6243776,
+          35.4666969
+        ],
+        [
+          139.6243412,
+          35.466607700000004
+        ],
+        [
+          139.6241421,
+          35.4662203
+        ],
+        [
+          139.6239698,
+          35.4659313
+        ],
+        [
+          139.6239347,
+          35.465865300000004
+        ],
+        [
+          139.6239109,
+          35.4658049
+        ],
+        [
+          139.623885,
+          35.4657185
+        ],
+        [
+          139.62386980000002,
+          35.465630000000004
+        ],
+        [
+          139.62385890000002,
+          35.4654915
+        ],
+        [
+          139.6238552,
+          35.4653681
+        ],
+        [
+          139.62386080000002,
+          35.465087100000005
+        ],
+        [
+          139.62387130000002,
+          35.4644491
+        ],
+        [
+          139.6239684,
+          35.463896500000004
+        ]
+      ],
+      "direction_start": [
+        139.62185,
+        35.467921100000005
+      ],
+      "direction_end": [
+        139.6239684,
+        35.463896500000004
+      ],
+      "distance_to_documented_decision_point_m": 57.97937889971145,
+      "distance_to_review_point_m": 50.113318722507124
+    },
+    {
+      "way_id": 247838153,
+      "oneway": "yes",
+      "tags": {
+        "highway": "motorway_link",
+        "oneway": "yes",
+        "source": "Bing",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.624018,
+          35.4649142
+        ],
+        [
+          139.6239648,
+          35.464868
+        ],
+        [
+          139.62392010000002,
+          35.4647876
+        ],
+        [
+          139.62390530000002,
+          35.4647281
+        ],
+        [
+          139.6239065,
+          35.4635381
+        ]
+      ],
+      "direction_start": [
+        139.624018,
+        35.4649142
+      ],
+      "direction_end": [
+        139.6239065,
+        35.4635381
+      ],
+      "distance_to_documented_decision_point_m": 55.154411835318065,
+      "distance_to_review_point_m": 51.470769669979674
+    },
+    {
+      "way_id": 39744128,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway",
+        "lanes": "2",
+        "layer": "2",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "name": "首都高速神奈川1号横羽線",
+        "name:en": "Kanagawa Route 1 Yokohane Line",
+        "name:es": "Ruta 1 Yokohane (Kanagawa)",
+        "name:ja": "首都高速神奈川1号横羽線",
+        "name:ko": "수도고속도로 요코하네선",
+        "name:ru": "Шоссе Канагава-1 - линия Йокохане",
+        "oneway": "yes",
+        "ref": "K1",
+        "smoothness": "excellent",
+        "source": "Bing 2014",
+        "surface": "paved",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.6250359,
+          35.467065500000004
+        ],
+        [
+          139.6244739,
+          35.466402200000005
+        ],
+        [
+          139.6243631,
+          35.4662597
+        ],
+        [
+          139.6242367,
+          35.4660858
+        ],
+        [
+          139.6241271,
+          35.465915
+        ],
+        [
+          139.62405850000002,
+          35.465775900000004
+        ],
+        [
+          139.6240189,
+          35.465666
+        ],
+        [
+          139.6239808,
+          35.46553
+        ],
+        [
+          139.62395700000002,
+          35.4653719
+        ],
+        [
+          139.6239468,
+          35.4652138
+        ],
+        [
+          139.6239684,
+          35.463896500000004
+        ]
+      ],
+      "direction_start": [
+        139.6250359,
+        35.467065500000004
+      ],
+      "direction_end": [
+        139.6239684,
+        35.463896500000004
+      ],
+      "distance_to_documented_decision_point_m": 60.5919809232825,
+      "distance_to_review_point_m": 56.53321974014102
+    },
+    {
+      "way_id": 257422346,
+      "oneway": "yes",
+      "tags": {
+        "alt_name": "東海道",
+        "alt_name:en": "Tokaido",
+        "alt_name:es": "Tokaido",
+        "alt_name:ja": "東海道",
+        "highway": "trunk",
+        "lanes": "2",
+        "maxspeed": "60",
+        "name": "国道1号",
+        "name:en": "National Highway Route 1",
+        "name:ja": "国道1号",
+        "oneway": "yes",
+        "ref": "1",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.62401540000002,
+          35.465053000000005
+        ],
+        [
+          139.624018,
+          35.4649142
+        ],
+        [
+          139.62403260000002,
+          35.464131900000005
+        ],
+        [
+          139.6240438,
+          35.463533000000005
+        ]
+      ],
+      "direction_start": [
+        139.62401540000002,
+        35.465053000000005
+      ],
+      "direction_end": [
+        139.6240438,
+        35.463533000000005
+      ],
+      "distance_to_documented_decision_point_m": 66.77335364706211,
+      "distance_to_review_point_m": 62.6591092133061
+    },
+    {
+      "way_id": 340606282,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway",
+        "lanes": "2",
+        "layer": "2",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "name": "首都高速神奈川1号横羽線",
+        "name:en": "Kanagawa Route 1 Yokohane Line",
+        "name:es": "Ruta 1 Yokohane (Kanagawa)",
+        "name:ja": "首都高速神奈川1号横羽線",
+        "name:ko": "수도고속도로 요코하네선",
+        "name:ru": "Шоссе Канагава-1 - линия Йокохане",
+        "oneway": "yes",
+        "ref": "K1",
+        "smoothness": "excellent",
+        "source": "Bing 2014",
+        "surface": "paved",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.6239684,
+          35.463896500000004
+        ],
+        [
+          139.6239798,
+          35.4633272
+        ],
+        [
+          139.6239782,
+          35.4607741
+        ],
+        [
+          139.6239763,
+          35.4606251
+        ],
+        [
+          139.62398340000001,
+          35.460467300000005
+        ],
+        [
+          139.6239985,
+          35.4603452
+        ],
+        [
+          139.6240227,
+          35.4602194
+        ],
+        [
+          139.62404410000002,
+          35.460143800000004
+        ],
+        [
+          139.6240884,
+          35.4599855
+        ],
+        [
+          139.6241402,
+          35.4598433
+        ],
+        [
+          139.6241864,
+          35.459728500000004
+        ],
+        [
+          139.6242379,
+          35.4596211
+        ],
+        [
+          139.62430080000001,
+          35.4595093
+        ],
+        [
+          139.62438210000002,
+          35.4593781
+        ],
+        [
+          139.624471,
+          35.4592526
+        ],
+        [
+          139.6245773,
+          35.4591135
+        ],
+        [
+          139.6247008,
+          35.4589566
+        ],
+        [
+          139.62555690000002,
+          35.457894800000005
+        ],
+        [
+          139.6256411,
+          35.457793200000005
+        ],
+        [
+          139.625857,
+          35.457532900000004
+        ],
+        [
+          139.6262197,
+          35.457093400000005
+        ],
+        [
+          139.6272276,
+          35.455962500000005
+        ]
+      ],
+      "direction_start": [
+        139.6239684,
+        35.463896500000004
+      ],
+      "direction_end": [
+        139.6272276,
+        35.455962500000005
+      ],
+      "distance_to_documented_decision_point_m": 62.78095221742269,
+      "distance_to_review_point_m": 73.09721898009131
+    },
+    {
+      "way_id": 1216392566,
+      "oneway": "yes",
+      "tags": {
+        "highway": "service",
+        "oneway": "yes",
+        "service": "driveway",
+        "source": "Bing"
+      },
+      "geometry": [
+        [
+          139.6228273,
+          35.4635497
+        ],
+        [
+          139.6227618,
+          35.463472200000005
+        ],
+        [
+          139.62274490000001,
+          35.463453
+        ]
+      ],
+      "direction_start": [
+        139.6228273,
+        35.4635497
+      ],
+      "direction_end": [
+        139.62274490000001,
+        35.463453
+      ],
+      "distance_to_documented_decision_point_m": 68.88831735809433,
+      "distance_to_review_point_m": 95.98936245229508
+    },
+    {
+      "way_id": 247833178,
+      "oneway": "yes",
+      "tags": {
+        "alt_name": "東海道",
+        "alt_name:en": "Tokaido",
+        "alt_name:es": "Tokaido",
+        "alt_name:ja": "東海道",
+        "bridge": "yes",
+        "highway": "trunk",
+        "lanes": "2",
+        "layer": "1",
+        "maxspeed": "60",
+        "name": "国道1号",
+        "name:en": "National Highway Route 1",
+        "name:ja": "国道1号",
+        "oneway": "yes",
+        "ref": "1",
+        "source": "Bing 2010",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.6237097,
+          35.4631829
+        ],
+        [
+          139.62370320000002,
+          35.4635132
+        ]
+      ],
+      "direction_start": [
+        139.6237097,
+        35.4631829
+      ],
+      "direction_end": [
+        139.62370320000002,
+        35.4635132
+      ],
+      "distance_to_documented_decision_point_m": 68.88906488551275,
+      "distance_to_review_point_m": 94.21642262080339
+    },
+    {
+      "way_id": 1216392567,
+      "oneway": "yes",
+      "tags": {
+        "highway": "service",
+        "oneway": "yes",
+        "service": "driveway",
+        "source": "Bing"
+      },
+      "geometry": [
+        [
+          139.62270510000002,
+          35.463464
+        ],
+        [
+          139.6227277,
+          35.4634911
+        ],
+        [
+          139.62279370000002,
+          35.4635698
+        ]
+      ],
+      "direction_start": [
+        139.62270510000002,
+        35.463464
+      ],
+      "direction_end": [
+        139.62279370000002,
+        35.4635698
+      ],
+      "distance_to_documented_decision_point_m": 69.1125056742296,
+      "distance_to_review_point_m": 95.56808003495823
+    },
+    {
+      "way_id": 247838155,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway_link",
+        "layer": "1",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "oneway": "yes",
+        "smoothness": "excellent",
+        "source": "Bing",
+        "surface": "paved",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.6238489,
+          35.4631648
+        ],
+        [
+          139.62384400000002,
+          35.463536000000005
+        ]
+      ],
+      "direction_start": [
+        139.6238489,
+        35.4631648
+      ],
+      "direction_end": [
+        139.62384400000002,
+        35.463536000000005
+      ],
+      "distance_to_documented_decision_point_m": 74.54950193856938,
+      "distance_to_review_point_m": 97.17740409228318
+    },
+    {
+      "way_id": 247838154,
+      "oneway": "yes",
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "foot": "no",
+        "highway": "motorway_link",
+        "layer": "1",
+        "motorcar": "designated",
+        "motorcycle": "designated",
+        "oneway": "yes",
+        "smoothness": "excellent",
+        "source": "Bing",
+        "surface": "paved",
+        "toll": "yes"
+      },
+      "geometry": [
+        [
+          139.6239065,
+          35.4635381
+        ],
+        [
+          139.62390860000002,
+          35.463164500000005
+        ]
+      ],
+      "direction_start": [
+        139.6239065,
+        35.4635381
+      ],
+      "direction_end": [
+        139.62390860000002,
+        35.463164500000005
+      ],
+      "distance_to_documented_decision_point_m": 78.25938557433854,
+      "distance_to_review_point_m": 99.77442686040922
+    },
+    {
+      "way_id": 247833179,
+      "oneway": "yes",
+      "tags": {
+        "alt_name": "東海道",
+        "alt_name:en": "Tokaido",
+        "alt_name:es": "Tokaido",
+        "alt_name:ja": "東海道",
+        "bridge": "yes",
+        "highway": "trunk",
+        "lanes": "2",
+        "layer": "1",
+        "maxspeed": "60",
+        "name": "国道1号",
+        "name:en": "National Highway Route 1",
+        "name:ja": "国道1号",
+        "oneway": "yes",
+        "ref": "1",
+        "surface": "asphalt"
+      },
+      "geometry": [
+        [
+          139.6240438,
+          35.463533000000005
+        ],
+        [
+          139.6240491,
+          35.4631914
+        ]
+      ],
+      "direction_start": [
+        139.6240438,
+        35.463533000000005
+      ],
+      "direction_end": [
+        139.6240491,
+        35.4631914
+      ],
+      "distance_to_documented_decision_point_m": 87.83613647557908,
+      "distance_to_review_point_m": 107.1847179662554
+    },
+    {
+      "way_id": 871884649,
+      "oneway": "yes",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "oneway": "yes",
+        "psv": "yes",
+        "service": "parking_aisle"
+      },
+      "geometry": [
+        [
+          139.624759,
+          35.4649538
+        ],
+        [
+          139.6247262,
+          35.464953900000005
+        ],
+        [
+          139.6244934,
+          35.4649495
+        ],
+        [
+          139.62441030000002,
+          35.4649202
+        ],
+        [
+          139.624018,
+          35.4649142
+        ]
+      ],
+      "direction_start": [
+        139.624759,
+        35.4649538
+      ],
+      "direction_end": [
+        139.624018,
+        35.4649142
+      ],
+      "distance_to_documented_decision_point_m": 117.37943254738063,
+      "distance_to_review_point_m": 91.47133230948064
+    }
+  ],
+  "system_original_route_reproduction": {
+    "osm_way_id_detail": [
+      14,
+      18,
+      28413951
+    ],
+    "route_start_coordinate_index": 14,
+    "route_end_coordinate_index": 18,
+    "decision_coordinate_index": 16,
+    "route_coordinates_on_detail_inclusive": [
+      [
+        139.62335,
+        35.464191
+      ],
+      [
+        139.623333,
+        35.46411
+      ],
+      [
+        139.623297,
+        35.464037
+      ],
+      [
+        139.622868,
+        35.463526
+      ],
+      [
+        139.622692,
+        35.463426
+      ]
+    ],
+    "p_start": [
+      139.62335,
+      35.464191
+    ],
+    "p_end": [
+      139.622692,
+      35.463426
+    ],
+    "travel_vector": [
+      -0.0006579999999871688,
+      -0.0007650000000012369
+    ],
+    "trimmed_way_geometry": [
+      [
+        139.6226918,
+        35.4634263
+      ],
+      [
+        139.62270510000002,
+        35.463464
+      ],
+      [
+        139.6227167,
+        35.4634972
+      ],
+      [
+        139.62275390000002,
+        35.463589400000004
+      ],
+      [
+        139.62307280000002,
+        35.463973800000005
+      ],
+      [
+        139.6232382,
+        35.4641602
+      ],
+      [
+        139.6232827,
+        35.464181800000006
+      ],
+      [
+        139.62334990000002,
+        35.4641905
+      ]
+    ],
+    "per_way_segment_calculation": [
+      {
+        "trimmed_segment_index_zero_based": 0,
+        "start": [
+          139.6226918,
+          35.4634263
+        ],
+        "end": [
+          139.62270510000002,
+          35.463464
+        ],
+        "dot_product_raw_degrees": -3.759190000398537e-08,
+        "angle_to_system_travel_vector_deg": 161.0177691798332,
+        "counted_against_for_oneway_yes": true
+      },
+      {
+        "trimmed_segment_index_zero_based": 1,
+        "start": [
+          139.62270510000002,
+          35.463464
+        ],
+        "end": [
+          139.6227167,
+          35.4634972
+        ],
+        "dot_product_raw_degrees": -3.3030799993425094e-08,
+        "angle_to_system_travel_vector_deg": 160.8716343284904,
+        "counted_against_for_oneway_yes": true
+      },
+      {
+        "trimmed_segment_index_zero_based": 2,
+        "start": [
+          139.6227167,
+          35.4634972
+        ],
+        "end": [
+          139.62275390000002,
+          35.463589400000004
+        ],
+        "dot_product_raw_degrees": -9.501060000863413e-08,
+        "angle_to_system_travel_vector_deg": 163.17797831603298,
+        "counted_against_for_oneway_yes": true
+      },
+      {
+        "trimmed_segment_index_zero_based": 3,
+        "start": [
+          139.62275390000002,
+          35.463589400000004
+        ],
+        "end": [
+          139.62307280000002,
+          35.463973800000005
+        ],
+        "dot_product_raw_degrees": -5.03902199995132e-07,
+        "angle_to_system_travel_vector_deg": 179.03322978888318,
+        "counted_against_for_oneway_yes": true
+      },
+      {
+        "trimmed_segment_index_zero_based": 4,
+        "start": [
+          139.62307280000002,
+          35.463973800000005
+        ],
+        "end": [
+          139.6232382,
+          35.4641602
+        ],
+        "dot_product_raw_degrees": -2.5142919998653755e-07,
+        "angle_to_system_travel_vector_deg": 179.15713140167472,
+        "counted_against_for_oneway_yes": true
+      },
+      {
+        "trimmed_segment_index_zero_based": 5,
+        "start": [
+          139.6232382,
+          35.4641602
+        ],
+        "end": [
+          139.6232827,
+          35.464181800000006
+        ],
+        "dot_product_raw_degrees": -4.580500000318751e-08,
+        "angle_to_system_travel_vector_deg": 155.80655081105124,
+        "counted_against_for_oneway_yes": true
+      },
+      {
+        "trimmed_segment_index_zero_based": 6,
+        "start": [
+          139.6232827,
+          35.464181800000006
+        ],
+        "end": [
+          139.62334990000002,
+          35.4641905
+        ],
+        "dot_product_raw_degrees": -5.087310000718164e-08,
+        "angle_to_system_travel_vector_deg": 134.04531001907822,
+        "counted_against_for_oneway_yes": true
+      }
+    ],
+    "against_count": 7,
+    "segment_count": 7,
+    "majority_threshold": 3.5,
+    "existing_check_oneway_violation_output": [
+      {
+        "lat": 35.464037,
+        "lng": 139.623297,
+        "rule": "oneway",
+        "message": "一方通行のため逆走の可能性があります",
+        "confidence": 1.0
+      }
+    ],
+    "existing_function_detected_violation": true,
+    "local_osm_segment_angle_to_system_travel_deg": 13.293019591984548
+  },
+  "google_route_comparison": {
+    "decoded_coordinate_count": 18,
+    "nearest_segment_to_system_decision_point": {
+      "distance_m": 55.34485350223453,
+      "segment_index_zero_based": 3,
+      "segment_number_one_based": 4,
+      "segment_fraction": 0.6287453820013722,
+      "distance_from_start_m": 66.41232573082128,
+      "segment_start": [
+        139.62306,
+        35.46463
+      ],
+      "segment_end": [
+        139.62264,
+        35.46414
+      ],
+      "way_length_m": 1403.8943346764895,
+      "travel_vector": [
+        -0.0004200000000196269,
+        -0.0004899999999992133
+      ]
+    },
+    "angle_local_osm_segment_to_google_travel_deg": 13.19938300703247,
+    "distance_from_google_route_to_system_decision_point_m": 55.34485350223453
+  }
+}

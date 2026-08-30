@@ -1,0 +1,1082 @@
+[
+  {
+    "population": "current12",
+    "point_id": "P01",
+    "label": "渋谷→新宿",
+    "way_id": 138533178,
+    "lat": 35.68928,
+    "lng": 139.7022,
+    "route_idx": 19,
+    "recorded_group": "残存A群",
+    "recorded_diag_angle_deg": "175.5",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 3,
+    "closed_way": false,
+    "route_idx_used": 19,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.391,
+    "local_way_segment_number_one_based": 1,
+    "local_allowed_direction_start": [
+      139.7021703,
+      35.6893321
+    ],
+    "local_allowed_direction_end": [
+      139.70223810000002,
+      35.6890786
+    ],
+    "travel_vector": [
+      -0.0005999999999914962,
+      0.0016699999999971737
+    ],
+    "local_angle_route_vs_allowed_deg": 175.988,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "N01",
+    "label": "新宿→池袋",
+    "way_id": 228180934,
+    "lat": 35.7252,
+    "lng": 139.71136,
+    "route_idx": 25,
+    "recorded_group": "想定外",
+    "recorded_diag_angle_deg": "169.4",
+    "oneway": "yes",
+    "highway": "primary",
+    "name": "明治通り",
+    "way_node_count": 18,
+    "closed_way": false,
+    "route_idx_used": 25,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.962,
+    "local_way_segment_number_one_based": 5,
+    "local_allowed_direction_start": [
+      139.71142030000001,
+      35.725298300000006
+    ],
+    "local_allowed_direction_end": [
+      139.7113569,
+      35.7250649
+    ],
+    "travel_vector": [
+      0.0004799999999818283,
+      0.0026399999999995316
+    ],
+    "local_angle_route_vs_allowed_deg": 175.961,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P05",
+    "label": "品川→東京",
+    "way_id": 741785139,
+    "lat": 35.64862,
+    "lng": 139.75466,
+    "route_idx": 30,
+    "recorded_group": "",
+    "recorded_diag_angle_deg": "168.8",
+    "oneway": "yes",
+    "highway": "tertiary_link",
+    "name": "",
+    "way_node_count": 6,
+    "closed_way": false,
+    "route_idx_used": 30,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.348,
+    "local_way_segment_number_one_based": 2,
+    "local_allowed_direction_start": [
+      139.75454480000002,
+      35.6486662
+    ],
+    "local_allowed_direction_end": [
+      139.7546863,
+      35.648605100000005
+    ],
+    "travel_vector": [
+      -0.001959999999996853,
+      0.0008100000000013097
+    ],
+    "local_angle_route_vs_allowed_deg": 178.971,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P07'",
+    "label": "荻窪→阿佐ヶ谷",
+    "way_id": 80835360,
+    "lat": 35.70401,
+    "lng": 139.63283,
+    "route_idx": 13,
+    "recorded_group": "",
+    "recorded_diag_angle_deg": "175.0",
+    "oneway": "yes",
+    "highway": "residential",
+    "name": "",
+    "way_node_count": 8,
+    "closed_way": false,
+    "route_idx_used": 13,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.55,
+    "local_way_segment_number_one_based": 7,
+    "local_allowed_direction_start": [
+      139.6328607,
+      35.7040141
+    ],
+    "local_allowed_direction_end": [
+      139.6328061,
+      35.703997400000006
+    ],
+    "travel_vector": [
+      0.003299999999995862,
+      0.0009000000000014552
+    ],
+    "local_angle_route_vs_allowed_deg": 177.926,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P08",
+    "label": "自由が丘→等々力",
+    "way_id": 350353685,
+    "lat": 35.60661,
+    "lng": 139.66757,
+    "route_idx": 4,
+    "recorded_group": "残存A群",
+    "recorded_diag_angle_deg": "164.8",
+    "oneway": "yes",
+    "highway": "service",
+    "name": "",
+    "way_node_count": 10,
+    "closed_way": false,
+    "route_idx_used": 4,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.21,
+    "local_way_segment_number_one_based": 4,
+    "local_allowed_direction_start": [
+      139.6675439,
+      35.606613800000005
+    ],
+    "local_allowed_direction_end": [
+      139.66811570000002,
+      35.606572
+    ],
+    "travel_vector": [
+      -0.0008800000000235286,
+      -0.00039999999999906777
+    ],
+    "local_angle_route_vs_allowed_deg": 145.654,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P10",
+    "label": "立川→国分寺",
+    "way_id": 853388885,
+    "lat": 35.69665,
+    "lng": 139.4128,
+    "route_idx": 0,
+    "recorded_group": "C群",
+    "recorded_diag_angle_deg": "179.0",
+    "oneway": "yes",
+    "highway": "tertiary",
+    "name": "",
+    "way_node_count": 10,
+    "closed_way": false,
+    "route_idx_used": 0,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.123,
+    "local_way_segment_number_one_based": 7,
+    "local_allowed_direction_start": [
+      139.4127987,
+      35.6966448
+    ],
+    "local_allowed_direction_end": [
+      139.4129222,
+      35.6968752
+    ],
+    "travel_vector": [
+      -0.0005199999999945248,
+      -0.0009900000000016007
+    ],
+    "local_angle_route_vs_allowed_deg": 179.577,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P11",
+    "label": "立川→国分寺",
+    "way_id": 1429406683,
+    "lat": 35.69153,
+    "lng": 139.42453,
+    "route_idx": 3,
+    "recorded_group": "",
+    "recorded_diag_angle_deg": "178.1",
+    "oneway": "yes",
+    "highway": "tertiary",
+    "name": "立川南通り",
+    "way_node_count": 6,
+    "closed_way": false,
+    "route_idx_used": 3,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.407,
+    "local_way_segment_number_one_based": 5,
+    "local_allowed_direction_start": [
+      139.42459720000002,
+      35.6915114
+    ],
+    "local_allowed_direction_end": [
+      139.42406970000002,
+      35.6915575
+    ],
+    "travel_vector": [
+      0.001949999999993679,
+      -0.00017000000000422233
+    ],
+    "local_angle_route_vs_allowed_deg": 179.985,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P12",
+    "label": "横浜→みなとみらい",
+    "way_id": 28413948,
+    "lat": 35.46414,
+    "lng": 139.62264,
+    "route_idx": 4,
+    "recorded_group": "C群",
+    "recorded_diag_angle_deg": "173.4",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 11,
+    "closed_way": false,
+    "route_idx_used": 4,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.999,
+    "local_way_segment_number_one_based": 8,
+    "local_allowed_direction_start": [
+      139.6226404,
+      35.4641193
+    ],
+    "local_allowed_direction_end": [
+      139.6226742,
+      35.4641788
+    ],
+    "travel_vector": [
+      -0.0004500000000007276,
+      -0.0010499999999993292
+    ],
+    "local_angle_route_vs_allowed_deg": 174.413,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P13",
+    "label": "横浜→みなとみらい",
+    "way_id": 28413948,
+    "lat": 35.46358,
+    "lng": 139.62261,
+    "route_idx": 5,
+    "recorded_group": "C群",
+    "recorded_diag_angle_deg": "173.4",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 11,
+    "closed_way": false,
+    "route_idx_used": 5,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.716,
+    "local_way_segment_number_one_based": 6,
+    "local_allowed_direction_start": [
+      139.6226014,
+      35.4635728
+    ],
+    "local_allowed_direction_end": [
+      139.6226283,
+      35.463861
+    ],
+    "travel_vector": [
+      -0.00018000000000029104,
+      -0.0010199999999969123
+    ],
+    "local_angle_route_vs_allowed_deg": 176.168,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "N02",
+    "label": "川崎→武蔵小杉",
+    "way_id": 992241606,
+    "lat": 35.54306,
+    "lng": 139.69367,
+    "route_idx": 5,
+    "recorded_group": "",
+    "recorded_diag_angle_deg": "170.3",
+    "oneway": "yes",
+    "highway": "trunk",
+    "name": "府中街道",
+    "way_node_count": 8,
+    "closed_way": false,
+    "route_idx_used": 5,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.762,
+    "local_way_segment_number_one_based": 7,
+    "local_allowed_direction_start": [
+      139.6934213,
+      35.5432608
+    ],
+    "local_allowed_direction_end": [
+      139.69378650000002,
+      35.5430134
+    ],
+    "travel_vector": [
+      -0.005629999999996471,
+      0.003880000000002326
+    ],
+    "local_angle_route_vs_allowed_deg": 179.516,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P17",
+    "label": "千葉→幕張本郷",
+    "way_id": 142222817,
+    "lat": 35.65934,
+    "lng": 140.05664,
+    "route_idx": 108,
+    "recorded_group": "残存A群",
+    "recorded_diag_angle_deg": "179.7",
+    "oneway": "yes",
+    "highway": "residential",
+    "name": "",
+    "way_node_count": 7,
+    "closed_way": false,
+    "route_idx_used": 108,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.645,
+    "local_way_segment_number_one_based": 4,
+    "local_allowed_direction_start": [
+      140.0565353,
+      35.659410300000005
+    ],
+    "local_allowed_direction_end": [
+      140.05671230000002,
+      35.659320900000004
+    ],
+    "travel_vector": [
+      -0.0007999999999981355,
+      0.0002800000000036107
+    ],
+    "local_angle_route_vs_allowed_deg": 171.438,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "current12",
+    "point_id": "P18",
+    "label": "千葉→幕張本郷",
+    "way_id": 151808609,
+    "lat": 35.6721,
+    "lng": 140.04245,
+    "route_idx": 136,
+    "recorded_group": "",
+    "recorded_diag_angle_deg": "128.1",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 8,
+    "closed_way": false,
+    "route_idx_used": 136,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.185,
+    "local_way_segment_number_one_based": 7,
+    "local_allowed_direction_start": [
+      140.04244920000002,
+      35.672127
+    ],
+    "local_allowed_direction_end": [
+      140.0429172,
+      35.671785500000006
+    ],
+    "travel_vector": [
+      -0.0007300000000043383,
+      0.000529999999997699
+    ],
+    "local_angle_route_vs_allowed_deg": 179.856,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P01",
+    "label": "渋谷→新宿",
+    "way_id": 138533178,
+    "lat": 35.68928,
+    "lng": 139.7022,
+    "route_idx": null,
+    "recorded_group": "A",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 3,
+    "closed_way": false,
+    "route_idx_used": 19,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.391,
+    "local_way_segment_number_one_based": 1,
+    "local_allowed_direction_start": [
+      139.7021703,
+      35.6893321
+    ],
+    "local_allowed_direction_end": [
+      139.70223810000002,
+      35.6890786
+    ],
+    "travel_vector": [
+      -0.0005999999999914962,
+      0.0016699999999971737
+    ],
+    "local_angle_route_vs_allowed_deg": 175.988,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P02",
+    "label": "東京→渋谷",
+    "way_id": 474601303,
+    "lat": 35.6598,
+    "lng": 139.743,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "tertiary",
+    "name": "東京タワー通り",
+    "way_node_count": 6,
+    "closed_way": false,
+    "route_idx_used": 16,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.241,
+    "local_way_segment_number_one_based": 1,
+    "local_allowed_direction_start": [
+      139.7430137,
+      35.6597832
+    ],
+    "local_allowed_direction_end": [
+      139.7431564,
+      35.6598228
+    ],
+    "travel_vector": [
+      -0.00041000000001645276,
+      -0.0007200000000011642
+    ],
+    "local_angle_route_vs_allowed_deg": 133.686,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P03",
+    "label": "東京→渋谷",
+    "way_id": 271979254,
+    "lat": 35.66017,
+    "lng": 139.74041,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "primary",
+    "name": "外苑東通り",
+    "way_node_count": 13,
+    "closed_way": false,
+    "route_idx_used": 19,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 7.699,
+    "local_way_segment_number_one_based": 8,
+    "local_allowed_direction_start": [
+      139.7404112,
+      35.6602468
+    ],
+    "local_allowed_direction_end": [
+      139.7405847,
+      35.6601769
+    ],
+    "travel_vector": [
+      -0.003959999999977981,
+      0.0015600000000048908
+    ],
+    "local_angle_route_vs_allowed_deg": 179.492,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P04",
+    "label": "品川→東京",
+    "way_id": 23690216,
+    "lat": 35.62903,
+    "lng": 139.74278,
+    "route_idx": null,
+    "recorded_group": "A",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 7,
+    "closed_way": false,
+    "route_idx_used": 5,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.127,
+    "local_way_segment_number_one_based": 3,
+    "local_allowed_direction_start": [
+      139.74282060000002,
+      35.629226700000004
+    ],
+    "local_allowed_direction_end": [
+      139.74280280000002,
+      35.6290208
+    ],
+    "travel_vector": [
+      0.0005500000000040473,
+      0.00043999999999755346
+    ],
+    "local_angle_route_vs_allowed_deg": 138.564,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P05",
+    "label": "品川→東京",
+    "way_id": 741785139,
+    "lat": 35.64862,
+    "lng": 139.75466,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "tertiary_link",
+    "name": "",
+    "way_node_count": 6,
+    "closed_way": false,
+    "route_idx_used": 30,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.348,
+    "local_way_segment_number_one_based": 2,
+    "local_allowed_direction_start": [
+      139.75454480000002,
+      35.6486662
+    ],
+    "local_allowed_direction_end": [
+      139.7546863,
+      35.648605100000005
+    ],
+    "travel_vector": [
+      -0.001959999999996853,
+      0.0008100000000013097
+    ],
+    "local_angle_route_vs_allowed_deg": 178.971,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P06",
+    "label": "品川→東京",
+    "way_id": 667962675,
+    "lat": 35.66705,
+    "lng": 139.76072,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "trunk",
+    "name": "中央通り",
+    "way_node_count": 6,
+    "closed_way": false,
+    "route_idx_used": 37,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 9.44,
+    "local_way_segment_number_one_based": 3,
+    "local_allowed_direction_start": [
+      139.76096420000002,
+      35.6672041
+    ],
+    "local_allowed_direction_end": [
+      139.76077650000002,
+      35.6669639
+    ],
+    "travel_vector": [
+      0.001599999999996271,
+      0.0015700000000009595
+    ],
+    "local_angle_route_vs_allowed_deg": 172.787,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P07",
+    "label": "荻窪→阿佐ヶ谷",
+    "way_id": 80835360,
+    "lat": 35.70462,
+    "lng": 139.63456,
+    "route_idx": null,
+    "recorded_group": "A",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "residential",
+    "name": "",
+    "way_node_count": 8,
+    "closed_way": false,
+    "route_idx_used": 14,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.393,
+    "local_way_segment_number_one_based": 1,
+    "local_allowed_direction_start": [
+      139.6345451,
+      35.7046378
+    ],
+    "local_allowed_direction_end": [
+      139.6344819,
+      35.704611500000006
+    ],
+    "travel_vector": [
+      0.002169999999978245,
+      0.0005500000000040473
+    ],
+    "local_angle_route_vs_allowed_deg": 170.201,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P08",
+    "label": "自由が丘→等々力",
+    "way_id": 350353685,
+    "lat": 35.60661,
+    "lng": 139.66757,
+    "route_idx": null,
+    "recorded_group": "A",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "service",
+    "name": "",
+    "way_node_count": 10,
+    "closed_way": false,
+    "route_idx_used": 4,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.21,
+    "local_way_segment_number_one_based": 4,
+    "local_allowed_direction_start": [
+      139.6675439,
+      35.606613800000005
+    ],
+    "local_allowed_direction_end": [
+      139.66811570000002,
+      35.606572
+    ],
+    "travel_vector": [
+      -0.0008800000000235286,
+      -0.00039999999999906777
+    ],
+    "local_angle_route_vs_allowed_deg": 145.654,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P09",
+    "label": "浦和→さいたま新都心",
+    "way_id": 325347768,
+    "lat": 35.85906,
+    "lng": 139.65813,
+    "route_idx": null,
+    "recorded_group": "A",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 7,
+    "closed_way": false,
+    "route_idx_used": 2,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.018,
+    "local_way_segment_number_one_based": 6,
+    "local_allowed_direction_start": [
+      139.6581037,
+      35.8591007
+    ],
+    "local_allowed_direction_end": [
+      139.6581363,
+      35.8590676
+    ],
+    "travel_vector": [
+      -0.0010900000000049204,
+      0.0011299999999963006
+    ],
+    "local_angle_route_vs_allowed_deg": 179.42,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P10",
+    "label": "立川→国分寺",
+    "way_id": 853388885,
+    "lat": 35.69665,
+    "lng": 139.4128,
+    "route_idx": null,
+    "recorded_group": "C",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "tertiary",
+    "name": "",
+    "way_node_count": 10,
+    "closed_way": false,
+    "route_idx_used": 0,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.123,
+    "local_way_segment_number_one_based": 7,
+    "local_allowed_direction_start": [
+      139.4127987,
+      35.6966448
+    ],
+    "local_allowed_direction_end": [
+      139.4129222,
+      35.6968752
+    ],
+    "travel_vector": [
+      -0.0005199999999945248,
+      -0.0009900000000016007
+    ],
+    "local_angle_route_vs_allowed_deg": 179.577,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P11",
+    "label": "立川→国分寺",
+    "way_id": 1429406683,
+    "lat": 35.69153,
+    "lng": 139.42453,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "tertiary",
+    "name": "立川南通り",
+    "way_node_count": 6,
+    "closed_way": false,
+    "route_idx_used": 3,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.407,
+    "local_way_segment_number_one_based": 5,
+    "local_allowed_direction_start": [
+      139.42459720000002,
+      35.6915114
+    ],
+    "local_allowed_direction_end": [
+      139.42406970000002,
+      35.6915575
+    ],
+    "travel_vector": [
+      0.001949999999993679,
+      -0.00017000000000422233
+    ],
+    "local_angle_route_vs_allowed_deg": 179.985,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P12",
+    "label": "横浜→みなとみらい",
+    "way_id": 28413948,
+    "lat": 35.46414,
+    "lng": 139.62264,
+    "route_idx": null,
+    "recorded_group": "C",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 11,
+    "closed_way": false,
+    "route_idx_used": 4,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.999,
+    "local_way_segment_number_one_based": 8,
+    "local_allowed_direction_start": [
+      139.6226404,
+      35.4641193
+    ],
+    "local_allowed_direction_end": [
+      139.6226742,
+      35.4641788
+    ],
+    "travel_vector": [
+      -0.0004500000000007276,
+      -0.0010499999999993292
+    ],
+    "local_angle_route_vs_allowed_deg": 174.413,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P13",
+    "label": "横浜→みなとみらい",
+    "way_id": 28413948,
+    "lat": 35.46358,
+    "lng": 139.62261,
+    "route_idx": null,
+    "recorded_group": "C",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 11,
+    "closed_way": false,
+    "route_idx_used": 5,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 0.716,
+    "local_way_segment_number_one_based": 6,
+    "local_allowed_direction_start": [
+      139.6226014,
+      35.4635728
+    ],
+    "local_allowed_direction_end": [
+      139.6226283,
+      35.463861
+    ],
+    "travel_vector": [
+      -0.00018000000000029104,
+      -0.0010199999999969123
+    ],
+    "local_angle_route_vs_allowed_deg": 176.168,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P14",
+    "label": "川崎→武蔵小杉",
+    "way_id": 263457845,
+    "lat": 35.55607,
+    "lng": 139.67756,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "tertiary",
+    "name": "南武沿線道路",
+    "way_node_count": 18,
+    "closed_way": false,
+    "route_idx_used": 11,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 10.06,
+    "local_way_segment_number_one_based": 5,
+    "local_allowed_direction_start": [
+      139.677491,
+      35.5563293
+    ],
+    "local_allowed_direction_end": [
+      139.67776940000002,
+      35.555969000000005
+    ],
+    "travel_vector": [
+      -0.002849999999995134,
+      0.0039700000000024716
+    ],
+    "local_angle_route_vs_allowed_deg": 178.132,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P15",
+    "label": "千葉→幕張本郷",
+    "way_id": 22961575,
+    "lat": 35.62677,
+    "lng": 140.11468,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "trunk",
+    "name": "国道126号",
+    "way_node_count": 48,
+    "closed_way": false,
+    "route_idx_used": 22,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 9.376,
+    "local_way_segment_number_one_based": 27,
+    "local_allowed_direction_start": [
+      140.1139381,
+      35.6282548
+    ],
+    "local_allowed_direction_end": [
+      140.11479400000002,
+      35.626771000000005
+    ],
+    "travel_vector": [
+      -0.0012199999999893407,
+      0.0021600000000034925
+    ],
+    "local_angle_route_vs_allowed_deg": 179.54,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P16",
+    "label": "千葉→幕張本郷",
+    "way_id": 22961575,
+    "lat": 35.6346,
+    "lng": 140.11174,
+    "route_idx": null,
+    "recorded_group": "B",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "trunk",
+    "name": "国道126号",
+    "way_node_count": 48,
+    "closed_way": false,
+    "route_idx_used": 27,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 7.977,
+    "local_way_segment_number_one_based": 6,
+    "local_allowed_direction_start": [
+      140.1117446,
+      35.6347602
+    ],
+    "local_allowed_direction_end": [
+      140.1118398,
+      35.634596200000004
+    ],
+    "travel_vector": [
+      -0.0009299999999825559,
+      0.0013999999999967372
+    ],
+    "local_angle_route_vs_allowed_deg": 176.893,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P17",
+    "label": "千葉→幕張本郷",
+    "way_id": 142222817,
+    "lat": 35.65934,
+    "lng": 140.05664,
+    "route_idx": null,
+    "recorded_group": "A",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "residential",
+    "name": "",
+    "way_node_count": 7,
+    "closed_way": false,
+    "route_idx_used": 108,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 1.645,
+    "local_way_segment_number_one_based": 4,
+    "local_allowed_direction_start": [
+      140.0565353,
+      35.659410300000005
+    ],
+    "local_allowed_direction_end": [
+      140.05671230000002,
+      35.659320900000004
+    ],
+    "travel_vector": [
+      -0.0007999999999981355,
+      0.0002800000000036107
+    ],
+    "local_angle_route_vs_allowed_deg": 171.438,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  },
+  {
+    "population": "legacy18",
+    "point_id": "P18",
+    "label": "千葉→幕張本郷",
+    "way_id": 151808609,
+    "lat": 35.6721,
+    "lng": 140.04245,
+    "route_idx": null,
+    "recorded_group": "C",
+    "recorded_diag_angle_deg": "",
+    "oneway": "yes",
+    "highway": "unclassified",
+    "name": "",
+    "way_node_count": 8,
+    "closed_way": false,
+    "route_idx_used": 136,
+    "detection_to_route_vertex_m": 0.0,
+    "detection_to_way_m": 2.185,
+    "local_way_segment_number_one_based": 7,
+    "local_allowed_direction_start": [
+      140.04244920000002,
+      35.672127
+    ],
+    "local_allowed_direction_end": [
+      140.0429172,
+      35.671785500000006
+    ],
+    "travel_vector": [
+      -0.0007300000000043383,
+      0.000529999999997699
+    ],
+    "local_angle_route_vs_allowed_deg": 179.856,
+    "local_direction_says_reverse": true,
+    "existing_function_detected": true,
+    "existing_vs_local_consistent": true
+  }
+]
