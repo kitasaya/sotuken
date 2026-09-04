@@ -11,6 +11,10 @@ import "./App.css";
 // BottomSheet と同期する FAB 位置計算用（peek/half/full の vh 比）
 const SNAP_VH = { peek: 18, half: 50, full: 90 };
 
+// 開発・発表準備用。未設定時は変更前ルートを一切表示しない。
+const SHOW_ORIGINAL_ROUTE =
+  import.meta.env.VITE_SHOW_ORIGINAL_ROUTE === "true";
+
 export default function App() {
   const [routeData, setRouteData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -130,6 +134,7 @@ export default function App() {
           onModeChange={handleManualModeChange}
           geoBadge={renderGeoBadge()}
           hasRoute={!!routeData}
+          showOriginalRoute={SHOW_ORIGINAL_ROUTE}
         />
       </div>
     );
@@ -149,6 +154,7 @@ export default function App() {
           routeFitVersion={routeFitVersion}
           onViolationClick={handleViolationMarkerClick}
           focusedViolationIndex={focusedViolationIndex}
+          showOriginalRoute={SHOW_ORIGINAL_ROUTE}
         />
       </div>
 
@@ -166,20 +172,24 @@ export default function App() {
 
       {routeData && (
         <div className="map-legend">
-          <div className="map-legend-row">
-            <span
-              className="map-legend-swatch"
-              style={{ background: "#1976d2" }}
-            />
-            法規準拠ルート
-          </div>
-          <div className="map-legend-row">
-            <span
-              className="map-legend-swatch"
-              style={{ background: "#e65100" }}
-            />
-            最短ルート
-          </div>
+          {SHOW_ORIGINAL_ROUTE && (
+            <>
+              <div className="map-legend-row">
+                <span
+                  className="map-legend-swatch"
+                  style={{ background: "#1976d2" }}
+                />
+                変更後ルート
+              </div>
+              <div className="map-legend-row">
+                <span
+                  className="map-legend-swatch"
+                  style={{ background: "#e65100" }}
+                />
+                変更前ルート
+              </div>
+            </>
+          )}
           <div className="map-legend-row">
             <span
               className="map-legend-dot"

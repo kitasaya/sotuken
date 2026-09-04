@@ -89,6 +89,18 @@ export const buildApproachText = (
 };
 
 /**
+ * Layer 2 案内の暫定読み上げ文言。
+ * 違反・リルート理由の文言とは意図的に分離する。
+ */
+export const buildGuidanceText = (guidance) => {
+  if (guidance?.type === "stop_sign") return "この先、一時停止です";
+  if (guidance?.type === "level_crossing") {
+    return "この先、踏切です。停止してください";
+  }
+  return null;
+};
+
+/**
  * リルート理由の音声テキストを生成
  * @param {Array} violations
  * @returns {string|null}

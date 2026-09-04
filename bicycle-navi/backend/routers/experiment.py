@@ -27,9 +27,10 @@ CSV_FIELDNAMES = [
     "compliant_distance_m",
     "distance_diff_m",
     "distance_diff_pct",
-    "violation_count",
-    "violation_count_high_conf",
-    "violation_count_low_conf",
+    "oneway_violation_count",
+    "oneway_violation_count_high_conf",
+    "oneway_violation_count_low_conf",
+    "two_step_required_intersections",
     "violation_types",
     "rerouted",
     "error",
@@ -64,7 +65,11 @@ async def batch_experiment(req: BatchRequest):
             )
             violations = result["violations"]
             comp = result["comparison"]
-            high_conf = sum(1 for v in violations if v.get("confidence", 0.4) >= 0.7)
+            oneway_violations = [v for v in violations if v.get("rule") == "oneway"]
+            oneway_high_conf = sum(
+                1 for v in oneway_violations if v.get("confidence", 0.4) >= 0.7
+            )
+            two_step_required = sum(v.get("rule") == "two_step_turn" for v in violations)
 
             results.append({
                 "label": r.label,
@@ -78,9 +83,10 @@ async def batch_experiment(req: BatchRequest):
                 "compliant_distance_m": comp["compliant_distance_m"],
                 "distance_diff_m": comp["distance_diff_m"],
                 "distance_diff_pct": comp["distance_diff_pct"],
-                "violation_count": comp["violation_count"],
-                "violation_count_high_conf": high_conf,
-                "violation_count_low_conf": comp["violation_count"] - high_conf,
+                "oneway_violation_count": len(oneway_violations),
+                "oneway_violation_count_high_conf": oneway_high_conf,
+                "oneway_violation_count_low_conf": len(oneway_violations) - oneway_high_conf,
+                "two_step_required_intersections": two_step_required,
                 "violation_types": ",".join(sorted({v["rule"] for v in violations})),
                 "rerouted": comp["rerouted"],
                 "error": "",
@@ -98,9 +104,10 @@ async def batch_experiment(req: BatchRequest):
                 "compliant_distance_m": "",
                 "distance_diff_m": "",
                 "distance_diff_pct": "",
-                "violation_count": "",
-                "violation_count_high_conf": "",
-                "violation_count_low_conf": "",
+                "oneway_violation_count": "",
+                "oneway_violation_count_high_conf": "",
+                "oneway_violation_count_low_conf": "",
+                "two_step_required_intersections": "",
                 "violation_types": "",
                 "rerouted": "",
                 "error": str(e),
@@ -328,8 +335,9 @@ async def ground_truth_compare():
 
 @router.post("/experiment/google-comparison/summary")
 async def google_comparison_summary():
-    """google_comparison.csv を読み込み、本システム vs Google Maps の違反数差分と
-    距離差分を集計した CSV を返す。外部 API 呼び出しなし。
+    """google_comparison.csv の oneway と要二段階右折交差点を分離集計する。
+
+    旧 system_violation_count は両者の合算で内訳を復元できないため参照しない。
     """
     rows: list[dict] = []
     with open(GOOGLE_COMPARISON_CSV, encoding="utf-8", newline="") as f:
@@ -342,6 +350,12 @@ async def google_comparison_summary():
         except (ValueError, TypeError):
             return default
 
+    def _optional_int(val: str) -> int | None:
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return None
+
     def _float(val: str, default: float = 0.0) -> float:
         try:
             return float(val)
@@ -350,59 +364,72 @@ async def google_comparison_summary():
 
     per_route_rows = []
     for row in rows:
-        google_total = _int(row.get("google_oneway_violation_count", "")) + \
-                       _int(row.get("google_two_step_violation_count", ""))
         sys_dist = _float(row.get("system_distance_m", ""))
         goog_dist = _float(row.get("google_distance_m", ""))
-        sys_vio = _int(row.get("system_violation_count", ""))
-        sys_vio_hc = _int(row.get("system_violation_count_high_conf", ""))
+        system_oneway = _optional_int(row.get("system_oneway_violation_count", ""))
+        system_two_step = _optional_int(row.get("system_two_step_required_intersections", ""))
+        google_oneway = _int(row.get("google_oneway_violation_count", ""))
+        google_two_step = _int(
+            row.get("google_two_step_required_intersections", "")
+            or row.get("google_two_step_violation_count", "")
+        )
         per_route_rows.append({
             "label": row.get("label", ""),
             "road_type": row.get("road_type", ""),
             "system_distance_m": sys_dist,
-            "system_violation_count": sys_vio,
-            "system_violation_count_high_conf": sys_vio_hc,
+            "system_oneway_violation_count": "" if system_oneway is None else system_oneway,
+            "system_two_step_required_intersections": "" if system_two_step is None else system_two_step,
             "google_distance_m": goog_dist,
-            "google_total_violation_count": google_total,
-            "violation_diff": sys_vio - google_total,  # 正: 本システムが多く検出
+            "google_oneway_violation_count": google_oneway,
+            "google_two_step_required_intersections": google_two_step,
+            "oneway_violation_diff": "" if system_oneway is None else system_oneway - google_oneway,
             "distance_diff_m": round(sys_dist - goog_dist, 1),
             "route_overlap_pct": _float(row.get("route_overlap_pct", "")),
         })
+
+    def _mean_available(target_rows: list[dict], key: str) -> float | str:
+        values = [r[key] for r in target_rows if isinstance(r.get(key), (int, float))]
+        return round(sum(values) / len(values), 2) if values else ""
 
     def _aggregate(target_rows: list[dict], label: str) -> dict:
         n = len(target_rows)
         if n == 0:
             return {"label": label, "road_type": "（集計）", "n": 0,
-                    "mean_system_distance_m": "", "mean_system_violation_count": "",
-                    "mean_system_violation_count_high_conf": "",
-                    "mean_google_distance_m": "", "mean_google_total_violation_count": "",
-                    "mean_violation_diff": "", "mean_distance_diff_m": "",
+                    "mean_system_distance_m": "", "mean_system_oneway_violation_count": "",
+                    "mean_system_two_step_required_intersections": "",
+                    "mean_google_distance_m": "", "mean_google_oneway_violation_count": "",
+                    "mean_google_two_step_required_intersections": "",
+                    "mean_oneway_violation_diff": "", "mean_distance_diff_m": "",
                     "mean_route_overlap_pct": ""}
         return {
             "label": label,
             "road_type": "（集計）",
             "n": n,
             "mean_system_distance_m": round(sum(r["system_distance_m"] for r in target_rows) / n, 1),
-            "mean_system_violation_count": round(sum(r["system_violation_count"] for r in target_rows) / n, 2),
-            "mean_system_violation_count_high_conf": round(sum(r["system_violation_count_high_conf"] for r in target_rows) / n, 2),
+            "mean_system_oneway_violation_count": _mean_available(target_rows, "system_oneway_violation_count"),
+            "mean_system_two_step_required_intersections": _mean_available(target_rows, "system_two_step_required_intersections"),
             "mean_google_distance_m": round(sum(r["google_distance_m"] for r in target_rows) / n, 1),
-            "mean_google_total_violation_count": round(sum(r["google_total_violation_count"] for r in target_rows) / n, 2),
-            "mean_violation_diff": round(sum(r["violation_diff"] for r in target_rows) / n, 2),
+            "mean_google_oneway_violation_count": _mean_available(target_rows, "google_oneway_violation_count"),
+            "mean_google_two_step_required_intersections": _mean_available(target_rows, "google_two_step_required_intersections"),
+            "mean_oneway_violation_diff": _mean_available(target_rows, "oneway_violation_diff"),
             "mean_distance_diff_m": round(sum(r["distance_diff_m"] for r in target_rows) / n, 1),
             "mean_route_overlap_pct": round(sum(r["route_overlap_pct"] for r in target_rows) / n, 1),
         }
 
     per_route_fieldnames = [
-        "label", "road_type", "system_distance_m", "system_violation_count",
-        "system_violation_count_high_conf", "google_distance_m",
-        "google_total_violation_count", "violation_diff", "distance_diff_m", "route_overlap_pct",
+        "label", "road_type", "system_distance_m",
+        "system_oneway_violation_count", "system_two_step_required_intersections",
+        "google_distance_m", "google_oneway_violation_count",
+        "google_two_step_required_intersections", "oneway_violation_diff",
+        "distance_diff_m", "route_overlap_pct",
     ]
     agg_fieldnames = [
         "label", "road_type", "n",
-        "mean_system_distance_m", "mean_system_violation_count",
-        "mean_system_violation_count_high_conf",
-        "mean_google_distance_m", "mean_google_total_violation_count",
-        "mean_violation_diff", "mean_distance_diff_m", "mean_route_overlap_pct",
+        "mean_system_distance_m", "mean_system_oneway_violation_count",
+        "mean_system_two_step_required_intersections",
+        "mean_google_distance_m", "mean_google_oneway_violation_count",
+        "mean_google_two_step_required_intersections",
+        "mean_oneway_violation_diff", "mean_distance_diff_m", "mean_route_overlap_pct",
     ]
 
     output = io.StringIO()
@@ -451,8 +478,7 @@ class ExternalRouteRequest(BaseModel):
 async def score_external(req: ExternalRouteRequest):
     """Google Maps 等の外部ルートを本システムと同一の判定器で採点する。
 
-    google_comparison.csv の google_oneway_violation_count /
-    google_two_step_violation_count を手動カウントせず自動算出するための補助。
+    oneway_violation_count / two_step_required_intersections を独立に返す。
     """
     coords = req.coords
     if coords is None and req.polyline:

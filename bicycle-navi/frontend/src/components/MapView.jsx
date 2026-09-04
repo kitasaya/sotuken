@@ -43,13 +43,18 @@ export default function MapView({
   routeFitVersion = 0,
   onViolationClick,
   focusedViolationIndex = null,
+  showOriginalRoute = false,
 }) {
   const center = [35.6762, 139.6503]; // 東京
 
   const originalPositions = toPositions(originalRoute);
   const compliantPositions = toPositions(compliantRoute);
   const fitTarget =
-    compliantPositions.length > 0 ? compliantPositions : originalPositions;
+    compliantPositions.length > 0
+      ? compliantPositions
+      : showOriginalRoute
+      ? originalPositions
+      : [];
 
   return (
     <MapContainer
@@ -66,7 +71,7 @@ export default function MapView({
       <MapFocusController target={focusTarget} version={focusVersion} />
       <MapRouteFitController positions={fitTarget} version={routeFitVersion} />
       {/* 元の最短ルート（オレンジ・中太線） */}
-      {originalPositions.length > 0 && (
+      {showOriginalRoute && originalPositions.length > 0 && (
         <Polyline
           positions={originalPositions}
           color="#e65100"

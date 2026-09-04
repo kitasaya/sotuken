@@ -38,6 +38,7 @@ async def get_compliant_route(
             "profile": "bike",
             "locale": "ja",
             "points_encoded": "false",
+            "details": ["osm_way_id", "road_class"],
         })
         resp.raise_for_status()
         return resp.json()
@@ -82,6 +83,7 @@ async def get_compliant_route(
         "profile": "bike",
         "locale": "ja",
         "points_encoded": False,
+        "details": ["osm_way_id", "road_class"],
         "ch.disable": True,      # custom_model を使うには CH を無効化する必要がある
         "custom_model": custom_model,
     }

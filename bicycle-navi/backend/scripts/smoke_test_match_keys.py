@@ -115,7 +115,7 @@ async def case_existing_keys_unchanged():
 
 async def case_new_keys_present():
     """新キーが4つとも存在し、型が期待どおりであること。"""
-    print("\n[2] 新キー match_way_id / match_dist_m / match_margin_m / match_ambiguous")
+    print("\n[2] 新キー match_way_id / match_dist_m / match_margin_m / match_ambiguous / match_candidates")
     elements = [
         _horizontal_way(2001, 1.0, None),
         _horizontal_way(2002, 9.0, None),
@@ -124,7 +124,8 @@ async def case_new_keys_present():
 
     d = (await get_bulk_way_data([[P_LNG, P_LAT]]))[0]
 
-    for key in ("match_way_id", "match_dist_m", "match_margin_m", "match_ambiguous"):
+    for key in ("match_way_id", "match_dist_m", "match_margin_m", "match_ambiguous",
+                "match_candidates"):
         check(key in d, f"{key} が存在する")
     check(d["match_way_id"] == 2001, "match_way_id は rank1 の way id", f"{d['match_way_id']}")
     check(approx(d["match_dist_m"], 1.0, 0.05), "match_dist_m は rank1 の垂線距離",
@@ -132,6 +133,7 @@ async def case_new_keys_present():
     check(approx(d["match_margin_m"], 8.0, 0.05), "match_margin_m は rank1/rank2 の差",
           f"{d['match_margin_m']}m（期待 8.0m）")
     check(d["match_ambiguous"] is False, "マージン 8.0m は曖昧でない")
+    check(len(d["match_candidates"]) == 1, "2m帯内の候補はrank1のみ")
 
 
 async def case_margin_semantics():
@@ -146,12 +148,14 @@ async def case_margin_semantics():
           "候補0本: match_way_id / match_dist_m は None")
     check(d["match_margin_m"] is None, "候補0本: match_margin_m は None")
     check(d["match_ambiguous"] is False, "候補0本: match_ambiguous は False")
+    check(d["match_candidates"] == [], "候補0本: match_candidates は空")
 
     # 候補 1 本
     overpass._post_with_retry = _stub_overpass([_horizontal_way(3001, 2.0, None)])
     d = (await get_bulk_way_data([[P_LNG, P_LAT]]))[0]
     check(d["match_margin_m"] is None, "候補1本: match_margin_m は None（仕様どおり）")
     check(d["match_ambiguous"] is False, "候補1本: match_ambiguous は False")
+    check(len(d["match_candidates"]) == 1, "候補1本: match_candidates も1件")
 
     # 僅差 2 本（マージン 1.5m < 2.0m）
     overpass._post_with_retry = _stub_overpass([
@@ -161,6 +165,7 @@ async def case_margin_semantics():
     d = (await get_bulk_way_data([[P_LNG, P_LAT]]))[0]
     check(approx(d["match_margin_m"], 1.5, 0.05), "僅差2本: マージン 1.5m", f"{d['match_margin_m']}m")
     check(d["match_ambiguous"] is True, "僅差2本: match_ambiguous は True")
+    check(len(d["match_candidates"]) == 2, "僅差2本: 2m帯内候補を全件保持")
 
     # 十分離れた 2 本（マージン 3.0m >= 2.0m）
     overpass._post_with_retry = _stub_overpass([
@@ -170,6 +175,7 @@ async def case_margin_semantics():
     d = (await get_bulk_way_data([[P_LNG, P_LAT]]))[0]
     check(approx(d["match_margin_m"], 3.0, 0.05), "離れた2本: マージン 3.0m", f"{d['match_margin_m']}m")
     check(d["match_ambiguous"] is False, "離れた2本: match_ambiguous は False")
+    check(len(d["match_candidates"]) == 1, "離れた2本: 2m帯内はrank1のみ")
 
     check(MATCH_AMBIGUOUS_MARGIN_M == 2.0, "閾値定数 MATCH_AMBIGUOUS_MARGIN_M は 2.0",
           f"{MATCH_AMBIGUOUS_MARGIN_M}")
@@ -251,7 +257,7 @@ async def case_downstream_consumers():
 
     score = await score_external_route(coords)
     for key in ("oneway_violations", "two_step_violations", "oneway_violation_count",
-                "two_step_violation_count", "total_violation_count",
+                "two_step_required_intersections",
                 "route_distance_m", "sampled_points"):
         check(key in score, f"score_external_route の戻り値に {key} が存在する")
     check(isinstance(score["oneway_violation_count"], int),

@@ -1,5 +1,4 @@
 import asyncio
-import bisect
 import logging
 import time
 from services.graphhopper import get_route
@@ -13,6 +12,36 @@ from services.law_checker import (
 from services.rerouter import get_compliant_route
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_right_turns(route_data: dict, points: list) -> tuple[list, list[int]]:
+    """GraphHopper instructions から sign=2/3 の地点だけを抽出する。"""
+    turn_points: list = []
+    turn_indices: list[int] = []
+    for instruction in route_data["paths"][0].get("instructions", []):
+        if instruction.get("sign") not in (2, 3):
+            continue
+        interval = instruction.get("interval", [])
+        if not interval or not points:
+            continue
+        index = min(int(interval[0]), len(points) - 1)
+        turn_points.append(points[index])
+        turn_indices.append(index)
+    return turn_points, turn_indices
+
+
+def _way_ids_at_turn(way_id_details: list, point_index: int) -> tuple[int | None, int | None]:
+    """maneuver 点の直前（進入元）と直後（進入先）の OSM way ID を返す。"""
+    segments = [(int(s), int(e), int(w)) for s, e, w in way_id_details]
+    entry = next((w for s, e, w in reversed(segments) if s < point_index and e == point_index), None)
+    exit_ = next((w for s, e, w in segments if s == point_index and e > point_index), None)
+
+    # detail の境界と instruction の点が完全一致しない場合は隣接区間で補う。
+    if entry is None:
+        entry = next((w for s, e, w in reversed(segments) if s <= point_index - 1 < e), None)
+    if exit_ is None:
+        exit_ = next((w for s, e, w in segments if s <= point_index < e), None)
+    return entry, exit_
 
 
 def _point_to_segment_dist_sq(point: list, a: list, b: list) -> float:
@@ -118,41 +147,16 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
     way_id_details = route_data["paths"][0].get("details", {}).get("osm_way_id", [])
     using_edge_ids = bool(way_id_details)
 
-    # road_class detail（GH ローカル取得）: Overpass 不要で two_step_turn の primary/secondary 判定に使用
-    road_class_details = route_data["paths"][0].get("details", {}).get("road_class", [])
-    rc_starts = [int(seg[0]) for seg in road_class_details]
-
-    def _road_class_at(idx: int) -> str:
-        """idx を含む road_class セグメントの値を返す。見つからなければ空文字。"""
-        k = bisect.bisect_right(rc_starts, idx) - 1
-        if k >= 0 and int(road_class_details[k][0]) <= idx <= int(road_class_details[k][1]):
-            return str(road_class_details[k][2])
-        return ""
-
     # 二段階右折チェック用：右折 instruction の地点を先に抽出
-    instructions = route_data["paths"][0].get("instructions", [])
-    two_step_pts: list = []
-    two_step_idxs: list = []
-    for instr in instructions:
-        if instr.get("sign") not in (2, 3):  # TURN_RIGHT / TURN_SHARP_RIGHT のみ
-            continue
-        interval = instr.get("interval", [])
-        if not interval:
-            continue
-        idx = interval[0]
-        two_step_pts.append(points[min(idx, len(points) - 1)])
-        two_step_idxs.append(idx)
-
-    # road_class からローカルタグを構築（Overpass 不要・常に利用可能）
-    # Overpass が利用できる場合は lanes 情報で補完する
-    two_step_local_tags = [{"highway": _road_class_at(idx)} for idx in two_step_idxs]
+    two_step_pts, two_step_idxs = _extract_right_turns(route_data, points)
+    turn_way_pairs = [_way_ids_at_turn(way_id_details, idx) for idx in two_step_idxs]
+    two_step_entry_wids = [pair[0] for pair in turn_way_pairs]
+    two_step_exit_wids = [pair[1] for pair in turn_way_pairs]
 
     t0 = time.perf_counter()
     geometries: list[list] | None = None
     travel_vectors: list[list] | None = None
     way_id_to_data: dict = {}
-    two_step_tags_arg: list = []
-    two_step_wids: list = []
 
     if using_edge_ids:
         way_id_info: dict[int, dict] = {}
@@ -190,20 +194,6 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                 raw_geom = way_id_to_data.get(wid, {}).get("geometry", [])
                 route_segment = points[info["start_idx"]:min(info["end_idx"], len(points) - 1) + 1]
                 geometries.append(_trim_geometry(raw_geom, p_start, p_end, route_segment))
-            # 右折地点のタグを way_id_to_data から解決（二分探索 O(N log M)）
-            start_indices = [int(seg[0]) for seg in way_id_details]
-            for i, idx in enumerate(two_step_idxs):
-                wid = None
-                k = bisect.bisect_right(start_indices, idx) - 1
-                if k >= 0:
-                    s, e, w = int(way_id_details[k][0]), int(way_id_details[k][1]), int(way_id_details[k][2])
-                    if s <= idx <= e:
-                        wid = w
-                # Overpass タグと road_class ローカルタグをマージ（lanes 等 road_class にない情報を補完）
-                overpass_tags = way_id_to_data.get(wid, {}).get("tags", {}) if wid else {}
-                merged = {**two_step_local_tags[i], **overpass_tags}
-                two_step_tags_arg.append(merged)
-                two_step_wids.append(wid)
             logger.info("edge_idベース判定: %d ways, %.1f秒", len(unique_way_ids), time.perf_counter() - t0)
         except Exception as e:
             # タグ取得失敗を road_class だけで継続すると、oneway=0 の偽成功になる。
@@ -213,22 +203,9 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
 
     if not using_edge_ids:
         sampled = _sample(points)
-        combined_pts = sampled + two_step_pts
-        combined_data = await get_bulk_way_data(combined_pts)
-        overpass_ok = True
-        sampled_data = combined_data[:len(sampled)]
+        sampled_data = await get_bulk_way_data(sampled)
         tags_list = [d["tags"] for d in sampled_data]
         geometries = [d["geometry"] for d in sampled_data]
-        if overpass_ok:
-            # Overpass が成功した場合のみ road_class ローカルタグと Overpass タグをマージ
-            overpass_two_step = [d["tags"] for d in combined_data[len(sampled):]]
-            two_step_tags_arg = [
-                {**local, **over}
-                for local, over in zip(two_step_local_tags, overpass_two_step)
-            ]
-        elif not two_step_tags_arg:
-            # Overpass 失敗かつまだ設定されていない場合: road_class ローカルタグのみ使用
-            two_step_tags_arg = list(two_step_local_tags)
         travel_vectors = []
         for k in range(len(sampled)):
             if k + 1 < len(sampled):
@@ -242,7 +219,11 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
 
     (oneway_violations, two_step_violations, recommendations) = await asyncio.gather(
         check_oneway_violation(check_points, tags_list, geometries=geometries, travel_vectors=travel_vectors),
-        check_two_step_turn(two_step_pts, two_step_tags_arg),
+        check_two_step_turn(
+            two_step_pts,
+            entry_way_ids=two_step_entry_wids,
+            exit_way_ids=two_step_exit_wids,
+        ),
         check_cycleway_recommendation(check_points, tags_list),
     )
     logger.info("法規チェック完了(v3): oneway=%d two_step=%d (edge_id=%s)",
@@ -254,11 +235,9 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
                      for i in range(len(unique_way_ids))}
         for v in oneway_violations:
             v["way_id"] = cp_to_wid.get((v["lat"], v["lng"]))
-        if two_step_wids:
-            ts_to_wid = {(two_step_pts[j][1], two_step_pts[j][0]): two_step_wids[j]
-                         for j in range(min(len(two_step_wids), len(two_step_pts)))}
-            for v in two_step_violations:
-                v["way_id"] = ts_to_wid.get((v["lat"], v["lng"]))
+        for v in two_step_violations:
+            # 従来の ground-truth 照合用 way_id は進入先 way とする。
+            v["way_id"] = v.get("exit_way_id")
 
     violations = oneway_violations + two_step_violations
 
@@ -277,11 +256,12 @@ async def _analyze_v3(route_data, points, origin_lat, origin_lng, dest_lat, dest
 async def _analyze_v1(route_data, points, origin_lat, origin_lng, dest_lat, dest_lng):
     sampled = _sample(points)
     tags_list = await get_bulk_way_tags(sampled)
+    two_step_pts, _ = _extract_right_turns(route_data, points)
 
-    # v1: 進行方向照合なし・右折 instruction 限定なし（全サンプル点を渡す）
+    # v1: oneway は旧点ベースのまま。二段階右折は全版共通で右折 instruction のみ。
     (oneway_violations, two_step_violations, recommendations) = await asyncio.gather(
         check_oneway_violation(sampled, tags_list),  # geometries/travel_vectors なし → confidence=0.4
-        check_two_step_turn(sampled, tags_list),     # 全サンプル点 → 過検出する旧挙動
+        check_two_step_turn(two_step_pts),
         check_cycleway_recommendation(sampled, tags_list),
     )
     logger.info("法規チェック完了(v1): oneway=%d two_step=%d", len(oneway_violations), len(two_step_violations))
@@ -334,6 +314,8 @@ async def _build_response(
     diff_m = comp_dist - orig_dist
     diff_pct = round((diff_m / orig_dist * 100), 2) if orig_dist > 0 else 0.0
     violation_types = list({v["rule"] for v in violations})
+    oneway_violation_count = sum(v["rule"] == "oneway" for v in violations)
+    two_step_required_intersections = sum(v["rule"] == "two_step_turn" for v in violations)
 
     return {
         "original_route": original_route,
@@ -348,7 +330,10 @@ async def _build_response(
             "compliant_distance_m": round(comp_dist, 1),
             "distance_diff_m": round(diff_m, 1),
             "distance_diff_pct": diff_pct,
-            "violation_count": len(violations),
+            # 後方互換フィールド。ただし集計対象は経路除外に関わる oneway のみ。
+            "violation_count": oneway_violation_count,
+            "oneway_violation_count": oneway_violation_count,
+            "two_step_required_intersections": two_step_required_intersections,
             "violation_types": violation_types,
             "rerouted": rerouted,
             "using_edge_ids": using_edge_ids,

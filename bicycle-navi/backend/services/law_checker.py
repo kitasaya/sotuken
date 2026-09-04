@@ -1,7 +1,10 @@
+import logging
 import math
 
 import httpx
-from services.overpass import get_bulk_way_tags
+from services.overpass import get_bulk_intersection_data, get_bulk_way_tags
+
+logger = logging.getLogger(__name__)
 
 
 def _sample(points: list) -> list:
@@ -163,37 +166,62 @@ async def check_cycleway_recommendation(points: list, tags_list: list[dict] | No
     return recommendations
 
 
-async def check_two_step_turn(points: list, tags_list: list[dict] | None = None) -> list:
-    """二段階右折要否の判定（幹線道路 or 3車線以上）。
-    右折 instruction 地点の座標リストを受け取ることを前提とする。
+async def check_two_step_turn(
+    points: list,
+    tags_list: list[dict] | None = None,
+    *,
+    intersection_data: list[dict] | None = None,
+    entry_way_ids: list[int | None] | None = None,
+    exit_way_ids: list[int | None] | None = None,
+) -> list:
+    """右折 instruction 地点が道路エッジ3本以上の交差点なら案内を返す。
+
+    tags_list は旧呼び出しとの引数互換のため残すが、highway/lanes 判定には使わない。
+
+    道交法2条1項5号の「交差点」は、私道や駐車場出入口と公道が交わる部分も
+    含みうる。本実装が進入元 way の除外リスト該当時にも案内を出さないのは、
+    駐車場・私道からの発進に対する過剰案内を避ける設計判断であり、法解釈上の
+    非該当を意味しない。この割り切りにより一部の交差点右折が未検出となる。
     """
     violations = []
-    if tags_list is None:
-        sampled = _sample(points)
+    intersection_data_supplied = intersection_data is not None
+    if intersection_data is None:
         try:
-            tags_list = await get_bulk_way_tags(sampled)
+            intersection_data = await get_bulk_intersection_data(
+                points, entry_way_ids=entry_way_ids, exit_way_ids=exit_way_ids,
+            )
         except (httpx.HTTPError, httpx.TimeoutException):
             return violations
-        iter_points = sampled
-        confidence = 0.4
-    else:
-        iter_points = points
-        confidence = 0.7
 
-    for i, point in enumerate(iter_points):
+    for i, point in enumerate(points):
         lng, lat = point[0], point[1]
-        tags = tags_list[i] if i < len(tags_list) else {}
-        highway = tags.get("highway", "")
-        try:
-            lanes = int(tags.get("lanes", "0"))
-        except (ValueError, TypeError):
-            lanes = 0
-
-        if highway in ("primary", "secondary") or lanes >= 3:
+        data = intersection_data[i] if i < len(intersection_data) else {}
+        has_way_context = (
+            data.get("entry_way_id") is not None
+            and data.get("exit_way_id") is not None
+        )
+        confidence = 0.7 if intersection_data_supplied or has_way_context else 0.4
+        detected = data.get("is_intersection") and not data.get("entry_or_exit_excluded", False)
+        logger.info(
+            "two_step_turn判定: detected=%s node_id=%s edge_count=%s "
+            "entry_way_id=%s exit_way_id=%s connected_ways=%s",
+            detected,
+            data.get("node_id"),
+            data.get("edge_count", 0),
+            data.get("entry_way_id"),
+            data.get("exit_way_id"),
+            data.get("connected_ways", []),
+        )
+        if detected:
             violations.append({
                 "lat": lat, "lng": lng,
                 "rule": "two_step_turn",
                 "message": "二段階右折が必要な交差点です",
                 "confidence": confidence,
+                "node_id": data.get("node_id"),
+                "edge_count": data.get("edge_count", 0),
+                "connected_ways": data.get("connected_ways", []),
+                "entry_way_id": data.get("entry_way_id"),
+                "exit_way_id": data.get("exit_way_id"),
             })
     return violations

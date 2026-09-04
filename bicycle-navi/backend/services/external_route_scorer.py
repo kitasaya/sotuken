@@ -22,7 +22,11 @@ from services.law_checker import (
     check_two_step_turn,
     _geom_length_m,
 )
-from services.overpass import get_bulk_way_data
+from services.overpass import (
+    INTERSECTION_EXCLUDED_HIGHWAYS,
+    get_bulk_intersection_data,
+    get_bulk_way_data,
+)
 
 
 def _haversine_m(a: list, b: list) -> float:
@@ -55,21 +59,33 @@ def _resample_by_distance(coords: list, interval_m: float = 40.0) -> list[int]:
     return picked
 
 
-def _travel_vector_at(coords: list, idx: int, span_m: float = 30.0) -> list:
-    """idx 地点における進行方向ベクトル。前後 span_m ぶんの変位で近似する。"""
+_TRAVEL_VECTOR_SPAN_M = 30.0
+
+
+def _side_reference_indices(
+    coords: list, idx: int, span_m: float = _TRAVEL_VECTOR_SPAN_M,
+) -> tuple[int, int]:
+    """idx の前後で累積距離が span_m に達する座標インデックスを返す。
+
+    oneway 判定の travel_vector が従来から参照している範囲の算出に使う。
+    """
     n = len(coords)
-    # 後方 span
     j = idx
     back = 0.0
     while j > 0 and back < span_m:
         back += _haversine_m(coords[j - 1], coords[j])
         j -= 1
-    # 前方 span
     k = idx
     fwd = 0.0
     while k < n - 1 and fwd < span_m:
         fwd += _haversine_m(coords[k], coords[k + 1])
         k += 1
+    return j, k
+
+
+def _travel_vector_at(coords: list, idx: int, span_m: float = 30.0) -> list:
+    """idx 地点における進行方向ベクトル。前後 span_m ぶんの変位で近似する。"""
+    j, k = _side_reference_indices(coords, idx, span_m)
     p_start = coords[j]
     p_end = coords[k]
     return [p_end[0] - p_start[0], p_end[1] - p_start[1]]
@@ -121,13 +137,16 @@ def _is_right_turn(v_in: list, v_out: list) -> bool:
     return cross < 0
 
 
-def _extract_right_turn_points(coords: list, sampled_idx: list,
-                               angle_threshold_deg: float = 45.0) -> list:
-    """進行方向が大きく右に折れる点を右折候補として抽出し、その座標を返す。
+def _extract_right_turn_contexts(coords: list, sampled_idx: list,
+                                 angle_threshold_deg: float = 45.0) -> list[dict]:
+    """右折候補と、直前・直後1セグメントの範囲を返す。
 
     instruction の無い外部ルートで two_step_turn を評価するための近似。
+    entry/exit 推定では短い道路区間を飛び越えないよう、右折点に隣接する
+    1セグメントずつを使う。共有ノードそのものでは候補wayが同距離になりやすいため、
+    get_bulk_way_data に渡す参照座標は各セグメントの中点とする。
     """
-    turn_points = []
+    turns = []
     for idx in sampled_idx:
         if idx <= 0 or idx >= len(coords) - 1:
             continue
@@ -135,8 +154,82 @@ def _extract_right_turn_points(coords: list, sampled_idx: list,
         v_out = _travel_vector_at(coords, min(idx + 1, len(coords) - 1))
         angle = _turn_angle_deg(v_in, v_out)
         if angle >= angle_threshold_deg and _is_right_turn(v_in, v_out):
-            turn_points.append(coords[idx])
-    return turn_points
+            turns.append({
+                "point": coords[idx],
+                "route_idx": idx,
+                "entry_ref_idx": idx - 1,
+                "exit_ref_idx": idx + 1,
+                "angle_deg": round(angle, 1),
+            })
+    return turns
+
+
+def _extract_right_turn_points(coords: list, sampled_idx: list,
+                               angle_threshold_deg: float = 45.0) -> list:
+    """後方互換用: 右折候補の座標だけを返す。"""
+    return [
+        turn["point"]
+        for turn in _extract_right_turn_contexts(coords, sampled_idx, angle_threshold_deg)
+    ]
+
+
+def _way_candidates(match: dict) -> list[dict]:
+    """get_bulk_way_data の2m帯候補を正規化する（旧mockとも互換）。"""
+    candidates = match.get("match_candidates")
+    if candidates is not None:
+        return candidates
+    way_id = match.get("match_way_id")
+    if way_id is None:
+        return []
+    tags = match.get("tags") or {}
+    return [{
+        "way_id": way_id,
+        "highway": tags.get("highway"),
+        "distance_m": match.get("match_dist_m"),
+        "tags": tags,
+    }]
+
+
+def _candidate_diagnostic(candidate: dict) -> dict:
+    return {
+        "way_id": candidate.get("way_id"),
+        "highway": candidate.get("highway"),
+        "distance_m": candidate.get("distance_m"),
+    }
+
+
+def _intersection_for_candidates(base: dict, entry: dict, exit_: dict) -> dict:
+    """共通のエッジ数を保ち、候補wayの除外判定だけを差し替える。"""
+    entry_highway = entry.get("highway") or ""
+    exit_highway = exit_.get("highway") or ""
+    entry_excluded = entry_highway in INTERSECTION_EXCLUDED_HIGHWAYS
+    exit_excluded = exit_highway in INTERSECTION_EXCLUDED_HIGHWAYS
+    return {
+        **base,
+        "entry_way_id": entry.get("way_id"),
+        "exit_way_id": exit_.get("way_id"),
+        "entry_highway": entry_highway,
+        "exit_highway": exit_highway,
+        "entry_excluded": entry_excluded,
+        "exit_excluded": exit_excluded,
+        "entry_or_exit_excluded": entry_excluded or exit_excluded,
+    }
+
+
+def _segment_midpoint(a: list, b: list) -> list:
+    """GeoJSON座標2点の中点。垂直距離マッチの参照座標として使う。"""
+    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+
+
+def _legacy_two_step_match(exit_match: dict) -> bool:
+    """旧 R2 条件（進入先 primary/secondary または lanes>=3）の追跡用。"""
+    tags = exit_match.get("tags") or {}
+    if tags.get("highway") in {"primary", "secondary"}:
+        return True
+    try:
+        return int(str(tags.get("lanes", "0")).split(";")[0]) >= 3
+    except (TypeError, ValueError):
+        return False
 
 
 async def score_external_route(coords: list, *, sample_interval_m: float = 40.0) -> dict:
@@ -149,8 +242,7 @@ async def score_external_route(coords: list, *, sample_interval_m: float = 40.0)
         "oneway_violations": [...],       # law_checker と同形式
         "two_step_violations": [...],
         "oneway_violation_count": int,
-        "two_step_violation_count": int,
-        "total_violation_count": int,
+        "two_step_required_intersections": int,
         "route_distance_m": float,
         "sampled_points": int,
       }
@@ -158,8 +250,21 @@ async def score_external_route(coords: list, *, sample_interval_m: float = 40.0)
     if not coords or len(coords) < 2:
         return {
             "oneway_violations": [], "two_step_violations": [],
-            "oneway_violation_count": 0, "two_step_violation_count": 0,
-            "total_violation_count": 0, "route_distance_m": 0.0,
+            "oneway_violation_count": 0,
+            "oneway_violation_count_high_conf": 0,
+            "oneway_violation_count_low_conf": 0,
+            "two_step_required_intersections": 0,
+            "right_turn_count": 0,
+            "two_step_excluded_count": 0,
+            "two_step_excluded_edge_count_insufficient": 0,
+            "two_step_excluded_entry_way": 0,
+            "two_step_excluded_exit_way": 0,
+            "two_step_unknown_count": 0,
+            "two_step_unambiguous_determinate_count": 0,
+            "two_step_ambiguous_determinate_count": 0,
+            "old_two_step_detected_count": 0,
+            "two_step_diagnostics": [],
+            "route_distance_m": 0.0,
             "sampled_points": 0,
         }
 
@@ -194,21 +299,222 @@ async def score_external_route(coords: list, *, sample_interval_m: float = 40.0)
         geometries=geometries,
         travel_vectors=travel_vectors,
     )
+    # 判定ロジックは変えず、R2再現性監査用にマッチ済みway IDを付加する。
+    for violation in oneway_violations:
+        matched_index = next((
+            i for i, point in enumerate(sampled_points)
+            if point[0] == violation.get("lng") and point[1] == violation.get("lat")
+        ), None)
+        if matched_index is not None:
+            violation["way_id"] = way_data[matched_index].get("match_way_id")
+            violation["match_dist_m"] = way_data[matched_index].get("match_dist_m")
+            violation["match_margin_m"] = way_data[matched_index].get("match_margin_m")
 
-    # ⑤ two_step_turn 判定（右折候補点のみを対象に）
-    right_turn_pts = _extract_right_turn_points(coords, sampled_idx)
+    # ⑤ two_step_turn 判定（右折候補点のみを対象に）。進入元・進入先は、
+    # oneway と同じ get_bulk_way_data の点-曲線間垂直距離法で一括推定する。
+    turn_contexts = _extract_right_turn_contexts(coords, sampled_idx)
     two_step_violations = []
-    if right_turn_pts:
-        rt_way_data = await get_bulk_way_data(right_turn_pts)
-        rt_tags = [d["tags"] for d in rt_way_data]
-        two_step_violations = await check_two_step_turn(right_turn_pts, tags_list=rt_tags)
+    two_step_diagnostics = []
+    if turn_contexts:
+        side_reference_points = []
+        for turn in turn_contexts:
+            side_reference_points.extend([
+                _segment_midpoint(
+                    coords[turn["entry_ref_idx"]], coords[turn["route_idx"]],
+                ),
+                _segment_midpoint(
+                    coords[turn["route_idx"]], coords[turn["exit_ref_idx"]],
+                ),
+            ])
+        side_matches = await get_bulk_way_data(side_reference_points)
+
+        rank1_entry_ids = []
+        rank1_exit_ids = []
+        for turn_index, turn in enumerate(turn_contexts):
+            entry_match = side_matches[turn_index * 2]
+            exit_match = side_matches[turn_index * 2 + 1]
+            entry_candidates = _way_candidates(entry_match)
+            exit_candidates = _way_candidates(exit_match)
+            diagnostic = {
+                **turn,
+                "entry_way_id": entry_match.get("match_way_id"),
+                "exit_way_id": exit_match.get("match_way_id"),
+                "entry_highway": (entry_match.get("tags") or {}).get("highway"),
+                "exit_highway": (exit_match.get("tags") or {}).get("highway"),
+                "entry_match_dist_m": entry_match.get("match_dist_m"),
+                "exit_match_dist_m": exit_match.get("match_dist_m"),
+                "entry_match_margin_m": entry_match.get("match_margin_m"),
+                "exit_match_margin_m": exit_match.get("match_margin_m"),
+                "entry_candidates": [
+                    _candidate_diagnostic(candidate) for candidate in entry_candidates
+                ],
+                "exit_candidates": [
+                    _candidate_diagnostic(candidate) for candidate in exit_candidates
+                ],
+                "ambiguous": len(entry_candidates) > 1 or len(exit_candidates) > 1,
+                "old_two_step_detected": _legacy_two_step_match(exit_match),
+            }
+            if not entry_candidates or not exit_candidates:
+                reasons = []
+                if not entry_candidates:
+                    reasons.append("entry_way_unmatched")
+                if not exit_candidates:
+                    reasons.append("exit_way_unmatched")
+                diagnostic.update({
+                    "status": "unknown",
+                    "determinate": False,
+                    "ambiguous_but_determinate": False,
+                    "unknown_reasons": reasons,
+                    "combination_results": [],
+                })
+            rank1_entry_ids.append(entry_match.get("match_way_id"))
+            rank1_exit_ids.append(exit_match.get("match_way_id"))
+            two_step_diagnostics.append(diagnostic)
+
+        intersection_data = await get_bulk_intersection_data(
+            [turn["point"] for turn in turn_contexts],
+            entry_way_ids=rank1_entry_ids,
+            exit_way_ids=rank1_exit_ids,
+        )
+
+        combination_points = []
+        combination_data = []
+        combination_meta = []
+        for turn_index, diagnostic in enumerate(two_step_diagnostics):
+            if diagnostic.get("status") == "unknown":
+                continue
+            base = intersection_data[turn_index]
+            entry_candidates = _way_candidates(side_matches[turn_index * 2])
+            exit_candidates = _way_candidates(side_matches[turn_index * 2 + 1])
+            for entry in entry_candidates:
+                for exit_ in exit_candidates:
+                    data = _intersection_for_candidates(base, entry, exit_)
+                    combination_points.append(diagnostic["point"])
+                    combination_data.append(data)
+                    combination_meta.append((turn_index, entry, exit_, data))
+
+        combination_violations = await check_two_step_turn(
+            combination_points, intersection_data=combination_data,
+        ) if combination_points else []
+        detected_keys = {
+            (
+                v.get("lat"), v.get("lng"), v.get("node_id"),
+                v.get("entry_way_id"), v.get("exit_way_id"),
+            )
+            for v in combination_violations
+        }
+
+        results_by_turn: dict[int, list[dict]] = {}
+        for turn_index, entry, exit_, data in combination_meta:
+            point = turn_contexts[turn_index]["point"]
+            key = (
+                point[1], point[0], data.get("node_id"),
+                entry.get("way_id"), exit_.get("way_id"),
+            )
+            entry_excluded = data.get("entry_excluded", False)
+            exit_excluded = data.get("exit_excluded", False)
+            edge_insufficient = data.get("edge_count", 0) < 3
+            reasons = []
+            if edge_insufficient:
+                reasons.append("edge_count_insufficient")
+            if entry_excluded:
+                reasons.append("entry_way_excluded")
+            if exit_excluded:
+                reasons.append("exit_way_excluded")
+            results_by_turn.setdefault(turn_index, []).append({
+                "entry_way_id": entry.get("way_id"),
+                "entry_highway": entry.get("highway"),
+                "exit_way_id": exit_.get("way_id"),
+                "exit_highway": exit_.get("highway"),
+                "decision": "detected" if key in detected_keys else "excluded",
+                "reasons": reasons,
+            })
+
+        final_detected_points = []
+        final_detected_data = []
+        for turn_index, diagnostic in enumerate(two_step_diagnostics):
+            if diagnostic.get("status") == "unknown":
+                continue
+            base = intersection_data[turn_index]
+            outcomes = results_by_turn.get(turn_index, [])
+            decisions = {outcome["decision"] for outcome in outcomes}
+            determinate = len(decisions) == 1
+            ambiguous = diagnostic["ambiguous"]
+            diagnostic.update({
+                "node_id": base.get("node_id"),
+                "edge_count": base.get("edge_count", 0),
+                "connected_ways": base.get("connected_ways", []),
+                "determinate": determinate,
+                "ambiguous_but_determinate": ambiguous and determinate,
+                "combination_results": outcomes,
+            })
+            if not determinate:
+                diagnostic.update({
+                    "status": "unknown",
+                    "unknown_reasons": ["candidate_combinations_disagree"],
+                })
+                continue
+
+            decision = next(iter(decisions))
+            diagnostic["status"] = decision
+            diagnostic["edge_count_insufficient"] = base.get("edge_count", 0) < 3
+            diagnostic["entry_excluded"] = all(
+                "entry_way_excluded" in outcome["reasons"] for outcome in outcomes
+            )
+            diagnostic["exit_excluded"] = all(
+                "exit_way_excluded" in outcome["reasons"] for outcome in outcomes
+            )
+            if decision == "detected":
+                representative = combination_data[
+                    next(
+                        i for i, meta in enumerate(combination_meta)
+                        if meta[0] == turn_index
+                    )
+                ]
+                final_detected_points.append(diagnostic["point"])
+                final_detected_data.append(representative)
+
+        if final_detected_points:
+            two_step_violations = await check_two_step_turn(
+                final_detected_points, intersection_data=final_detected_data,
+            )
+
+    high_conf_count = sum(v.get("confidence", 0) >= 0.7 for v in oneway_violations)
+    excluded_diagnostics = [d for d in two_step_diagnostics if d.get("status") == "excluded"]
 
     return {
         "oneway_violations": oneway_violations,
         "two_step_violations": two_step_violations,
         "oneway_violation_count": len(oneway_violations),
-        "two_step_violation_count": len(two_step_violations),
-        "total_violation_count": len(oneway_violations) + len(two_step_violations),
+        "oneway_violation_count_high_conf": high_conf_count,
+        "oneway_violation_count_low_conf": len(oneway_violations) - high_conf_count,
+        "two_step_required_intersections": len(two_step_violations),
+        "right_turn_count": len(turn_contexts),
+        "two_step_excluded_count": len(excluded_diagnostics),
+        "two_step_excluded_edge_count_insufficient": sum(
+            bool(d.get("edge_count_insufficient")) for d in excluded_diagnostics
+        ),
+        "two_step_excluded_entry_way": sum(
+            bool(d.get("entry_excluded")) for d in excluded_diagnostics
+        ),
+        "two_step_excluded_exit_way": sum(
+            bool(d.get("exit_excluded")) for d in excluded_diagnostics
+        ),
+        "two_step_unknown_count": sum(
+            d.get("status") == "unknown" for d in two_step_diagnostics
+        ),
+        "two_step_unambiguous_determinate_count": sum(
+            not d.get("ambiguous", False) and d.get("determinate", False)
+            for d in two_step_diagnostics
+        ),
+        "two_step_ambiguous_determinate_count": sum(
+            d.get("ambiguous", False) and d.get("determinate", False)
+            for d in two_step_diagnostics
+        ),
+        "old_two_step_detected_count": sum(
+            bool(d.get("old_two_step_detected")) for d in two_step_diagnostics
+        ),
+        "two_step_diagnostics": two_step_diagnostics,
         "route_distance_m": round(route_distance_m, 1),
         "sampled_points": len(sampled_points),
     }

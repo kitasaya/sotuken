@@ -42,6 +42,9 @@ OVERPASS_URL = OVERPASS_ENDPOINTS[0]  # 後方互換用
 _LIVE_ENDPOINT_TIMEOUT = 10.0
 _ATTIC_ENDPOINT_TIMEOUT = 60.0
 
+# Layer 2 の案内は、研究・GraphHopper と同じ固定スナップショットだけを使う。
+GUIDANCE_SNAPSHOT_DATE = "2026-08-01T20:21:21Z"
+
 OVERPASS_SNAPSHOT_DATE_ENV = "OVERPASS_SNAPSHOT_DATE"
 _ISO_UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _snapshot_date_override: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
@@ -353,6 +356,50 @@ out tags geom;
     return result
 
 
+async def get_route_guidance_data(way_ids: list[int]) -> dict:
+    """案内用の way node 列と対象 node タグを1回の Attic query で取得する。
+
+    ``railway=crossing`` や ``highway=give_way`` は問い合わせ段階から対象外。
+    """
+    if not way_ids:
+        return {"ways": {}, "tagged_nodes": {}}
+
+    ids_str = ",".join(str(int(way_id)) for way_id in dict.fromkeys(way_ids))
+    query = f'''[out:json][timeout:30][date:"{GUIDANCE_SNAPSHOT_DATE}"];
+way(id:{ids_str})->.route_ways;
+(
+  .route_ways;
+  node(w.route_ways)[highway=stop];
+  node(w.route_ways)[railway=level_crossing];
+);
+out body geom;
+'''
+    _last_successful_endpoint.set(None)
+    elements = await _post_with_retry(query)
+    endpoint = _last_successful_endpoint.get()
+    _record_usage("decision_units", endpoint, len(way_ids))
+
+    ways = {}
+    tagged_nodes = {}
+    for element in elements:
+        if element.get("type") == "way":
+            ways[int(element["id"])] = {
+                "nodes": [int(node_id) for node_id in element.get("nodes", [])],
+                "geometry": [
+                    [node["lon"], node["lat"]]
+                    for node in element.get("geometry", [])
+                    if "lon" in node and "lat" in node
+                ],
+            }
+        elif element.get("type") == "node":
+            tagged_nodes[int(element["id"])] = {
+                "lat": element.get("lat"),
+                "lng": element.get("lon"),
+                "tags": element.get("tags", {}),
+            }
+    return {"ways": ways, "tagged_nodes": tagged_nodes}
+
+
 # ---------------------------------------------------------------------------
 # 垂線距離ベースの最近傍 way 選択（point-to-curve matching）
 # ---------------------------------------------------------------------------
@@ -458,6 +505,7 @@ async def get_bulk_way_data(points: list, radius: int = 20) -> list[dict]:
           "match_dist_m": float | None,    # rank1 の垂線距離（m）
           "match_margin_m": float | None,  # way ID重複除去後のrank1と次点wayの垂線距離差（m）
           "match_ambiguous": bool,         # 次点wayとの幾何的近接フラグ。対応信頼度ではない
+          "match_candidates": list[dict],  # rank1から2m未満の全候補（way_id/highway/distance_m/tags）
         }
 
     Union構文で全座標を一括取得し、各座標について **点から way の線分への垂線距離**
@@ -498,13 +546,24 @@ out geom tags;
                 "tags": {}, "geometry": [],
                 "match_way_id": None, "match_dist_m": None,
                 "match_margin_m": None, "match_ambiguous": False,
+                "match_candidates": [],
                 "overpass_endpoint": _endpoint_name(endpoint or "unknown"),
             })
             continue
 
         rank1_dist, rank1_elem = ranked[0]
+        candidates = [
+            {
+                "way_id": elem.get("id"),
+                "highway": elem.get("tags", {}).get("highway"),
+                "distance_m": round(distance, 3),
+                "tags": elem.get("tags", {}),
+            }
+            for distance, elem in ranked
+            if distance - rank1_dist < MATCH_AMBIGUOUS_MARGIN_M
+        ]
         margin = (ranked[1][0] - rank1_dist) if len(ranked) >= 2 else None
-        ambiguous = margin is not None and margin < MATCH_AMBIGUOUS_MARGIN_M
+        ambiguous = len(candidates) > 1
         if ambiguous:
             ambiguous_count += 1
 
@@ -515,6 +574,7 @@ out geom tags;
             "match_dist_m": round(rank1_dist, 3),
             "match_margin_m": None if margin is None else round(margin, 3),
             "match_ambiguous": ambiguous,
+            "match_candidates": candidates,
             "overpass_endpoint": _endpoint_name(endpoint or "unknown"),
         })
 
@@ -534,3 +594,178 @@ async def get_bulk_way_tags(points: list, radius: int = 20) -> list[dict]:
     """
     data = await get_bulk_way_data(points, radius)
     return [d["tags"] for d in data]
+
+
+# 道交法上の交差点判定では、駐車場・私道・歩行者系の通路を道路の枝として
+# 数えない。cycleway は自転車道なので意図的に含める。
+INTERSECTION_EXCLUDED_HIGHWAYS = frozenset({
+    "service",
+    "footway",
+    "path",
+    "pedestrian",
+    "steps",
+    "track",
+    "construction",
+    "proposed",
+    "platform",
+})
+
+
+def _way_edge_contribution(node_id: int, node_ids: list[int]) -> int:
+    """way の node 列における接続エッジ数（端点=1、中間=2）を返す。"""
+    positions = [i for i, value in enumerate(node_ids) if value == node_id]
+    if not positions:
+        return 0
+    # 閉じた way は同じ node が先頭・末尾に現れ、実際には2辺が接続する。
+    if len(node_ids) > 1 and 0 in positions and len(node_ids) - 1 in positions:
+        return 2
+    if any(0 < i < len(node_ids) - 1 for i in positions):
+        return 2
+    return 1
+
+
+def _node_coordinates(elements: list[dict]) -> dict[int, list[float]]:
+    coordinates: dict[int, list[float]] = {}
+    for elem in elements:
+        node_ids = elem.get("nodes", [])
+        geometry = elem.get("geometry", [])
+        for node_id, node in zip(node_ids, geometry):
+            if "lon" in node and "lat" in node:
+                coordinates[int(node_id)] = [node["lon"], node["lat"]]
+    return coordinates
+
+
+def _nearest_turn_node(
+    point: list,
+    elements: list[dict],
+    entry_way_id: int | None,
+    exit_way_id: int | None,
+) -> tuple[int | None, float | None]:
+    """進入元・進入先 way の共有 node を優先し、右折座標に最も近い node を返す。"""
+    nodes_by_way = {
+        int(elem["id"]): set(int(n) for n in elem.get("nodes", []))
+        for elem in elements if elem.get("id") is not None
+    }
+    relevant_sets = [
+        nodes_by_way[wid]
+        for wid in (entry_way_id, exit_way_id)
+        if wid is not None and wid in nodes_by_way
+    ]
+    if len(relevant_sets) == 2:
+        candidates = relevant_sets[0] & relevant_sets[1]
+    elif relevant_sets:
+        candidates = set().union(*relevant_sets)
+    else:
+        candidates = set().union(*nodes_by_way.values()) if nodes_by_way else set()
+
+    # 分割 way 等で共有 node が得られない場合も、両 way 上の最近傍 node まで
+    # フォールバックする。候補 way 自体が無い場合のみ周辺全 way を使う。
+    if not candidates and relevant_sets:
+        candidates = set().union(*relevant_sets)
+    if not candidates:
+        return None, None
+
+    coordinates = _node_coordinates(elements)
+    available = [node_id for node_id in candidates if node_id in coordinates]
+    if not available:
+        return None, None
+    node_id = min(available, key=lambda n: _haversine_point_m(point, coordinates[n]))
+    return node_id, round(_haversine_point_m(point, coordinates[node_id]), 3)
+
+
+def _haversine_point_m(a: list, b: list) -> float:
+    """[lng, lat] の2点間距離をメートルで返す。"""
+    lat1, lat2 = math.radians(a[1]), math.radians(b[1])
+    dlat = lat2 - lat1
+    dlng = math.radians(b[0] - a[0])
+    value = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    return 2 * 6_371_000 * math.asin(math.sqrt(min(value, 1.0)))
+
+
+def build_intersection_data(
+    points: list,
+    elements: list[dict],
+    entry_way_ids: list[int | None] | None = None,
+    exit_way_ids: list[int | None] | None = None,
+) -> list[dict]:
+    """Overpass の way/node 列から右折点ごとの交差点診断情報を組み立てる。"""
+    entry_way_ids = entry_way_ids or [None] * len(points)
+    exit_way_ids = exit_way_ids or [None] * len(points)
+    result: list[dict] = []
+
+    for i, point in enumerate(points):
+        entry_way_id = entry_way_ids[i] if i < len(entry_way_ids) else None
+        exit_way_id = exit_way_ids[i] if i < len(exit_way_ids) else None
+        node_id, node_match_dist_m = _nearest_turn_node(
+            point, elements, entry_way_id, exit_way_id,
+        )
+        connected_ways = []
+        edge_count = 0
+        if node_id is not None:
+            seen_way_ids: set[int] = set()
+            for elem in elements:
+                way_id = elem.get("id")
+                if way_id is None or int(way_id) in seen_way_ids:
+                    continue
+                contribution = _way_edge_contribution(node_id, elem.get("nodes", []))
+                if contribution == 0:
+                    continue
+                seen_way_ids.add(int(way_id))
+                highway = elem.get("tags", {}).get("highway", "")
+                excluded = highway in INTERSECTION_EXCLUDED_HIGHWAYS
+                connected_ways.append({
+                    "way_id": int(way_id),
+                    "highway": highway,
+                    "excluded": excluded,
+                    "edge_count": contribution,
+                })
+                if not excluded:
+                    edge_count += contribution
+
+        highway_by_id = {w["way_id"]: w["highway"] for w in connected_ways}
+        entry_highway = highway_by_id.get(entry_way_id, "")
+        exit_highway = highway_by_id.get(exit_way_id, "")
+        entry_excluded = entry_highway in INTERSECTION_EXCLUDED_HIGHWAYS
+        exit_excluded = exit_highway in INTERSECTION_EXCLUDED_HIGHWAYS
+        entry_or_exit_excluded = entry_excluded or exit_excluded
+        result.append({
+            "node_id": node_id,
+            "node_match_dist_m": node_match_dist_m,
+            "edge_count": edge_count,
+            "connected_ways": connected_ways,
+            "entry_way_id": entry_way_id,
+            "exit_way_id": exit_way_id,
+            "entry_highway": entry_highway,
+            "exit_highway": exit_highway,
+            "entry_excluded": entry_excluded,
+            "exit_excluded": exit_excluded,
+            "entry_or_exit_excluded": entry_or_exit_excluded,
+            "is_intersection": node_id is not None and edge_count >= 3,
+        })
+    return result
+
+
+async def get_bulk_intersection_data(
+    points: list,
+    entry_way_ids: list[int | None] | None = None,
+    exit_way_ids: list[int | None] | None = None,
+    radius: int = 20,
+) -> list[dict]:
+    """1ルート分の右折点について、接続 highway way を1クエリで取得する。"""
+    if not points:
+        return []
+    parts = "\n".join(
+        f"  way(around:{radius},{lat},{lng})[highway];"
+        for lng, lat in points
+    )
+    query = f"""[out:json][timeout:30];
+(
+{parts}
+);
+out body geom;
+"""
+    _last_successful_endpoint.set(None)
+    elements = await _post_with_retry(query)
+    endpoint = _last_successful_endpoint.get()
+    _record_usage("decision_units", endpoint, len(points))
+    return build_intersection_data(points, elements, entry_way_ids, exit_way_ids)

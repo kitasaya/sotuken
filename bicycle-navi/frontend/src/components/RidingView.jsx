@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -11,6 +11,7 @@ import voiceGuide, {
   buildAnnouncementText,
   buildRerouteText,
   buildApproachText,
+  buildGuidanceText,
 } from "../services/voiceGuide";
 
 /**
@@ -76,6 +77,49 @@ const distanceBetween = (lat1, lng1, lat2, lng2) => {
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const distanceAlongRoute = (routeCoords, position) => {
+  if (!position || routeCoords?.length < 2) return null;
+  let traversed = 0;
+  let best = null;
+  for (let i = 0; i < routeCoords.length - 1; i += 1) {
+    const [lng1, lat1] = routeCoords[i];
+    const [lng2, lat2] = routeCoords[i + 1];
+    const latScale = 110540;
+    const lngScale = 111320 * Math.cos((position.lat * Math.PI) / 180);
+    const ax = (lng1 - position.lng) * lngScale;
+    const ay = (lat1 - position.lat) * latScale;
+    const bx = (lng2 - position.lng) * lngScale;
+    const by = (lat2 - position.lat) * latScale;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const denominator = dx * dx + dy * dy;
+    const ratio = denominator === 0
+      ? 0
+      : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / denominator));
+    const offsetX = ax + ratio * dx;
+    const offsetY = ay + ratio * dy;
+    const distanceToRoute = Math.hypot(offsetX, offsetY);
+    const segmentLength = distanceBetween(lat1, lng1, lat2, lng2);
+    const routeDistance = traversed + ratio * segmentLength;
+    if (!best || distanceToRoute < best.distanceToRoute) {
+      best = { distanceToRoute, routeDistance };
+    }
+    traversed += segmentLength;
+  }
+  return best?.routeDistance ?? null;
+};
+
+const upcomingGuidance = (guidance, routeDistance) => {
+  if (routeDistance == null) return null;
+  return (guidance || [])
+    .map((item) => ({
+      item,
+      remaining: item.distance_from_start_m - routeDistance,
+    }))
+    .filter(({ remaining }) => remaining >= -10 && remaining <= 100)
+    .sort((a, b) => a.remaining - b.remaining)[0] || null;
 };
 
 /** GPS位置変化時に地図の中心を更新するLeaflet内部コンポーネント */
@@ -145,16 +189,22 @@ export default function RidingView({
   onModeChange,
   geoBadge,
   hasRoute,
+  showOriginalRoute = false,
 }) {
   const instructions = routeData?.compliant_route?.instructions || [];
   const currentInstruction = instructions[currentInstructionIndex];
   const nextInstruction = instructions[currentInstructionIndex + 1];
   const route = routeData?.compliant_route;
-  const routeCoords = route?.points?.coordinates || [];
+  const originalRoute = routeData?.original_route;
+  const routeCoords = useMemo(
+    () => route?.points?.coordinates || [],
+    [route]
+  );
 
   const rerouteAnnouncedRef = useRef(false);
   const prevRouteDataRef = useRef(null);
   const approachNotifiedRef = useRef({ m100: false, m30: false });
+  const guidanceNotifiedRef = useRef(new Set());
 
   // heading-up: GPS heading を連続累積角度に変換（0/360 境界ジャンプ防止）
   const [normalizedHeading, setNormalizedHeading] = useState(null);
@@ -186,6 +236,7 @@ export default function RidingView({
   useEffect(() => {
     if (!routeData || routeData === prevRouteDataRef.current) return;
     prevRouteDataRef.current = routeData;
+    guidanceNotifiedRef.current = new Set();
     rerouteAnnouncedRef.current = false;
     if (routeData.rerouted) {
       const text = buildRerouteText(routeData.violations);
@@ -231,6 +282,27 @@ export default function RidingView({
   }, [currentPosition]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    const routeDistance = distanceAlongRoute(routeCoords, currentPosition);
+    const upcoming = upcomingGuidance(routeData?.guidance, routeDistance);
+    if (!upcoming) return;
+    const key = `${upcoming.item.type}:${upcoming.item.node_id}:${upcoming.item.distance_from_start_m}`;
+    if (guidanceNotifiedRef.current.has(key)) return;
+    // 複線踏切など数m間隔の同種 node は、出力上は別地点のまま保持しつつ
+    // 読み上げだけを1回にまとめ、連続発話で進行案内を圧迫しない。
+    for (const item of routeData?.guidance || []) {
+      if (
+        item.type === upcoming.item.type
+        && Math.abs(item.distance_from_start_m - upcoming.item.distance_from_start_m) <= 20
+      ) {
+        guidanceNotifiedRef.current.add(
+          `${item.type}:${item.node_id}:${item.distance_from_start_m}`
+        );
+      }
+    }
+    voiceGuide.speak(buildGuidanceText(upcoming.item));
+  }, [currentPosition, routeCoords, routeData?.guidance]);
+
+  useEffect(() => {
     return () => voiceGuide.cancel();
   }, []);
 
@@ -260,6 +332,8 @@ export default function RidingView({
   const streetName = currentInstruction.street_name || "";
   const hasWarning = hasViolationNearby(currentInstruction, violations, routeCoords);
   const isTwoStepTurn = needsTwoStepTurn(currentInstruction, violations, routeCoords);
+  const routeDistance = distanceAlongRoute(routeCoords, currentPosition);
+  const activeGuidance = upcomingGuidance(routeData?.guidance, routeDistance);
 
   let displayDistance = currentInstruction.distance;
   if (currentPosition && nextInstruction) {
@@ -343,6 +417,15 @@ export default function RidingView({
           </div>
         )}
 
+        {activeGuidance && (
+          <div style={styles.guidanceBanner}>
+            <span>{activeGuidance.item.type === "stop_sign" ? "止まれ" : "踏切"}</span>
+            <span style={styles.guidanceDistance}>
+              {Math.max(0, Math.round(activeGuidance.remaining))} m先
+            </span>
+          </div>
+        )}
+
         {/* 距離表示 */}
         <div style={styles.distanceContainer}>
           <div style={styles.distanceValue}>{formatDistance(displayDistance)}</div>
@@ -383,6 +466,16 @@ export default function RidingView({
                 attribution="© OSM"
               />
               <MapCenter center={mapCenter} />
+              {/* 発表準備時だけ表示する変更前ルート（既定は非表示） */}
+              {showOriginalRoute && originalRoute && (
+                <Polyline
+                  positions={toPositions(originalRoute)}
+                  color="#e65100"
+                  weight={4}
+                  opacity={0.8}
+                />
+              )}
+              {/* 常に表示する変更後ルート */}
               {route && (
                 <Polyline positions={toPositions(route)} color="#2196F3" weight={6} />
               )}
@@ -541,6 +634,23 @@ const styles = {
     justifyContent: "center",
     fontSize: "1.4rem",
     color: "#666",
+  },
+  guidanceBanner: {
+    flex: "0 0 auto",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    margin: "0 12px 6px",
+    padding: "7px 12px",
+    borderRadius: "8px",
+    backgroundColor: "#f9a825",
+    color: "#1a1a1a",
+    fontSize: "1rem",
+    fontWeight: "bold",
+  },
+  guidanceDistance: {
+    fontVariantNumeric: "tabular-nums",
+    fontSize: "0.9rem",
   },
   // 上部オーバーレイ・下部コントロールの間で内容が収まらない場合にスクロールさせる領域
   // minHeight: 0 は flex 子要素が親の高さを無視して伸びてしまう（overflow の原因になる）のを防ぐ

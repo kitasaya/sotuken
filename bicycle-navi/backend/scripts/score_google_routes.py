@@ -1,11 +1,11 @@
-"""Google ルートの polyline を採点し、結果を google_comparison.csv へ流し込む。
+"""保存済みGoogleルート15ペアを採点し、R2 v4 CSVを新規出力する。
 
 ## 使い方
 
   # 特定の label だけを採点・確認（CSV には書き込まない）
   python3 scripts/score_google_routes.py --label 渋谷→新宿 --dry-run
 
-  # 特定の label だけを採点して書き込む（推奨。他の行には一切触れない）
+  # 特定の label だけをv4 CSVへ書き込む
   python3 scripts/score_google_routes.py --label 渋谷→新宿 --write
 
   # 複数 label をまとめて指定することも可能
@@ -19,17 +19,10 @@
   backend/data/google_routes_input.csv
   列：label, polyline（Google encoded polyline。常にダブルクォートで囲むこと）
 
-## 出力（--dry-run）
-
-  backend/data/score_google_routes_result.csv（一時確認用）
-
 ## 出力（--write）
 
-  google_comparison.csv のうち、**採点対象に指定した label の行のみ**の
-  google_oneway_violation_count / google_two_step_violation_count /
-  google_total_violation_count 列を更新する。指定していない行・列（距離・
-  時間・route_overlap_pct などの手入力列）には一切触れない。
-  書き込み前に google_comparison.csv のバックアップを自動作成。
+  backend/data/r2_google_routes_v4.csv
+  旧CSVは更新・上書きしない。
 
 ## 設計上の注意（2026-07-07 の事故を踏まえて）
 
@@ -45,9 +38,9 @@
 import argparse
 import asyncio
 import csv
-import datetime
-import shutil
+import json
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -62,25 +55,16 @@ from services.overpass import (
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 INPUT_CSV = DATA_DIR / "google_routes_input.csv"
-COMPARISON_CSV = DATA_DIR / "google_comparison.csv"
-RESULT_CSV = DATA_DIR / "score_google_routes_result.csv"
+OD_PAIRS_CSV = DATA_DIR / "od_pairs.csv"
+BASELINE_CSV = DATA_DIR / "batch21_r2_remeasurement.csv"
+RESULT_CSV = DATA_DIR / "r2_google_routes_v4.csv"
+ALGO_VERSION = "v4"
 REQUEST_INTERVAL_S = 3.0
 PAIR_MAX_ATTEMPTS = 2
 PAIR_RETRY_WAIT_S = 5.0
 
-# リグレッション確認：渋谷→新宿は oneway=1 が期待値
-REGRESSION_LABEL = "渋谷→新宿"
-REGRESSION_EXPECTED_ONEWAY = 1
-
-# google_comparison.csv で採点器が埋める列（それ以外は触らない）
-SCORED_COLUMNS = {
-    "google_oneway_violation_count",
-    "google_two_step_violation_count",
-    "google_total_violation_count",
-    "scorer_sampled_points",
-    "scorer_route_distance_m",
-    "scored_at",
-}
+EXPECTED_ONEWAY_TOTAL = 12
+EXPECTED_ONEWAY_ZERO_PAIRS = 6
 
 
 def _decision_counts() -> dict[str, int]:
@@ -150,118 +134,117 @@ async def score_all(
 
         results.append({
             "label": label,
+            "road_type": row.get("road_type", ""),
+            "algo_version": ALGO_VERSION,
             "status": "OK",
             "error": "",
             "oneway_violation_count": score["oneway_violation_count"],
-            "two_step_violation_count": score["two_step_violation_count"],
-            "total_violation_count": score["total_violation_count"],
-            "route_distance_m": score["route_distance_m"],
+            "oneway_violation_count_high_conf": score["oneway_violation_count_high_conf"],
+            "oneway_violation_count_low_conf": score["oneway_violation_count_low_conf"],
+            "oneway_way_ids": ";".join(
+                str(v.get("way_id")) for v in score["oneway_violations"]
+                if v.get("way_id") is not None
+            ),
+            "two_step_required_intersections": score["two_step_required_intersections"],
+            "right_turn_count": score["right_turn_count"],
+            "two_step_unambiguous_determinate_count": score[
+                "two_step_unambiguous_determinate_count"
+            ],
+            "two_step_ambiguous_determinate_count": score[
+                "two_step_ambiguous_determinate_count"
+            ],
+            "two_step_unknown_count": score["two_step_unknown_count"],
+            "two_step_excluded_count": score["two_step_excluded_count"],
+            "two_step_excluded_edge_count_insufficient": score[
+                "two_step_excluded_edge_count_insufficient"
+            ],
+            "two_step_excluded_entry_way": score["two_step_excluded_entry_way"],
+            "two_step_excluded_exit_way": score["two_step_excluded_exit_way"],
+            "two_step_diagnostics_json": json.dumps(
+                [
+                    {key: value for key, value in diagnostic.items()
+                     if key != "old_two_step_detected"}
+                    for diagnostic in score["two_step_diagnostics"]
+                ],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ),
             "sampled_points": score["sampled_points"],
             "overpass_endpoint_counts": _format_endpoint_counts(endpoint_counts),
         })
         print(
             f"    → oneway={score['oneway_violation_count']} "
-            f"two_step={score['two_step_violation_count']} "
-            f"total={score['total_violation_count']} "
-            f"dist={score['route_distance_m']}m "
+            f"two_step_required_intersections={score['two_step_required_intersections']} "
+            f"right_turns={score['right_turn_count']} "
+            f"ambiguity={score['two_step_unambiguous_determinate_count']}/"
+            f"{score['two_step_ambiguous_determinate_count']}/"
+            f"{score['two_step_unknown_count']} "
             f"endpoint=[{_format_endpoint_counts(endpoint_counts)}]"
         )
     return results, failures
 
 
-def check_regression(results: list[dict]) -> bool:
-    for r in results:
-        if r["label"] == REGRESSION_LABEL:
-            actual = r["oneway_violation_count"]
-            ok = actual == REGRESSION_EXPECTED_ONEWAY
-            status = "OK" if ok else "FAIL"
-            print(
-                f"\n[リグレッション確認] {REGRESSION_LABEL}: "
-                f"oneway={actual} (期待値={REGRESSION_EXPECTED_ONEWAY}) → {status}"
-            )
-            return ok
-    print(f"\n[リグレッション確認] {REGRESSION_LABEL} がスコア結果に見つかりません（入力ファイルを確認）")
-    return False
+def load_oneway_baseline() -> dict[str, list[int]]:
+    """batch21垂直距離法の検出行を、labelごとのway ID列として読む。"""
+    baseline: dict[str, list[int]] = defaultdict(list)
+    with open(BASELINE_CSV, encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("new_oneway_violation", "").lower() == "true":
+                baseline[row["label"]].append(int(row["way_id"]))
+    return dict(baseline)
 
 
-def check_label_match(results: list[dict]) -> bool:
-    """採点結果の label が google_comparison.csv に全件存在するか確認する。"""
-    with open(COMPARISON_CSV, encoding="utf-8", newline="") as f:
-        comparison_labels = {row["label"] for row in csv.DictReader(f)}
+def check_oneway_regression(results: list[dict]) -> bool:
+    """12件・ゼロ6ペアと、ペア別way ID多重集合をbatch21に照合する。"""
+    baseline = load_oneway_baseline()
+    result_by_label = {row["label"]: row for row in results}
+    all_labels = [row["label"] for row in results]
+    total = sum(row["oneway_violation_count"] for row in results)
+    zero_pairs = sum(row["oneway_violation_count"] == 0 for row in results)
+    differences = []
+    for label in all_labels:
+        expected_ids = baseline.get(label, [])
+        actual_ids = [
+            int(value) for value in result_by_label[label]["oneway_way_ids"].split(";")
+            if value
+        ]
+        if Counter(actual_ids) != Counter(expected_ids):
+            differences.append((label, expected_ids, actual_ids))
 
-    all_ok = True
-    print("\n[label 照合]")
-    for r in results:
-        label = r["label"]
-        if label in comparison_labels:
-            print(f"  OK : {label}")
-        else:
-            print(f"  MISS: {label!r} — google_comparison.csv に対応行なし（流し込みをスキップ）")
-            all_ok = False
-    return all_ok
+    print("\n[oneway再現性確認]")
+    print(f"  合計: {total}（期待={EXPECTED_ONEWAY_TOTAL}）")
+    print(f"  ゼロのペア: {zero_pairs}/{len(results)}（期待={EXPECTED_ONEWAY_ZERO_PAIRS}/15）")
+    for label, expected_ids, actual_ids in differences:
+        print(f"  差分: {label}: 期待way_id={expected_ids}, 実測way_id={actual_ids}")
+    return (
+        total == EXPECTED_ONEWAY_TOTAL
+        and zero_pairs == EXPECTED_ONEWAY_ZERO_PAIRS
+        and not differences
+    )
 
 
-def write_result_csv(results: list[dict], failures: list[dict]) -> None:
+def write_result_csv(results: list[dict]) -> None:
     fieldnames = [
-        "label", "status", "error",
-        "oneway_violation_count", "two_step_violation_count",
-        "total_violation_count", "route_distance_m", "sampled_points",
+        "label", "road_type", "algo_version", "status", "error",
+        "oneway_violation_count",
+        "oneway_violation_count_high_conf", "oneway_violation_count_low_conf",
+        "oneway_way_ids",
+        "two_step_required_intersections", "right_turn_count",
+        "two_step_unambiguous_determinate_count",
+        "two_step_ambiguous_determinate_count", "two_step_unknown_count",
+        "two_step_excluded_count",
+        "two_step_excluded_edge_count_insufficient",
+        "two_step_excluded_entry_way", "two_step_excluded_exit_way",
+        "two_step_diagnostics_json",
+        "sampled_points",
         "overpass_endpoint_counts",
     ]
     with open(RESULT_CSV, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        for row in results + failures:
+        for row in results:
             writer.writerow({name: row.get(name, "") for name in fieldnames})
-    print(f"\n結果を {RESULT_CSV} に保存しました（--dry-run 確認用）")
-
-
-def write_to_comparison(results: list[dict]) -> None:
-    """google_comparison.csv の採点列のみを更新する。手入力列は保持。"""
-    # バックアップ
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup = COMPARISON_CSV.with_name(f"google_comparison_backup_{ts}.csv")
-    shutil.copy2(COMPARISON_CSV, backup)
-    print(f"\nバックアップ: {backup.name}")
-
-    # 既存 CSV を読み込む
-    with open(COMPARISON_CSV, encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames or []
-        existing_rows = list(reader)
-
-    # 採点列が無ければ末尾に追加
-    for col in ["google_total_violation_count", "scorer_sampled_points",
-                "scorer_route_distance_m", "scored_at"]:
-        if col not in fieldnames:
-            fieldnames = list(fieldnames) + [col]
-
-    # label → 採点結果 の辞書
-    score_map = {r["label"]: r for r in results}
-
-    updated = 0
-    for row in existing_rows:
-        label = row.get("label", "")
-        if label not in score_map:
-            continue
-        s = score_map[label]
-        row["google_oneway_violation_count"] = s["oneway_violation_count"]
-        row["google_two_step_violation_count"] = s["two_step_violation_count"]
-        row["google_total_violation_count"] = s["total_violation_count"]
-        row["scorer_sampled_points"] = s["sampled_points"]
-        row["scorer_route_distance_m"] = s["route_distance_m"]
-        row["scored_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        updated += 1
-        print(f"  更新: {label}")
-
-    temp_csv = COMPARISON_CSV.with_suffix(COMPARISON_CSV.suffix + ".tmp")
-    with open(temp_csv, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(existing_rows)
-    temp_csv.replace(COMPARISON_CSV)
-
-    print(f"\n{updated} 行を更新しました → {COMPARISON_CSV.name}")
+    print(f"\nR2 v4結果を新規保存しました: {RESULT_CSV}")
 
 
 async def main(dry_run: bool, labels: list[str] | None, interval_s: float) -> int:
@@ -275,6 +258,14 @@ async def main(dry_run: bool, labels: list[str] | None, interval_s: float) -> in
     print(f"入力: {INPUT_CSV}")
     with open(INPUT_CSV, encoding="utf-8", newline="") as f:
         all_input_rows = list(csv.DictReader(f))
+    with open(OD_PAIRS_CSV, encoding="utf-8", newline="") as f:
+        road_type_by_label = {
+            row["label"]: row["road_type"] for row in csv.DictReader(f)
+        }
+    all_input_rows = [
+        {**row, "road_type": road_type_by_label.get(row["label"], "")}
+        for row in all_input_rows
+    ]
 
     if labels is not None:
         wanted = set(labels)
@@ -293,60 +284,36 @@ async def main(dry_run: bool, labels: list[str] | None, interval_s: float) -> in
     print(f"\n[実行サマリ] 成功={len(results)}件 / 失敗={len(failures)}件")
     print(format_overpass_usage_summary())
 
-    # (1) リグレッション確認：渋谷→新宿が採点対象に含まれていなければ、
-    # 書き込み対象を汚さないよう別途スコアだけ取得して確認する。
-    if any(r["label"] == REGRESSION_LABEL for r in results):
-        reg_ok = check_regression(results)
-    else:
-        reg_row = next((row for row in all_input_rows if row["label"] == REGRESSION_LABEL), None)
-        if reg_row is None:
-            print(f"\n⚠ リグレッション確認用の {REGRESSION_LABEL} が入力ファイルに存在しません")
-            reg_ok = False
-        else:
-            print(f"\n[リグレッション確認] {REGRESSION_LABEL} を別途採点して確認します（書き込み対象には含めない）")
-            reg_results, reg_failures = await score_all([reg_row])
-            if reg_failures:
-                print(f"  ⚠ リグレッション採点失敗: {reg_failures[0]['error']}")
-            reg_ok = check_regression(reg_results)
-
-    # (2) label 照合
-    label_ok = check_label_match(results)
-
-    # 結果一時保存（常に出力）
-    write_result_csv(results, failures)
-
     if failures:
-        print("\n⚠ 失敗したペアがあるため google_comparison.csv は1行も更新しません。")
+        print("\n⚠ 失敗したペアがあるためv4 CSVは出力しません。")
         for failure in failures:
             print(f"  - {failure['label']}: {failure['error']}")
         return 1
 
-    if not label_ok:
-        print("\n⚠ label照合失敗のため google_comparison.csv は更新しません。")
+    full_run = labels is None and len(results) == 15
+    reg_ok = check_oneway_regression(results) if full_run else True
+    if full_run and not reg_ok:
+        print("\n⚠ oneway再現性が不一致のためv4 CSVは出力せず停止します。")
         return 1
 
     if dry_run:
-        print("\n[dry-run] google_comparison.csv への書き込みをスキップしました。")
-        print("  --write を付けて再実行すると流し込みを行います。")
-        if not reg_ok:
-            print("  ⚠ リグレッション失敗 — 採点ロジックを確認してください。")
-        return 0 if reg_ok else 1
+        print("\n[dry-run] v4 CSVへの書き込みをスキップしました。")
+        return 0
 
-    if not reg_ok:
-        print("\n⚠ リグレッション失敗のため google_comparison.csv への書き込みを中止します。")
+    if not full_run:
+        print("\n⚠ 正式なv4 CSVは --all の15ペア完走時だけ出力します。")
         return 1
 
-    # (3) 手入力列は上書きしない（write_to_comparison 内でラベル一致列のみ更新）
-    write_to_comparison(results)
+    write_result_csv(results)
     return 0
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Google ルートを採点して google_comparison.csv へ流し込む")
+    parser = argparse.ArgumentParser(description="保存済みGoogleルートを採点してR2 v4 CSVを作る")
     parser.add_argument("--dry-run", action="store_true",
-                        help="採点のみ実行。google_comparison.csv への書き込みはしない")
+                        help="採点のみ実行。v4 CSVは作成しない")
     parser.add_argument("--write", action="store_true",
-                        help="採点後に google_comparison.csv を更新する")
+                        help="15ペア完走・oneway再現確認後にv4 CSVを新規作成する")
     parser.add_argument("--label", action="append", default=None,
                         help="採点対象の label を指定（繰り返し指定可）。指定した行のみ処理する。"
                              "未指定の場合は --all を明示すること")
