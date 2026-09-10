@@ -499,7 +499,16 @@ out body;
 
 
 async def compute_geometric_crossings(label: str, coords: list,
-                                      cumulative: list[float]) -> dict:
+                                      cumulative: list[float],
+                                      road_way_resolver=None) -> dict:
+    """経路と鉄道線の幾何交差を求める。
+
+    road_way_resolver: 経路セグメント index から道路側 way_id を返す関数。
+      自システム経路では GraphHopper の `osm_way_id` detail で親wayが直接わかるため
+      これを渡す。Google 経路には way_id が無いので None のまま、点-曲線垂直距離
+      マッチ（get_bulk_way_data）で同定する。**この非対称は親wayの特定方法だけで、
+      平面/立体の判定基準（bridge/tunnel/layer）は両者で同一である。**
+    """
     rails, trams = await fetch_railway_ways(coords, CORRIDOR_RADIUS_M)
     kx, ky = _plane_scales(coords[len(coords) // 2][1])
 
@@ -520,6 +529,7 @@ async def compute_geometric_crossings(label: str, coords: list,
                 raw.append({
                     "label": label,
                     "point": point,
+                    "route_index": i,
                     "route_position_m": position,
                     "rail_way_id": int(rail["id"]),
                     "rail_railway": rail_tags.get("railway", ""),
@@ -527,9 +537,22 @@ async def compute_geometric_crossings(label: str, coords: list,
                 })
     raw.sort(key=lambda r: r["route_position_m"])
 
-    # 道路側 way は、既存の点-曲線垂直距離マッチ（get_bulk_way_data）で同定する。
-    # 進行方向は使わない（way の選択に方向を持ち込まない制約に従う）。
-    if raw:
+    if raw and road_way_resolver is not None:
+        # 自システム経路：GraphHopper の osm_way_id detail で親wayが直接わかる。
+        resolved = [road_way_resolver(row["route_index"]) for row in raw]
+        way_elements = await fetch_ways(sorted({w for w in resolved if w}))
+        for row, way_id in zip(raw, resolved):
+            tags = (way_elements.get(way_id) or {}).get("tags") if way_id else None
+            row["road_way_id"] = way_id
+            row["road_tags"] = tags or None
+            row["road_highway"] = (tags or {}).get("highway", "")
+            row["road_match_dist_m"] = None
+            row["verdict"], row["verdict_reason"] = classify_crossing(
+                row["road_tags"], row["rail_tags"],
+            )
+    elif raw:
+        # Google 経路：way_id が無いため、点-曲線垂直距離マッチで同定する。
+        # 進行方向は使わない（way の選択に方向を持ち込まない制約に従う）。
         matches = await get_bulk_way_data([r["point"] for r in raw])
         for row, match in zip(raw, matches):
             row["road_way_id"] = match.get("match_way_id")
