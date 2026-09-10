@@ -1,10 +1,16 @@
 # J1：距離閾値の根拠づけと踏切のクラスタリング
 
-作成日：2026-09-09
-入力：`backend/data/r2_point_features_detail_j1.csv`（117行・Overpass取得時点 2026-08-01T20:21:21Z）
-再実行：`python scripts/analyze_j1_thresholds.py`（A・Bのみなら `--offline`）
+作成日：2026-09-09（F・G を 2026-09-10 追記）
+入力：`backend/data/r2_point_features_detail_j1.csv`（117行）と
+`backend/data/google_routes_input.csv`。Overpass取得時点は全節 2026-08-01T20:21:21Z で固定。
+再実行：`python scripts/analyze_j1_thresholds.py`
+（A・Bのみなら `--offline`、G だけなら `--skip-f`、表の書き出しは `--emit-md PATH`）
 
-抽出はやり直していない。既存の明細CSVから集計しただけである。判定器・経路探索には触れていない。
+A〜C・G は既存の明細CSVから集計しただけで、抽出はやり直していない。
+F は経路と鉄道線の幾何交差を新たに計算している。いずれも判定器・経路探索には触れていない。
+
+**結論の先出し：踏切の確定数は F-4 の7箇所である。** B の8箇所（距離基準）は
+閾値依存であり、うち1箇所は経路が線路と並走しているだけの偽陽性だった。
 
 ---
 
@@ -199,3 +205,295 @@ node 12293389477（61.6°）と node 12623149769（33.9°）は偏差角が大�
 5. 本節の数値はすべて Overpass 取得時点 2026-08-01T20:21:21Z の OSM に対するものであり、
    現地の設置状況ではない。収録率そのものの検証は `stop_survey_segments_j1.csv` を
    使った人手確認に依存する。
+6. **踏切については F で幾何交差による確定を行った。** B の8箇所は距離閾値に依存し
+   （7〜13箇所）、うち1箇所は経路が線路と並走しているだけの偽陽性だった（F-3 ②）。
+   論文表には B の8箇所ではなく **F-4 の7箇所** を使う。ただし道路側wayの
+   bridge/layer タグ欠落による平面誤判定は残る（F-3 ①）。
+7. G の方向適用判定は、親wayが経路と直交する場合ほとんど情報を持たない（G-1）。
+   3m 超の73件に対する「適用45/適用外34」を取りこぼし件数として読んではいけない。
+
+---
+
+## F. 経路と鉄道線の幾何交差
+
+B までの「踏切ノードが経路の近くにあるか」という距離基準をやめ、**経路ポリラインと
+鉄道線の幾何交差**で踏切を確定させる。手順は次のとおり。
+
+1. コリドー20m内の `way["railway"~"^(rail|light_rail|narrow_gauge)$"]` を取得する。
+   `tram`（路面電車）は踏切ではないため交差判定の対象にしないが、件数は記録する。
+2. 経路の各セグメントと鉄道wayの各セグメントの交点を局所平面近似で求める。
+3. 道路側way（点-曲線垂直距離マッチで同定）と鉄道wayの `bridge` / `tunnel` / `layer`
+   を見て、平面交差・立体交差・不明に分ける。判断がつかない組み合わせは不明に置き、
+   平面には寄せない。
+4. 各平面交差について、半径30m以内の `railway=level_crossing` / `crossing` ノードを
+   探し、実距離を記録する。
+
+道路側wayの同定に進行方向は使っていない（`RESEARCH.md` 21.11節の制約）。
+
+### F-0. ペア別の交差数
+
+| ペア | 鉄道way | tram way | 交差点 | 平面 | 立体 | 不明 |
+|---|---:|---:|---:|---:|---:|---:|
+| 渋谷→新宿 | 8 | 0 | 4 | 0 | 4 | 0 |
+| 新宿→池袋 | 0 | 5 | 0 | 0 | 0 | 0 |
+| 東京→渋谷 | 4 | 0 | 2 | 0 | 2 | 0 |
+| 品川→東京 | 61 | 0 | 26 | 0 | 26 | 0 |
+| 渋谷→六本木 | 2 | 0 | 0 | 0 | 0 | 0 |
+| 下北沢→三軒茶屋 | 16 | 0 | 2 | 0 | 2 | 0 |
+| 高円寺→中野 | 36 | 0 | 11 | 0 | 11 | 0 |
+| 荻窪→阿佐ヶ谷 | 9 | 0 | 0 | 0 | 0 | 0 |
+| 自由が丘→等々力 | 5 | 0 | 4 | 4 | 0 | 0 |
+| 浦和→さいたま新都心 | 7 | 0 | 0 | 0 | 0 | 0 |
+| 吉祥寺→三鷹 | 4 | 0 | 4 | 0 | 4 | 0 |
+| 立川→国分寺 | 4 | 0 | 4 | 2 | 2 | 0 |
+| 横浜→みなとみらい | 1 | 0 | 1 | 0 | 1 | 0 |
+| 川崎→武蔵小杉 | 22 | 0 | 8 | 0 | 8 | 0 |
+| 千葉→幕張本郷 | 23 | 0 | 22 | 14 | 8 | 0 |
+| **合計** | | 5 | 88 | 20 | 68 | 0 |
+
+**tram は新宿→池袋にのみ5way存在し、rail系は0だった。** B で 新宿→池袋 に1件あった
+`railway=level_crossing`（18.18m）は、都電の軌道に付いたノードで、rail系の踏切ではない。
+距離基準ではこれを区別できなかった。
+
+立体交差68件のうち26件は品川→東京、11件は高円寺→中野で、いずれも線路が高架または
+掘割の区間を経路が横切っている。**不明は0件**で、bridge/tunnel/layer のいずれかで
+全件が判定できた。
+
+### F-1. 平面交差の明細
+
+| ペア | 位置(m) | 鉄道way | 道路way (highway) | 最寄り踏切ノード | 距離(m) | railway | Street View |
+|---|---:|---:|---|---|---:|---|---|
+| 自由が丘→等々力 | 85.9 | 114207283 | 25533292 (unclassified) | 283343309 | 0.88 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6071907,139.6681885) |
+| 自由が丘→等々力 | 89.8 | 251287359 | 25533292 (unclassified) | 2574536592 | 0.61 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6071559,139.6681836) |
+| 自由が丘→等々力 | 500.2 | 251287359 | 48903694 (residential) | 2574536563 | 0.41 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6060388,139.6649541) |
+| 自由が丘→等々力 | 504.0 | 114207283 | 48903694 (residential) | 620534668 | 0.09 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6060664,139.6649292) |
+| 立川→国分寺 | 1334.3 | 24398923 | 138427587 (tertiary) | 1517858200 | 3.15 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6915395,139.4246884) |
+| 立川→国分寺 | 1338.0 | 399827726 | 138427587 (tertiary) | 4032122672 | 2.53 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6915419,139.4247296) |
+| 千葉→幕張本郷 | 5977.7 | 194646016 | 142225531 (footway) | **なし** | - | - | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6474233,140.0853732) |
+| 千葉→幕張本郷 | 5981.4 | 194468876 | 142225531 (footway) | **なし** | - | - | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6474004,140.0853435) |
+| 千葉→幕張本郷 | 5986.5 | 194468871 | 142225531 (footway) | **なし** | - | - | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6473678,140.0853030) |
+| 千葉→幕張本郷 | 5990.4 | 22064363 | 142225531 (footway) | **なし** | - | - | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6473433,140.0852731) |
+| 千葉→幕張本郷 | 6140.7 | 22728981 | 142225531 (footway) | **なし** | - | - | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6463814,140.0841034) |
+| 千葉→幕張本郷 | 6144.8 | 22728993 | 142225531 (footway) | **なし** | - | - | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6463553,140.0840716) |
+| 千葉→幕張本郷 | 7772.6 | 22728993 | 139653293 (unclassified) | 2697832127 | 0.39 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6516032,140.0694287) |
+| 千葉→幕張本郷 | 7776.8 | 22728981 | 139653293 (unclassified) | 2697832130 | 0.69 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6516364,140.0694522) |
+| 千葉→幕張本郷 | 8103.3 | 1456766562 | 312441870 (footway) | 2686744906 | 0.23 | crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6526863,140.0662608) |
+| 千葉→幕張本郷 | 8106.9 | 1456766561 | 312441870 (footway) | 2686744905 | 0.14 | crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6526575,140.0662431) |
+| 千葉→幕張本郷 | 8216.2 | 1456766561 | 1410024945 (tertiary) | 2697832135 | 0.15 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6528973,140.0655160) |
+| 千葉→幕張本郷 | 8219.7 | 1456766562 | 1410024945 (tertiary) | 2697832139 | 0.33 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6529269,140.0655295) |
+| 千葉→幕張本郷 | 9765.4 | 22823373 | 142222817 (residential) | 2672501042 | 0.41 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6594269,140.0564790) |
+| 千葉→幕張本郷 | 9770.9 | 22728983 | 142222817 (residential) | 2672501045 | 0.02 | level_crossing | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6594493,140.0564246) |
+
+### F-2. 道路側 highway による分類（診断用）
+
+| 道路側 highway | 平面交差数 |
+|---|---:|
+| footway | 8 |
+| unclassified | 4 |
+| residential | 4 |
+| tertiary | 4 |
+
+分類は `railway` のタグ値ではなく、**交差した道路側wayの `highway`** で行っている。
+根拠は B-5 に記録した実例である。千葉→幕張本郷・位置10331m では
+`railway=level_crossing`（本来は車道用）が `highway=footway` の way 上のノードに
+付いていた。`railway` のタグ値は車道／歩道の区別として信頼できない。
+なお本分類は診断用であり、論文表では踏切の総箇所数のみを使う想定である。
+
+| ペア | F の平面交差(箇所) | B の箇所 | 対応 |
+|---|---:|---:|---|
+| 自由が丘→等々力 | 2 | 2 | 一致2 |
+| 立川→国分寺 | 1 | 1 | 一致1 |
+| 千葉→幕張本郷 | 6 | 5 | 一致4 |
+- F にあって B に無い: 2件
+  - 千葉→幕張本郷 位置5984.0m
+  - 千葉→幕張本郷 位置6142.8m
+- B にあって F に無い: 1件
+  - 千葉→幕張本郷 位置10331.2m
+
+差分3件はいずれも原因を特定した。
+
+**① F にあって B に無い：千葉→幕張本郷 位置5977〜5990m・6140〜6144m（計6交差）**
+
+経路は鉄道線を6本横切っているが、**30m以内に踏切ノードが1件も無い**。道路側wayは
+いずれも `142225531`（`highway=footway`、bridge/tunnel/layer すべて未指定）で、
+周囲25m以内には `1545996530`（tertiary・タグ無し、6.73m）と
+`62062786`（東関東自動車道・`bridge=yes` `layer=1`、21.8m）がある。千葉駅構内の
+線路群を横切る地点で、踏切ノードが1件も無いことと合わせると、**実体は立体交差だが
+道路側wayに bridge/layer が付いていないため平面と判定された**とみるのが妥当である。
+本節の判定規則「両側とも layer 未指定かつ bridge/tunnel 無しなら平面」が、
+タグ欠落をそのまま平面に化けさせる例になっている。**踏切の確定数からは外す。**
+
+**② B にあって F に無い：千葉→幕張本郷 位置10331.2m**
+
+経路と鉄道線の最短距離を全鉄道wayについて計算すると、京成千葉線 way 1456766575 まで
+**3.59m**、総武緩行線 way 194646032 まで 9.07m で、いずれも交差していない。
+**経路は線路と並走しているだけである。** それにもかかわらず B が踏切ノードを拾ったのは、
+線路を渡る歩道の踏切ノード（node 2046049354、`railway=crossing`）が経路から 0.19m の
+位置にあったためである。**距離基準は「横切る」と「並走する」を区別できない。**
+これは B の偽陽性であり、F が正しい。
+
+### F-4. 確定した踏切数
+
+平面交差20件のうち、30m以内に踏切ノードがあるのは14件で、対応距離は最大3.15m
+（立川→国分寺）である。**幾何交差と踏切ノードの両方が一致した14交差を25mでまとめると
+7箇所**になる。
+
+| ペア | 確定した踏切 |
+|---|---:|
+| 自由が丘→等々力 | 2 |
+| 立川→国分寺 | 1 |
+| 千葉→幕張本郷 | 4 |
+| **合計** | **7箇所（検出ペア 3/15・検出ゼロ 12/15）** |
+
+B の8箇所から、②の偽陽性1箇所を除いた数と一致する。
+
+**この7という数字は on-route 距離閾値に依存しない。** B の8箇所は閾値2〜20mで
+7〜13箇所と揺れたが、F は幾何交差そのものを見ているため 3m / 5m といった線引きを
+必要としない。踏切ノードの対応づけに使った30mも、実測が最大3.15mなので
+半径の取り方で結果は変わらない。**論文表に入れるなら B の8箇所ではなく、
+この7箇所を使うべきである。**
+
+ただし①のとおり、**タグ欠落による平面誤判定は残る**。7箇所は「幾何交差と踏切ノードの
+両方が揃った数」であり、OSMに踏切ノードが無い実在の踏切があれば取りこぼす。
+
+---
+
+## G. 一時停止コリドー全件の方向適用判定（診断）
+
+C の方向適用判定を、on-route 6件ではなくコリドー20m内の79件全件に広げた。
+目的は 3m 閾値の外に、経路に適用される向きの標識が残っていないかの確認である。
+
+**この判定は診断にのみ使う。** way の選択・候補の絞り込みには一切用いていない
+（測定対象が進行方向そのものであるため、方向で候補を選ぶと循環論法になる。
+`RESEARCH.md` 21.11節）。最終判断は目視で行う前提で、コードは候補を出すところまでとする。
+
+### G-1. 判定結果と、その解釈の限界
+
+判定内訳は **適用45件・適用外34件**、うち 3m 超で「適用」と判定されたのは40件
+（3-5m 3件 / 5-10m 22件 / 10-20m 15件）だった。
+
+**しかしこの40件をそのまま取りこぼし候補として扱ってはいけない。** 方向適用判定は
+「経路がその標識の親way上を走っている」ことを前提にしている。親wayが経路と直交する
+交差道路である場合、親wayの forward ベクトルと `travel_vector` の偏差角は90度付近に
+なり、forward か backward かは実質的に偶然で決まる。
+
+| 群 | n | 偏差角の中央値 | 90度±15度 | 90度±15〜45度 | 90度から45度超 |
+|---|---:|---:|---:|---:|---:|
+| 3m以内 | 6 | 33.9度 | 0 | 1 | 5 |
+| 3m超 | 73 | 80.4度 | 34 | 29 | 10 |
+
+3m以内の6件は偏差角が90度から大きく離れており（5件が45度超）、親wayが経路と
+おおむね平行＝経路がその道を走っていることを示す。判定は意味を持つ。
+3m超の73件は中央値80.4度で、34件が90度±15度に入る。**親wayは交差道路であり、
+この群の「適用45/適用外34」という分割にはほとんど情報が無い。**
+
+### G-2. 目視確認すべき候補
+
+3m超のうち、親wayが経路とおおむね平行（偏差角が90度から45度超離れている）ものは
+10件で、そのうち「適用」は **7件** である。取りこぼし候補として目視確認する価値が
+あるのはこの7件に限られる。
+
+| dist(m) | ペア | node_id | direction | 偏差角 | 親way (highway) |
+|---:|---|---|---|---:|---|
+| 5.63 | 下北沢→三軒茶屋 | 12728441319 | forward | 39.5 | 241993539 (service) |
+| 6.52 | 東京→渋谷 | 2138385693 | forward | 32.2 | 93185600 (unclassified) |
+| 7.96 | 東京→渋谷 | 8663938876 | forward | 21.7 | 372005557 (residential) |
+| 8.47 | 渋谷→六本木 | 8667731925 | forward | 36.7 | 265033759 (residential) |
+| 9.34 | 新宿→池袋 | 8329351985 | forward | 13.8 | 635337704 (unclassified) |
+| 12.60 | 吉祥寺→三鷹 | 13366744340 | forward | 41.8 | 205040880 (service) |
+| 15.50 | 下北沢→三軒茶屋 | 12695787374 | forward | 19.8 | 1370782200 (residential) |
+
+うち2件は親wayが `service`（駐車場・私道）で、経路がその上を走っているとは考えにくい。
+実質の候補は5件である。Street View URL は下の全件表を参照。
+
+**この7件が仮にすべて経路上の標識だったとしても、6件が7件増えて13件になるだけで、
+79件との差は埋まらない。** A-2 で述べたとおり、3m 閾値は近接群を取るための線であり、
+残る73件の大半は交差道路側の標識である、という結論は変わらない。
+
+### G-3. 全79件（`dist_to_route_m` 昇順）
+
+| dist(m) | ペア | node_id | direction | 偏差角 | 経路の進行 | 判定 | 親way (highway) | Street View |
+|---:|---|---|---|---:|---|---|---|---|
+| 0.51 | 高円寺→中野 | 8784582360 | backward | 144.6 | backward | 適用 | 49175544 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.7054323,139.6652607) |
+| 0.72 | 千葉→幕張本郷 | 12293389477 | forward | 61.6 | forward | 適用 | 1328740627 (cycleway) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6562671,140.0639761) |
+| 0.91 | 新宿→池袋 | 11162524128 | forward | 0.1 | forward | 適用 | 155224464 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6912512,139.7023123) |
+| 1.04 | 浦和→さいたま新都心 | 12438301580 | backward | 4.4 | forward | 適用外 | 100400218 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.8691237,139.6501731) |
+| 1.12 | 浦和→さいたま新都心 | 12438301581 | forward | 5.4 | forward | 適用 | 100400218 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.8690468,139.6502325) |
+| 1.34 | 千葉→幕張本郷 | 12623149769 | forward | 33.9 | forward | 適用 | 140120618 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6566086,140.0630387) |
+| 3.55 | 千葉→幕張本郷 | 12293389478 | backward | 67.7 | forward | 適用外 | 780205366 (cycleway) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6563531,140.0640086) |
+| 4.11 | 自由が丘→等々力 | 11759381736 | forward | 80.0 | forward | 適用 | 49730487 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6069361,139.6568612) |
+| 4.27 | 自由が丘→等々力 | 12514350338 | forward | 156.6 | backward | 適用外 | 1352547328 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6085265,139.6490737) |
+| 4.44 | 渋谷→六本木 | 12323845982 | backward | 118.7 | backward | 適用 | 109231692 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6572863,139.7060461) |
+| 4.98 | 浦和→さいたま新都心 | 7196414489 | forward | 54.6 | forward | 適用 | 95385874 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.8852337,139.6400533) |
+| 5.42 | 自由が丘→等々力 | 12273548008 | backward | 97.4 | backward | 適用 | 48959133 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6079531,139.6525426) |
+| 5.63 | 下北沢→三軒茶屋 | 12728441319 | forward | 39.5 | forward | 適用 | 241993539 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6610189,139.6692735) |
+| 5.81 | 渋谷→新宿 | 1522968060 | forward | 148.9 | backward | 適用外 | 138917006 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6671974,139.7042934) |
+| 5.85 | 下北沢→三軒茶屋 | 12695846666 | backward | 78.9 | forward | 適用外 | 88519913 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6546179,139.6672941) |
+| 6.04 | 下北沢→三軒茶屋 | 12692217222 | backward | 93.6 | backward | 適用 | 116433279 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6503911,139.6673971) |
+| 6.17 | 東京→渋谷 | 11612834886 | forward | 88.8 | forward | 適用 | 23273635 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6613671,139.7369892) |
+| 6.27 | 立川→国分寺 | 13888216707 | forward | 85.1 | forward | 適用 | 161953549 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6965933,139.4747373) |
+| 6.38 | 下北沢→三軒茶屋 | 12695787378 | forward | 107.8 | backward | 適用外 | 217262443 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6453275,139.6704836) |
+| 6.52 | 東京→渋谷 | 2138385693 | forward | 32.2 | forward | 適用 | 93185600 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6583492,139.7102518) |
+| 6.65 | 下北沢→三軒茶屋 | 12692218768 | forward | 87.0 | forward | 適用 | 48728743 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6530397,139.6671170) |
+| 6.88 | 下北沢→三軒茶屋 | 12695787380 | backward | 80.7 | forward | 適用外 | 27263501 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6440526,139.6709767) |
+| 7.22 | 下北沢→三軒茶屋 | 12692218767 | forward | 93.0 | backward | 適用外 | 88527664 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6530366,139.6672706) |
+| 7.39 | 渋谷→新宿 | 8254068911 | forward | 81.0 | forward | 適用 | 170232029 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6893287,139.7022679) |
+| 7.67 | 下北沢→三軒茶屋 | 12692218773 | backward | 86.3 | forward | 適用外 | 48728752 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6522979,139.6673161) |
+| 7.77 | 下北沢→三軒茶屋 | 12695787376 | forward | 78.7 | forward | 適用 | 158815335 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6457422,139.6700955) |
+| 7.96 | 東京→渋谷 | 8663938876 | forward | 21.7 | forward | 適用 | 372005557 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6591415,139.7186637) |
+| 7.97 | 渋谷→新宿 | 5619189103 | forward | 84.1 | forward | 適用 | 963385012 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6679387,139.7048237) |
+| 8.05 | 渋谷→新宿 | 12285513211 | backward | 102.0 | backward | 適用 | 531362280 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6756503,139.7068022) |
+| 8.15 | 下北沢→三軒茶屋 | 12695846667 | forward | 91.6 | backward | 適用外 | 220704411 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6546366,139.6671407) |
+| 8.28 | 川崎→武蔵小杉 | 10270731845 | forward | 113.2 | backward | 適用外 | 159367744 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.5550088,139.6782253) |
+| 8.33 | 渋谷→新宿 | 1522967767 | forward | 67.2 | forward | 適用 | 41857281 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6653396,139.7028611) |
+| 8.47 | 渋谷→六本木 | 8667731925 | forward | 36.7 | forward | 適用 | 265033759 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6591762,139.7148882) |
+| 8.47 | 下北沢→三軒茶屋 | 12695787377 | backward | 78.7 | forward | 適用外 | 158815335 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6457960,139.6702637) |
+| 8.59 | 下北沢→三軒茶屋 | 12692218775 | backward | 80.6 | forward | 適用外 | 48728749 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6517222,139.6673578) |
+| 8.59 | 川崎→武蔵小杉 | 10297920069 | forward | 78.1 | forward | 適用 | 1058854790 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.5448020,139.6890285) |
+| 8.61 | 下北沢→三軒茶屋 | 12728441312 | forward | 88.5 | forward | 適用 | 33614319 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6602088,139.6687415) |
+| 8.67 | 下北沢→三軒茶屋 | 12692218774 | forward | 80.0 | forward | 適用 | 55114345 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6516671,139.6671698) |
+| 8.78 | 渋谷→六本木 | 8667731924 | forward | 124.7 | backward | 適用外 | 243264888 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6591855,139.7149565) |
+| 8.95 | 渋谷→六本木 | 8594646448 | forward | 68.9 | forward | 適用 | 967220470 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6598627,139.7229005) |
+| 9.06 | 下北沢→三軒茶屋 | 12695787372 | backward | 78.1 | forward | 適用外 | 48681453 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6490164,139.6682231) |
+| 9.15 | 川崎→武蔵小杉 | 9269777761 | backward | 77.9 | forward | 適用外 | 221309639 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.5578991,139.6761437) |
+| 9.18 | 下北沢→三軒茶屋 | 12692218772 | forward | 86.9 | forward | 適用 | 51155716 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6523028,139.6671293) |
+| 9.20 | 新宿→池袋 | 11286893487 | forward | 63.9 | forward | 適用 | 72457420 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6919347,139.7053279) |
+| 9.34 | 新宿→池袋 | 8329351985 | forward | 13.8 | forward | 適用 | 635337704 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6913782,139.7015391) |
+| 9.37 | 渋谷→六本木 | 1533906714 | forward | 70.8 | forward | 適用 | 139978182 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6591545,139.7145704) |
+| 9.59 | 渋谷→六本木 | 8667731918 | backward | 70.5 | forward | 適用外 | 137630409 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6593591,139.7167214) |
+| 9.96 | 高円寺→中野 | 10035139362 | forward | 94.7 | backward | 適用外 | 1330235066 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.7053433,139.6642794) |
+| 10.23 | 東京→渋谷 | 13042424432 | backward | 89.4 | forward | 適用外 | 141293465 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6580156,139.7061248) |
+| 10.28 | 渋谷→六本木 | 8667731917 | forward | 125.1 | backward | 適用外 | 935330870 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6592801,139.7158162) |
+| 10.42 | 下北沢→三軒茶屋 | 12692231840 | forward | 74.9 | forward | 適用 | 48671202 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6444306,139.6706319) |
+| 10.54 | 川崎→武蔵小杉 | 12229680648 | backward | 55.8 | forward | 適用外 | 1321613838 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.5423172,139.6943228) |
+| 10.79 | 東京→渋谷 | 12334423109 | forward | 87.2 | forward | 適用 | 176209641 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6608618,139.7276580) |
+| 11.11 | 品川→東京 | 1074585156 | forward | 45.4 | forward | 適用 | 60544302 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6481411,139.7547212) |
+| 11.37 | 東京→渋谷 | 13042424433 | forward | 90.6 | backward | 適用外 | 211286456 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6579591,139.7047102) |
+| 11.50 | 東京→渋谷 | 12334378300 | backward | 97.2 | backward | 適用 | 122928198 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6600519,139.7253558) |
+| 11.52 | 東京→渋谷 | 8663938894 | backward | 42.7 | forward | 適用外 | 103751727 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6590311,139.7177425) |
+| 11.54 | 品川→東京 | 11295266877 | backward | 96.5 | backward | 適用 | 111594585 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6511178,139.7536184) |
+| 11.81 | 渋谷→六本木 | 8563870271 | backward | 116.0 | backward | 適用 | 141293462 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6574614,139.7077601) |
+| 12.60 | 吉祥寺→三鷹 | 13366744340 | forward | 41.8 | forward | 適用 | 205040880 (service) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.7034799,139.5607731) |
+| 12.83 | 東京→渋谷 | 8563870267 | forward | 85.0 | forward | 適用 | 141293467 (tertiary) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6580440,139.7070990) |
+| 13.33 | 渋谷→六本木 | 8563870269 | backward | 71.1 | forward | 適用外 | 141293467 (tertiary) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6572931,139.7069811) |
+| 13.62 | 品川→東京 | 13109512797 | forward | 132.1 | backward | 適用外 | 462907587 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6486498,139.7541064) |
+| 13.82 | 品川→東京 | 10073004133 | forward | 79.2 | forward | 適用 | 600239764 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6609555,139.7554056) |
+| 14.01 | 川崎→武蔵小杉 | 9043732236 | forward | 116.5 | backward | 適用外 | 1071867337 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.5527404,139.6801910) |
+| 14.02 | 川崎→武蔵小杉 | 9328887768 | forward | 107.9 | backward | 適用外 | 124965707 (tertiary) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.5498719,139.6816852) |
+| 14.40 | 渋谷→新宿 | 12285513210 | forward | 80.4 | forward | 適用 | 220544944 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6762327,139.7066619) |
+| 14.52 | 渋谷→六本木 | 8350070983 | forward | 53.7 | forward | 適用 | 898573318 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6617015,139.7284790) |
+| 14.99 | 渋谷→六本木 | 1509501699 | backward | 68.7 | forward | 適用外 | 137630411 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6591106,139.7135619) |
+| 15.27 | 渋谷→六本木 | 8660985202 | forward | 105.5 | backward | 適用外 | 967220472 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6598965,139.7227656) |
+| 15.50 | 下北沢→三軒茶屋 | 12695787374 | forward | 19.8 | forward | 適用 | 1370782200 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6474931,139.6692720) |
+| 15.51 | 東京→渋谷 | 1075233588 | forward | 71.5 | forward | 適用 | 92702343 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6609890,139.7280779) |
+| 15.58 | 品川→東京 | 9991674504 | forward | 74.9 | forward | 適用 | 87510459 (unclassified) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6488030,139.7535131) |
+| 16.89 | 渋谷→新宿 | 5619189102 | backward | 77.6 | forward | 適用外 | 963385012 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6679878,139.7047449) |
+| 17.10 | 東京→渋谷 | 13288902293 | forward | 47.2 | forward | 適用 | 216895901 (tertiary) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6773607,139.7608360) |
+| 17.41 | 新宿→池袋 | 1685099979 | forward | 108.4 | backward | 適用外 | 1128023034 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.7268822,139.7115929) |
+| 18.02 | 渋谷→新宿 | 12285513212 | forward | 102.3 | backward | 適用外 | 531362279 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6756002,139.7065195) |
+| 18.03 | 新宿→池袋 | 10313170970 | backward | 72.3 | forward | 適用外 | 192620023 (residential) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.7267127,139.7115426) |
+| 19.12 | 品川→東京 | 9523456780 | backward | 48.5 | forward | 適用外 | 33847389 (tertiary) | [SV](https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=35.6484018,139.7545873) |
+
+- 判定内訳: 適用 45件 / 適用外 34件
+- 3m 超で「適用」: 40件（3-5m 3件 / 5-10m 22件 / 10-20m 15件）
+- そのうち親wayが経路とおおむね平行なもの: 7件（G-2）
