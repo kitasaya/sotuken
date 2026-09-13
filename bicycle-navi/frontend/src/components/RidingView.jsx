@@ -154,6 +154,40 @@ function TwoStepGuide() {
   );
 }
 
+/** 一時停止・踏切の手順説明パネル（第2層のガイダンス）。
+ *  文言の根拠は道路交通法第43条（指定場所における一時停止）と
+ *  第33条第1項（踏切の直前停止。ただし信号機の信号に従うときは除く）。 */
+const GUIDANCE_STEPS = {
+  stop_sign: {
+    title: "一時停止の手順",
+    steps: ["停止線の直前で停止", "左右と交差道路の安全を確認", "発進"],
+  },
+  level_crossing: {
+    title: "踏切の手順",
+    steps: ["踏切の直前で停止", "左右の安全を確認", "通過"],
+    note: "信号機のある踏切では、信号の表示に従って進行できます",
+  },
+};
+
+function GuidanceSteps({ type }) {
+  const config = GUIDANCE_STEPS[type];
+  if (!config) return null;
+  return (
+    <div style={styles.guidanceGuide}>
+      <div style={styles.guidanceGuideTitle}>{config.title}</div>
+      <div style={styles.twoStepSteps}>
+        {config.steps.map((label, index) => (
+          <div key={label} style={styles.guidanceStep}>
+            <span style={styles.guidanceStepNum}>{index + 1}</span>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      {config.note && <div style={styles.guidanceNote}>{config.note}</div>}
+    </div>
+  );
+}
+
 /**
  * コンパスインジケーター
  * heading-up 時、画面内で「北がどの方向か」を示す小型コンパス。
@@ -334,6 +368,9 @@ export default function RidingView({
   const isTwoStepTurn = needsTwoStepTurn(currentInstruction, violations, routeCoords);
   const routeDistance = distanceAlongRoute(routeCoords, currentPosition);
   const activeGuidance = upcomingGuidance(routeData?.guidance, routeDistance);
+  // 手順パネルを出すときは矢印を縮めて、下部の操作ボタンが画面外へ
+  // 押し出されないようにする（U4 で二段階右折パネルに施した対処と同じ）。
+  const isCompactArrow = isTwoStepTurn || activeGuidance != null;
 
   let displayDistance = currentInstruction.distance;
   if (currentPosition && nextInstruction) {
@@ -390,18 +427,19 @@ export default function RidingView({
         <div style={{
           ...styles.arrowContainer,
           ...(isTwoStepTurn
-            ? { ...styles.twoStepBorder, padding: "10px 24px 8px" }
+            ? styles.twoStepBorder
             : hasWarning
             ? styles.warningBorder
             : {}),
+          ...(isCompactArrow ? { padding: "10px 24px 8px" } : {}),
         }}>
           <div style={{
             ...styles.arrow,
-            fontSize: isTwoStepTurn ? "5rem" : "8rem",
+            fontSize: isCompactArrow ? "5rem" : "8rem",
           }}>{config.arrow}</div>
           <div style={{
             ...styles.directionLabel,
-            fontSize: isTwoStepTurn ? "1.3rem" : "1.6rem",
+            fontSize: isCompactArrow ? "1.3rem" : "1.6rem",
           }}>{config.label}</div>
         </div>
 
@@ -425,6 +463,9 @@ export default function RidingView({
             </span>
           </div>
         )}
+
+        {/* 案内地点の手順説明（バナーの直下） */}
+        {activeGuidance && <GuidanceSteps type={activeGuidance.item.type} />}
 
         {/* 距離表示 */}
         <div style={styles.distanceContainer}>
@@ -651,6 +692,48 @@ const styles = {
   guidanceDistance: {
     fontVariantNumeric: "tabular-nums",
     fontSize: "0.9rem",
+  },
+  guidanceGuide: {
+    flex: "0 0 auto",
+    margin: "0 12px 6px",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    backgroundColor: "#1e1a00",
+    border: "1px solid #f9a825",
+  },
+  guidanceGuideTitle: {
+    fontSize: "0.85rem",
+    color: "#ffd54f",
+    fontWeight: "bold",
+    marginBottom: "6px",
+  },
+  guidanceStep: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "4px",
+    fontSize: "0.78rem",
+    color: "#fff3cd",
+    textAlign: "center",
+  },
+  guidanceStepNum: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "22px",
+    height: "22px",
+    borderRadius: "50%",
+    backgroundColor: "#f9a825",
+    color: "#1a1200",
+    fontWeight: "bold",
+    fontSize: "0.85rem",
+  },
+  guidanceNote: {
+    marginTop: "6px",
+    fontSize: "0.72rem",
+    color: "#e0c068",
+    lineHeight: 1.4,
   },
   // 上部オーバーレイ・下部コントロールの間で内容が収まらない場合にスクロールさせる領域
   // minHeight: 0 は flex 子要素が親の高さを無視して伸びてしまう（overflow の原因になる）のを防ぐ

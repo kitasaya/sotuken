@@ -95,7 +95,9 @@ export const buildApproachText = (
 export const buildGuidanceText = (guidance) => {
   if (guidance?.type === "stop_sign") return "この先、一時停止です";
   if (guidance?.type === "level_crossing") {
-    return "この先、踏切です。停止してください";
+    // 道路交通法第33条第1項のただし書き（信号機の信号に従うときは停止不要）に
+    // 反しないよう、無条件の停止義務としては読み上げない。
+    return "この先、踏切です。信号がなければ直前で停止してください";
   }
   return null;
 };

@@ -8,6 +8,10 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
+// 案内地点（第2層）のマーカー色。違反マーカー（赤・黄）と混同しないよう紫系。
+// stop_sign / level_crossing は同色とし、カードのラベルで区別する。
+const GUIDANCE_COLOR = "#7b1fa2";
+
 // GraphHopperのcoordinatesは [lng, lat] なので反転する
 const toPositions = (route) =>
   route ? route.points.coordinates.map(([lng, lat]) => [lat, lng]) : [];
@@ -37,12 +41,15 @@ export default function MapView({
   originalRoute,
   compliantRoute,
   violations,
+  guidance,
   currentPosition,
   focusTarget,
   focusVersion = 0,
   routeFitVersion = 0,
   onViolationClick,
   focusedViolationIndex = null,
+  onGuidanceClick,
+  focusedGuidanceIndex = null,
   showOriginalRoute = false,
 }) {
   const center = [35.6762, 139.6503]; // 東京
@@ -83,6 +90,26 @@ export default function MapView({
       {compliantPositions.length > 0 && (
         <Polyline positions={compliantPositions} color="#1976d2" weight={5} />
       )}
+      {/* 案内地点マーカー（第2層：一時停止・踏切）。
+          違反ではないため紫系・小さめの半径で、違反マーカーと区別する。 */}
+      {guidance &&
+        guidance.map((g, i) => {
+          const isFocused = i === focusedGuidanceIndex;
+          return (
+            <CircleMarker
+              key={`g-${g.node_id}-${g.distance_from_start_m}-${i}`}
+              center={[g.lat, g.lng]}
+              radius={isFocused ? 10 : 6}
+              color={isFocused ? "#1976d2" : GUIDANCE_COLOR}
+              fillColor={GUIDANCE_COLOR}
+              fillOpacity={0.85}
+              weight={isFocused ? 4 : 2}
+              eventHandlers={{
+                click: () => onGuidanceClick?.(i),
+              }}
+            />
+          );
+        })}
       {/* 違反マーカー（confidence >= 0.7: 赤、< 0.7: 黄） */}
       {violations &&
         violations.map((v, i) => {

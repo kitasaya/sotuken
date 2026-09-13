@@ -30,6 +30,8 @@ export default function App() {
   const [mapFocusTarget, setMapFocusTarget] = useState(null);
   // 違反リストで現在ハイライト中のインデックス
   const [focusedViolationIndex, setFocusedViolationIndex] = useState(null);
+  // 案内リストで現在ハイライト中のインデックス（違反フォーカスとは排他）
+  const [focusedGuidanceIndex, setFocusedGuidanceIndex] = useState(null);
 
   const handlePosition = useCallback((pos) => {
     setCurrentPosition(pos);
@@ -48,6 +50,7 @@ export default function App() {
       setRouteFitVersion((v) => v + 1);
       setSheetSnap("half");
       setFocusedViolationIndex(null);
+      setFocusedGuidanceIndex(null);
     } catch (e) {
       setError("ルート取得に失敗しました: " + e.message);
     } finally {
@@ -77,6 +80,7 @@ export default function App() {
   // 地図上の違反マーカーをタップ → 該当カードをハイライトし full に展開
   const handleViolationMarkerClick = (index) => {
     setFocusedViolationIndex(index);
+    setFocusedGuidanceIndex(null);
     setSheetSnap("full");
   };
 
@@ -85,7 +89,25 @@ export default function App() {
     const v = routeData?.violations?.[index];
     if (!v) return;
     setFocusedViolationIndex(index);
+    setFocusedGuidanceIndex(null);
     setMapFocusTarget({ lat: v.lat, lng: v.lng });
+    setFocusVersion((prev) => prev + 1);
+  };
+
+  // 案内マーカー・案内カードも違反側と同じ操作感にする。
+  // 違反と案内のフォーカスは排他（どちらか一方だけがハイライトされる）。
+  const handleGuidanceMarkerClick = (index) => {
+    setFocusedGuidanceIndex(index);
+    setFocusedViolationIndex(null);
+    setSheetSnap("full");
+  };
+
+  const handleGuidanceCardClick = (index) => {
+    const g = routeData?.guidance?.[index];
+    if (!g) return;
+    setFocusedGuidanceIndex(index);
+    setFocusedViolationIndex(null);
+    setMapFocusTarget({ lat: g.lat, lng: g.lng });
     setFocusVersion((prev) => prev + 1);
   };
 
@@ -148,12 +170,15 @@ export default function App() {
           originalRoute={routeData?.original_route}
           compliantRoute={routeData?.compliant_route}
           violations={routeData?.violations}
+          guidance={routeData?.guidance}
           currentPosition={currentPosition}
           focusTarget={mapFocusTarget}
           focusVersion={focusVersion}
           routeFitVersion={routeFitVersion}
           onViolationClick={handleViolationMarkerClick}
           focusedViolationIndex={focusedViolationIndex}
+          onGuidanceClick={handleGuidanceMarkerClick}
+          focusedGuidanceIndex={focusedGuidanceIndex}
           showOriginalRoute={SHOW_ORIGINAL_ROUTE}
         />
       </div>
@@ -204,6 +229,20 @@ export default function App() {
             />
             違反（要確認）
           </div>
+          <div className="map-legend-row">
+            <span
+              className="map-legend-dot map-legend-dot-small"
+              style={{ background: "#7b1fa2" }}
+            />
+            一時停止
+          </div>
+          <div className="map-legend-row">
+            <span
+              className="map-legend-dot map-legend-dot-small"
+              style={{ background: "#7b1fa2" }}
+            />
+            踏切
+          </div>
         </div>
       )}
 
@@ -232,6 +271,8 @@ export default function App() {
           currentPosition={currentPosition}
           focusedViolationIndex={focusedViolationIndex}
           onViolationCardClick={handleViolationCardClick}
+          focusedGuidanceIndex={focusedGuidanceIndex}
+          onGuidanceCardClick={handleGuidanceCardClick}
           recommendations={routeData?.recommendations}
         />
       </BottomSheet>

@@ -15,7 +15,11 @@ const formatTime = (ms) => {
   return `約 ${min} 分`;
 };
 
-export default function RouteSummary({ route, violationCount }) {
+export default function RouteSummary({
+  route,
+  violationCount,
+  guidanceCount,
+}) {
   if (!route) return null;
   return (
     <div className="route-summary">
@@ -30,6 +34,12 @@ export default function RouteSummary({ route, violationCount }) {
       )}
       {violationCount === 0 && (
         <div className="route-summary-ok">✅ 法規違反なし</div>
+      )}
+      {/* 第2層の案内件数。違反件数とは別行・別ラベルで示し、合算しない。 */}
+      {guidanceCount != null && guidanceCount > 0 && (
+        <div className="route-summary-guidance">
+          🔔 走行時の案内 {guidanceCount} 件
+        </div>
       )}
     </div>
   );
