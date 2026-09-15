@@ -247,19 +247,7 @@ export default defineConfig({
 
 ---
 
-## git管理対象外のファイル（注意）
 
-以下はgitにコミットされていない。別端末での作業時は手動で準備が必要:
-
-| ファイル / ディレクトリ | 理由 | 対処 |
-|----------------------|------|------|
-| `.venv/` | Python仮想環境（環境依存） | `python -m venv .venv` → `pip install` |
-| `bicycle-navi/frontend/node_modules/` | npmパッケージ（大容量） | `npm install` |
-| `bicycle-navi/graphhopper/default-gh/` | GHグラフキャッシュ（バイナリ・大容量） | `docker-compose up` で自動生成 |
-| `bicycle-navi/graphhopper/kanto-260801.osm.pbf` | OSMデータ（約482MB・2026-08-01版に固定） | **手動取得**（手順2参照・自動ダウンロードはしない） |
-| `.env` 等 | APIキーなどの機密情報（存在する場合） | 別途共有 |
-
----
 
 ## トラブルシューティング
 
@@ -284,16 +272,3 @@ export default defineConfig({
 ### リルートが遅い（数秒〜十数秒かかる）
 - 法規準拠ルート計算時はGraphHopperのCHを無効化しているため、Dijkstra/A*で計算される
 - これは既知の制限（論文にも記載予定）
-
----
-
-## 実装済み機能
-
-- [x] 一方通行（`oneway`）違反検出
-- [x] 歩道通行可否（`sidewalk`）チェック
-- [x] 自転車レーン（`cycleway`）推奨表示
-- [x] 二段階右折要否判定（`highway` + `lanes`）
-- [x] 法規違反エッジを避けたリルート
-- [x] 住所・地名入力（Nominatimジオコーディング）
-- [x] 評価実験用バッチ比較データ出力（CSV/JSON）
-- [ ] スマートフォン対応UI
