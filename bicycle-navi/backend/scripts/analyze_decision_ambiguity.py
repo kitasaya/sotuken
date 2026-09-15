@@ -228,9 +228,14 @@ def d1_distribution(rows: list[dict[str, str]]) -> list[dict]:
 
 
 def _font(size: int, bold: bool = False):
+    # Windows 候補を先に並べる（既存の出力を変えないため順序は維持）。
+    # macOS 候補は Windows 候補がすべて不在のときだけ使われる。
     paths = [
         Path("C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf"),
         Path("C:/Windows/Fonts/segoeuib.ttf" if bold else "C:/Windows/Fonts/segoeui.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold
+             else "/System/Library/Fonts/Supplemental/Arial.ttf"),
+        Path("/System/Library/Fonts/Helvetica.ttc"),
     ]
     for path in paths:
         if path.exists():

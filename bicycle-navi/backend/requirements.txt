@@ -1,3 +1,8 @@
 fastapi
 uvicorn
 httpx
+
+# 感度分析の発表用PNG生成に必要（generate_sensitivity_figures.py /
+# analyze_decision_ambiguity.py / analyze_match_margin_deep_dive.py）。
+# 図の描画結果が版で変わりうるため版を固定する。
+Pillow==11.3.0

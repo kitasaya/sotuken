@@ -66,10 +66,17 @@ def pct(count: int, denominator: int) -> float:
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
+    # Windows 候補を先に並べる。既存PNGはこの系統で生成されているため、
+    # Windows 上での描画結果を変えないよう順序は維持する。
+    # macOS 候補は Windows 候補がすべて不在のときだけ使われる。
     candidates = [
         Path("C:/Windows/Fonts/YuGothB.ttc" if bold else "C:/Windows/Fonts/YuGothM.ttc"),
         Path("C:/Windows/Fonts/meiryob.ttc" if bold else "C:/Windows/Fonts/meiryo.ttc"),
         Path("C:/Windows/Fonts/msgothic.ttc"),
+        Path("/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc" if bold
+             else "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc"),
+        Path("/System/Library/Fonts/Hiragino Sans GB.ttc"),
+        Path("/Library/Fonts/Arial Unicode.ttf"),
     ]
     for candidate in candidates:
         if candidate.exists():
