@@ -1,0 +1,904 @@
+<meta charset="utf-8"><title>記入用紙B（案内あり条件）</title><style>
+@page { size: A4 portrait; margin: 12mm; }
+html { background: #8a8a8a; }
+body { font-family: "Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;
+       font-size: 10.5pt; line-height: 1.5; color: #111; margin: 0; }
+.page { width: 186mm; margin: 0 auto 10mm; padding: 12mm 0; background: #fff; }
+@media print {
+  html { background: #fff; }
+  .page { width: auto; margin: 0; padding: 0; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+}
+.head { display: flex; justify-content: space-between; align-items: flex-end;
+        border-bottom: 1.5px solid #111; padding-bottom: 4px; }
+.head h1 { font-size: 12pt; margin: 0; font-weight: 700; }
+.head .cond { font-size: 9pt; color: #444; margin: 2px 0 0; }
+.idbox { font-size: 9pt; white-space: nowrap; }
+.idbox span { display: inline-block; border: 1px solid #111; width: 46px; height: 18px;
+              vertical-align: middle; margin-left: 4px; }
+.qno { margin: 10px 0 4px; font-weight: 700; font-size: 11pt; }
+.q { border: 1px solid #111; padding: 7px 10px; margin-bottom: 8px; }
+.q p { margin: 0 0 5px; }
+.q ul { margin: 0; padding-left: 1.2em; font-size: 9.5pt; color: #333; }
+svg { display: block; width: 100%; height: auto; border: 1px solid #111; }
+.sec { margin-top: 9px; }
+.sec h2 { font-size: 10pt; margin: 0 0 4px; font-weight: 700; }
+.lines div { border-bottom: 1px solid #999; height: 22px; }
+.scale { display: flex; gap: 6px; margin-top: 3px; }
+.scale label { flex: 1; border: 1px solid #111; text-align: center;
+               font-size: 8.5pt; padding: 4px 2px; line-height: 1.25; }
+.foot { margin-top: 8px; font-size: 8pt; color: #555; text-align: right; }
+
+.stim { display: flex; gap: 5mm; align-items: flex-start; margin-bottom: 6px; }
+.phone { width: 62mm; flex: none; border: 1px solid #111; border-radius: 9px;
+         overflow: hidden; background: #0a1326; }
+.map { flex: 1; min-width: 0; }
+.map svg { border: 1px solid #111; }
+.caption { font-size: 8pt; color: #555; margin: 2px 0 0; text-align: center; }
+.ph-arrow { text-align: center; padding: 10px 8px 8px; background: #16213e;
+            border-bottom: 3px solid #1a3a6e; }
+.ph-arrow.two { background: #1e0e00; border-bottom-color: #ff5722; }
+.ph-arrow .a { font-size: 34pt; line-height: 1; color: #4fc3f7; }
+.ph-arrow .l { font-size: 11pt; font-weight: 700; color: #90caf9; margin-top: 2px;
+               letter-spacing: .05em; }
+.ph-warn { background: #ff5722; color: #fff; font-weight: 700; font-size: 9pt;
+           text-align: center; padding: 6px 8px; letter-spacing: .03em; }
+.ph-gbanner { display: flex; justify-content: space-between; align-items: center;
+              margin: 5px 6px; padding: 5px 8px; border-radius: 6px;
+              background: #f9a825; color: #1a1a1a; font-weight: 700; font-size: 9.5pt; }
+.ph-gbanner .d { font-size: 8.5pt; }
+.ph-dist { text-align: center; padding: 8px; background: #0a1f44;
+           border-bottom: 1px solid #1a3a6e; }
+.ph-dist .v { font-size: 21pt; font-weight: 700; color: #4fc3f7; line-height: 1; }
+.ph-steps { margin: 0 6px 6px; padding: 6px 7px; border-radius: 6px; }
+.ph-steps.two { background: #1a0a00; border: 1px solid #ff5722; margin: 0; border-radius: 0;
+                border-left: 0; border-right: 0; }
+.ph-steps.gd { background: #1e1a00; border: 1px solid #f9a825; }
+.ph-steps .t { font-size: 8pt; font-weight: 700; margin-bottom: 4px; }
+.ph-steps.two .t { color: #ff8a65; }
+.ph-steps.gd .t { color: #ffd54f; }
+.ph-steps .row { display: flex; gap: 5px; }
+.ph-steps .st { flex: 1; text-align: center; font-size: 7pt; line-height: 1.3; }
+.ph-steps.two .st { color: #ffccbc; }
+.ph-steps.gd .st { color: #fff3cd; }
+.ph-steps .n { display: block; width: 15px; height: 15px; line-height: 15px;
+               border-radius: 50%; margin: 0 auto 3px; font-weight: 700; font-size: 8pt; }
+.ph-steps.two .n { background: #ff5722; color: #fff; }
+.ph-steps.gd .n { background: #f9a825; color: #1a1200; }
+.ph-note { font-size: 7pt; color: #e0c068; line-height: 1.4; margin-top: 4px; }
+.voice { font-size: 8.5pt; color: #555; margin: 2px 0 8px; }
+.tam { border: 1px solid #111; padding: 8px 10px; margin-bottom: 9px; }
+.tam h2 { font-size: 10pt; margin: 0 0 6px; }
+.tam .item { margin-bottom: 7px; }
+.tam .item p { margin: 0 0 3px; font-size: 10pt; }
+</style>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問1</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow two"><div class="a">→</div><div class="l">右折</div></div>
+  <div class="ph-warn">⚠ この交差点は二段階右折が必要です</div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+  <div class="ph-steps two"><div class="t">二段階右折の手順</div><div class="row"><div class="st"><span class="n">1</span>交差点を左端で直進する</div><div class="st"><span class="n">2</span>右方向を向いて停止する</div><div class="st"><span class="n">3</span>安全を確認して進む<br>（信号がある場合は<br>青になってから）</div></div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+<rect width="620" height="480" fill="#fff"/>
+<g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+<rect x="0" y="0" width="230" height="170"/>
+<rect x="370" y="0" width="250" height="170"/>
+<rect x="0" y="310" width="230" height="170"/>
+<rect x="370" y="310" width="250" height="170"/>
+</g>
+<g fill="#ececec">
+<rect x="230" y="0" width="18" height="480"/>
+<rect x="352" y="0" width="18" height="480"/>
+<rect x="0" y="170" width="620" height="18"/>
+<rect x="0" y="292" width="620" height="18"/>
+</g>
+<g fill="#d6d6d6">
+<rect x="248" y="0" width="104" height="480"/>
+<rect x="0" y="188" width="620" height="104"/>
+</g>
+<g stroke="#fff" stroke-width="2.5" stroke-dasharray="14 10"><path d="M274 292 V480 M326 292 V480 M0 214 H248 M352 214 H620 M0 266 H248 M352 266 H620 M274 0 V188 M326 0 V188"/></g>
+<g stroke="#e0a800" stroke-width="3"><path d="M300 292 V480 M0 240 H248 M352 240 H620 M300 0 V188"/></g>
+<g fill="#fff">
+<rect x="252" y="294" width="7" height="14"/><rect x="264" y="294" width="7" height="14"/><rect x="276" y="294" width="7" height="14"/><rect x="288" y="294" width="7" height="14"/><rect x="300" y="294" width="7" height="14"/><rect x="312" y="294" width="7" height="14"/><rect x="324" y="294" width="7" height="14"/><rect x="336" y="294" width="7" height="14"/>
+<rect x="252" y="172" width="7" height="14"/><rect x="264" y="172" width="7" height="14"/><rect x="276" y="172" width="7" height="14"/><rect x="288" y="172" width="7" height="14"/><rect x="300" y="172" width="7" height="14"/><rect x="312" y="172" width="7" height="14"/><rect x="324" y="172" width="7" height="14"/><rect x="336" y="172" width="7" height="14"/>
+<rect x="232" y="192" width="14" height="7"/><rect x="232" y="204" width="14" height="7"/><rect x="232" y="216" width="14" height="7"/><rect x="232" y="228" width="14" height="7"/><rect x="232" y="240" width="14" height="7"/><rect x="232" y="252" width="14" height="7"/><rect x="232" y="264" width="14" height="7"/><rect x="232" y="276" width="14" height="7"/>
+<rect x="354" y="192" width="14" height="7"/><rect x="354" y="204" width="14" height="7"/><rect x="354" y="216" width="14" height="7"/><rect x="354" y="228" width="14" height="7"/><rect x="354" y="240" width="14" height="7"/><rect x="354" y="252" width="14" height="7"/><rect x="354" y="264" width="14" height="7"/><rect x="354" y="276" width="14" height="7"/>
+</g>
+<g stroke="#fff" stroke-width="6"><path d="M248 316 H300 M224 188 V240 M376 240 V292 M300 164 H352"/></g>
+<g transform="translate(192,152)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(374,152)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(192,315)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(374,315)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<path d="M261 394 V176" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M251 176 L261 160 L271 176 z" fill="#1f5fbf"/><path d="M247 155 H275" stroke="#c22" stroke-width="6"/><g><circle cx="233" cy="352" r="12" fill="#1f5fbf"/><text x="233" y="357" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g><path d="M287 201 H544" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M544 191 L560 201 L544 211 z" fill="#1f5fbf"/><g><circle cx="315" cy="175" r="12" fill="#1f5fbf"/><text x="315" y="180" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">2</text></g>
+<path d="M261 392 V364" stroke="#111" stroke-width="3"/>
+<path d="M255 370 L261 360 L267 370 z" fill="#111"/>
+<path d="M252 400 L261 391 L270 400 L261 409 z" fill="#111"/>
+<path d="M246 404 H202" stroke="#111" stroke-width="0.8"/>
+<text x="196" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+<path d="M578 207 V179" stroke="#111" stroke-width="2"/>
+<path d="M578 179 H598 L592 185 L598 191 H578 z" fill="#111"/>
+<circle cx="578" cy="207" r="3" fill="#111"/>
+<path d="M584 200 H612 V134" stroke="#111" stroke-width="0.8" fill="none"/>
+<text x="612" y="128" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">行き先</text>
+<g transform="translate(396,26)"><path d="M8 34 V6" stroke="#111" stroke-width="2"/><path d="M2 12 L8 2 L14 12 z" fill="#111"/><text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text></g>
+<g transform="translate(452,432)"><path d="M0 14 H80" stroke="#111" stroke-width="2"/><path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/><text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text></g>
+<g transform="translate(14,16)">
+<rect width="204" height="132" fill="#fff" stroke="#111" stroke-width="1"/>
+<text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text>
+<rect x="12" y="34" width="26" height="12" fill="#ececec" stroke="#c9c9c9"/>
+<text x="46" y="44" font-size="12" font-family="sans-serif" fill="#111">歩道</text>
+<rect x="12" y="54" width="26" height="12" fill="#d6d6d6"/>
+<text x="46" y="64" font-size="12" font-family="sans-serif" fill="#111">車道</text>
+<g transform="translate(12,72)"><rect x="0" y="2" width="6" height="12" fill="#bbb"/><rect x="9" y="2" width="6" height="12" fill="#bbb"/><rect x="18" y="2" width="6" height="12" fill="#bbb"/></g>
+<text x="46" y="84" font-size="12" font-family="sans-serif" fill="#111">横断歩道</text>
+<path d="M12 100 H38" stroke="#999" stroke-width="5"/>
+<text x="46" y="104" font-size="12" font-family="sans-serif" fill="#111">停止線</text>
+<g transform="translate(12,113)"><rect width="26" height="11" rx="2" fill="#333"/><circle cx="6" cy="5.5" r="3.2" fill="#d94040"/><circle cx="13" cy="5.5" r="3.2" fill="#e0a800"/><circle cx="20" cy="5.5" r="3.2" fill="#3a9b52"/></g>
+<text x="46" y="123" font-size="12" font-family="sans-serif" fill="#111">信号機</text>
+</g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">R1／幹線・信号あり・十字路・右折レーンなし（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問2</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow two"><div class="a">→</div><div class="l">右折</div></div>
+  <div class="ph-warn">⚠ この交差点は二段階右折が必要です</div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+  <div class="ph-steps two"><div class="t">二段階右折の手順</div><div class="row"><div class="st"><span class="n">1</span>交差点を左端で直進する</div><div class="st"><span class="n">2</span>右方向を向いて停止する</div><div class="st"><span class="n">3</span>安全を確認して進む<br>（信号がある場合は<br>青になってから）</div></div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+<rect width="620" height="480" fill="#fff"/>
+<g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+<rect x="0" y="0" width="264" height="204"/>
+<rect x="336" y="0" width="284" height="204"/>
+<rect x="0" y="276" width="264" height="204"/>
+<rect x="336" y="276" width="284" height="204"/>
+</g>
+<g fill="#ececec">
+<rect x="264" y="0" width="12" height="480"/>
+<rect x="324" y="0" width="12" height="480"/>
+<rect x="0" y="204" width="620" height="12"/>
+<rect x="0" y="264" width="620" height="12"/>
+</g>
+<g fill="#d6d6d6">
+<rect x="276" y="0" width="48" height="480"/>
+<rect x="0" y="216" width="620" height="48"/>
+</g>
+<g stroke="#fff" stroke-width="2.5" stroke-dasharray="12 9"><path d="M300 264 V480 M0 240 H276 M324 240 H620 M300 0 V216"/></g>
+<path d="M288 394 V210" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M278 210 L288 194 L298 210 z" fill="#1f5fbf"/><path d="M274 189 H302" stroke="#c22" stroke-width="6"/><g><circle cx="260" cy="318" r="12" fill="#1f5fbf"/><text x="260" y="323" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g><path d="M314 228 H544" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M544 218 L560 228 L544 238 z" fill="#1f5fbf"/><g><circle cx="342" cy="202" r="12" fill="#1f5fbf"/><text x="342" y="207" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">2</text></g>
+<path d="M288 392 V364" stroke="#111" stroke-width="3"/>
+<path d="M282 370 L288 360 L294 370 z" fill="#111"/>
+<path d="M279 400 L288 391 L297 400 L288 409 z" fill="#111"/>
+<path d="M274 404 H230" stroke="#111" stroke-width="0.8"/>
+<text x="224" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+<path d="M578 234 V206" stroke="#111" stroke-width="2"/>
+<path d="M578 206 H598 L592 212 L598 218 H578 z" fill="#111"/>
+<circle cx="578" cy="234" r="3" fill="#111"/>
+<path d="M584 227 H612 V168" stroke="#111" stroke-width="0.8" fill="none"/>
+<text x="612" y="162" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">行き先</text>
+<g transform="translate(362,26)"><path d="M8 34 V6" stroke="#111" stroke-width="2"/><path d="M2 12 L8 2 L14 12 z" fill="#111"/><text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text></g>
+<g transform="translate(452,432)"><path d="M0 14 H80" stroke="#111" stroke-width="2"/><path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/><text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text></g>
+<g transform="translate(14,16)">
+<rect width="204" height="76" fill="#fff" stroke="#111" stroke-width="1"/>
+<text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text>
+<rect x="12" y="34" width="26" height="12" fill="#ececec" stroke="#c9c9c9"/>
+<text x="46" y="44" font-size="12" font-family="sans-serif" fill="#111">歩道</text>
+<rect x="12" y="54" width="26" height="12" fill="#d6d6d6"/>
+<text x="46" y="64" font-size="12" font-family="sans-serif" fill="#111">車道</text>
+</g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">R5／非幹線・信号なし・十字路・右折レーンなし（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問3</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow"><div class="a">↑</div><div class="l">直進</div></div>
+  <div class="ph-gbanner"><span>止まれ</span><span class="d">30 m先</span></div>
+  <div class="ph-steps gd"><div class="t">一時停止の手順</div><div class="row"><div class="st"><span class="n">1</span>停止線の直前で停止</div><div class="st"><span class="n">2</span>左右と交差道路の安全を確認</div><div class="st"><span class="n">3</span>発進</div></div></div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+  
+  <rect width="620" height="480" fill="#fff"/>
+  <g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+    <rect x="0" y="0" width="264" height="480"/>
+    <rect x="336" y="0" width="284" height="480"/>
+  </g>
+  <g fill="#ececec">
+    <rect x="264" y="0" width="12" height="480"/>
+    <rect x="324" y="0" width="12" height="480"/>
+  </g>
+  <rect x="276" y="0" width="48" height="480" fill="#d6d6d6"/>
+  <g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+    <rect x="0" y="0" width="264" height="170"/><rect x="336" y="0" width="284" height="170"/>
+    <rect x="0" y="310" width="264" height="170"/><rect x="336" y="310" width="284" height="170"/>
+  </g>
+  <g fill="#ececec">
+    <rect x="0" y="170" width="620" height="18"/>
+    <rect x="0" y="292" width="620" height="18"/>
+  </g>
+  <rect x="0" y="188" width="620" height="104" fill="#d6d6d6"/>
+
+  <g stroke="#fff" stroke-width="2.5" stroke-dasharray="14 10">
+    <path d="M0 214 H276 M324 214 H620 M0 266 H276 M324 266 H620"/>
+  </g>
+  <g stroke="#e0a800" stroke-width="3"><path d="M0 240 H276 M324 240 H620"/></g>
+  <g stroke="#fff" stroke-width="2.5" stroke-dasharray="12 9">
+    <path d="M300 0 V188 M300 292 V480"/>
+  </g>
+
+  <g stroke="#fff" stroke-width="6">
+    <path d="M276 318 H300"/>
+    <path d="M300 162 H324"/>
+  </g>
+
+  <g transform="translate(240,328)">
+    <path d="M2 2 H42 L22 36 z" fill="#d94040" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="22" cy="42" r="2.5" fill="#111"/>
+  </g>
+  <g transform="translate(344,118)">
+    <path d="M2 2 H42 L22 36 z" fill="#d94040" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="22" cy="42" r="2.5" fill="#111"/>
+  </g>
+  <path d="M288 394 V82" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M278 82 L288 66 L298 82 z" fill="#1f5fbf"/><path d="M274 324 H302" stroke="#c22" stroke-width="6"/><g><circle cx="324" cy="324" r="12" fill="#1f5fbf"/><text x="324" y="329" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g>
+  
+  <path d="M288 392 V364" stroke="#111" stroke-width="3"/>
+  <path d="M282 370 L288 360 L294 370 z" fill="#111"/>
+  <path d="M279 400 L288 391 L297 400 L288 409 z" fill="#111"/>
+  <path d="M274 404 H230" stroke="#111" stroke-width="0.8"/>
+  <text x="224" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+
+  <path d="M288 52 V24" stroke="#111" stroke-width="2"/>
+  <path d="M288 24 H308 L302 30 L308 36 H288 z" fill="#111"/>
+  <circle cx="288" cy="52" r="3" fill="#111"/>
+  <path d="M294 39 H346" stroke="#111" stroke-width="0.8" fill="none"/>
+  <text x="352" y="34" font-size="14" text-anchor="start" font-family="sans-serif" fill="#111">行き先</text>
+  
+  <g transform="translate(556,26)">
+    <path d="M8 34 V6" stroke="#111" stroke-width="2"/>
+    <path d="M2 12 L8 2 L14 12 z" fill="#111"/>
+    <text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text>
+  </g>
+  <g transform="translate(452,432)">
+    <path d="M0 14 H80" stroke="#111" stroke-width="2"/>
+    <path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/>
+    <text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text>
+  </g>
+  <g transform="translate(14,16)"><rect width="214" height="132" fill="#fff" stroke="#111" stroke-width="1"/><text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text><rect x="12" y="34" width="32" height="13" fill="#ececec" stroke="#c9c9c9"/><text x="52" y="45" font-size="12" font-family="sans-serif" fill="#111">歩道</text><rect x="12" y="58" width="32" height="13" fill="#d6d6d6"/><text x="52" y="69" font-size="12" font-family="sans-serif" fill="#111">車道</text><path d="M12 82 H44" stroke="#999" stroke-width="5"/><text x="52" y="93" font-size="12" font-family="sans-serif" fill="#111">停止線</text><g transform="translate(14,106)"><path d="M0 0 H30 L15 25 z" fill="#d94040" stroke="#fff" stroke-width="2"/></g><text x="52" y="117" font-size="12" font-family="sans-serif" fill="#111">一時停止の標識</text></g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">S1／一時停止・信号なし交差点・直進（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問4</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow two"><div class="a">→</div><div class="l">右折</div></div>
+  <div class="ph-warn">⚠ この交差点は二段階右折が必要です</div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+  <div class="ph-steps two"><div class="t">二段階右折の手順</div><div class="row"><div class="st"><span class="n">1</span>交差点を左端で直進する</div><div class="st"><span class="n">2</span>右方向を向いて停止する</div><div class="st"><span class="n">3</span>安全を確認して進む<br>（信号がある場合は<br>青になってから）</div></div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+<rect width="620" height="480" fill="#fff"/>
+<g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+<rect x="0" y="0" width="620" height="170"/>
+<rect x="0" y="310" width="230" height="170"/>
+<rect x="370" y="310" width="250" height="170"/>
+</g>
+<g fill="#ececec">
+<rect x="230" y="188" width="18" height="292"/>
+<rect x="352" y="188" width="18" height="292"/>
+<rect x="0" y="170" width="620" height="18"/>
+<rect x="0" y="292" width="620" height="18"/>
+</g>
+<g fill="#d6d6d6">
+<rect x="248" y="188" width="104" height="292"/>
+<rect x="0" y="188" width="620" height="104"/>
+</g>
+<g stroke="#fff" stroke-width="2.5" stroke-dasharray="14 10"><path d="M274 292 V480 M326 292 V480 M0 214 H248 M352 214 H620 M0 266 H248 M352 266 H620"/></g>
+<g stroke="#e0a800" stroke-width="3"><path d="M300 292 V480 M0 240 H248 M352 240 H620"/></g>
+<g fill="#fff">
+<rect x="252" y="294" width="7" height="14"/><rect x="264" y="294" width="7" height="14"/><rect x="276" y="294" width="7" height="14"/><rect x="288" y="294" width="7" height="14"/><rect x="300" y="294" width="7" height="14"/><rect x="312" y="294" width="7" height="14"/><rect x="324" y="294" width="7" height="14"/><rect x="336" y="294" width="7" height="14"/>
+<rect x="232" y="192" width="14" height="7"/><rect x="232" y="204" width="14" height="7"/><rect x="232" y="216" width="14" height="7"/><rect x="232" y="228" width="14" height="7"/><rect x="232" y="240" width="14" height="7"/><rect x="232" y="252" width="14" height="7"/><rect x="232" y="264" width="14" height="7"/><rect x="232" y="276" width="14" height="7"/>
+<rect x="354" y="192" width="14" height="7"/><rect x="354" y="204" width="14" height="7"/><rect x="354" y="216" width="14" height="7"/><rect x="354" y="228" width="14" height="7"/><rect x="354" y="240" width="14" height="7"/><rect x="354" y="252" width="14" height="7"/><rect x="354" y="264" width="14" height="7"/><rect x="354" y="276" width="14" height="7"/>
+</g>
+<g stroke="#fff" stroke-width="6"><path d="M248 316 H300 M224 188 V240 M376 240 V292"/></g>
+<g transform="translate(192,152)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(374,152)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(192,315)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(374,315)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<path d="M261 394 V210" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M251 210 L261 194 L271 210 z" fill="#1f5fbf"/><path d="M247 189 H275" stroke="#c22" stroke-width="6"/><g><circle cx="233" cy="352" r="12" fill="#1f5fbf"/><text x="233" y="357" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g><path d="M287 201 H544" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M544 191 L560 201 L544 211 z" fill="#1f5fbf"/><g><circle cx="315" cy="175" r="12" fill="#1f5fbf"/><text x="315" y="180" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">2</text></g>
+<path d="M261 392 V364" stroke="#111" stroke-width="3"/>
+<path d="M255 370 L261 360 L267 370 z" fill="#111"/>
+<path d="M252 400 L261 391 L270 400 L261 409 z" fill="#111"/>
+<path d="M246 404 H202" stroke="#111" stroke-width="0.8"/>
+<text x="196" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+<path d="M578 207 V179" stroke="#111" stroke-width="2"/>
+<path d="M578 179 H598 L592 185 L598 191 H578 z" fill="#111"/>
+<circle cx="578" cy="207" r="3" fill="#111"/>
+<path d="M584 200 H612 V134" stroke="#111" stroke-width="0.8" fill="none"/>
+<text x="612" y="128" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">行き先</text>
+<g transform="translate(396,26)"><path d="M8 34 V6" stroke="#111" stroke-width="2"/><path d="M2 12 L8 2 L14 12 z" fill="#111"/><text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text></g>
+<g transform="translate(452,432)"><path d="M0 14 H80" stroke="#111" stroke-width="2"/><path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/><text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text></g>
+<g transform="translate(14,16)">
+<rect width="204" height="132" fill="#fff" stroke="#111" stroke-width="1"/>
+<text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text>
+<rect x="12" y="34" width="26" height="12" fill="#ececec" stroke="#c9c9c9"/>
+<text x="46" y="44" font-size="12" font-family="sans-serif" fill="#111">歩道</text>
+<rect x="12" y="54" width="26" height="12" fill="#d6d6d6"/>
+<text x="46" y="64" font-size="12" font-family="sans-serif" fill="#111">車道</text>
+<g transform="translate(12,72)"><rect x="0" y="2" width="6" height="12" fill="#bbb"/><rect x="9" y="2" width="6" height="12" fill="#bbb"/><rect x="18" y="2" width="6" height="12" fill="#bbb"/></g>
+<text x="46" y="84" font-size="12" font-family="sans-serif" fill="#111">横断歩道</text>
+<path d="M12 100 H38" stroke="#999" stroke-width="5"/>
+<text x="46" y="104" font-size="12" font-family="sans-serif" fill="#111">停止線</text>
+<g transform="translate(12,113)"><rect width="26" height="11" rx="2" fill="#333"/><circle cx="6" cy="5.5" r="3.2" fill="#d94040"/><circle cx="13" cy="5.5" r="3.2" fill="#e0a800"/><circle cx="20" cy="5.5" r="3.2" fill="#3a9b52"/></g>
+<text x="46" y="123" font-size="12" font-family="sans-serif" fill="#111">信号機</text>
+</g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">R3／幹線・信号あり・T字路・右折レーンなし（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問5</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow two"><div class="a">→</div><div class="l">右折</div></div>
+  <div class="ph-warn">⚠ この交差点は二段階右折が必要です</div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+  <div class="ph-steps two"><div class="t">二段階右折の手順</div><div class="row"><div class="st"><span class="n">1</span>交差点を左端で直進する</div><div class="st"><span class="n">2</span>右方向を向いて停止する</div><div class="st"><span class="n">3</span>安全を確認して進む<br>（信号がある場合は<br>青になってから）</div></div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+<rect width="620" height="480" fill="#fff"/>
+<g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+<rect x="0" y="0" width="620" height="204"/>
+<rect x="0" y="276" width="264" height="204"/>
+<rect x="336" y="276" width="284" height="204"/>
+</g>
+<g fill="#ececec">
+<rect x="264" y="216" width="12" height="264"/>
+<rect x="324" y="216" width="12" height="264"/>
+<rect x="0" y="204" width="620" height="12"/>
+<rect x="0" y="264" width="620" height="12"/>
+</g>
+<g fill="#d6d6d6">
+<rect x="276" y="216" width="48" height="264"/>
+<rect x="0" y="216" width="620" height="48"/>
+</g>
+<g stroke="#fff" stroke-width="2.5" stroke-dasharray="12 9"><path d="M300 264 V480 M0 240 H276 M324 240 H620"/></g>
+<path d="M288 394 V238" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M278 238 L288 222 L298 238 z" fill="#1f5fbf"/><path d="M274 217 H302" stroke="#c22" stroke-width="6"/><g><circle cx="260" cy="318" r="12" fill="#1f5fbf"/><text x="260" y="323" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g><path d="M314 228 H544" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M544 218 L560 228 L544 238 z" fill="#1f5fbf"/><g><circle cx="342" cy="202" r="12" fill="#1f5fbf"/><text x="342" y="207" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">2</text></g>
+<path d="M288 392 V364" stroke="#111" stroke-width="3"/>
+<path d="M282 370 L288 360 L294 370 z" fill="#111"/>
+<path d="M279 400 L288 391 L297 400 L288 409 z" fill="#111"/>
+<path d="M274 404 H230" stroke="#111" stroke-width="0.8"/>
+<text x="224" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+<path d="M578 234 V206" stroke="#111" stroke-width="2"/>
+<path d="M578 206 H598 L592 212 L598 218 H578 z" fill="#111"/>
+<circle cx="578" cy="234" r="3" fill="#111"/>
+<path d="M584 227 H612 V168" stroke="#111" stroke-width="0.8" fill="none"/>
+<text x="612" y="162" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">行き先</text>
+<g transform="translate(362,26)"><path d="M8 34 V6" stroke="#111" stroke-width="2"/><path d="M2 12 L8 2 L14 12 z" fill="#111"/><text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text></g>
+<g transform="translate(452,432)"><path d="M0 14 H80" stroke="#111" stroke-width="2"/><path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/><text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text></g>
+<g transform="translate(14,16)">
+<rect width="204" height="76" fill="#fff" stroke="#111" stroke-width="1"/>
+<text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text>
+<rect x="12" y="34" width="26" height="12" fill="#ececec" stroke="#c9c9c9"/>
+<text x="46" y="44" font-size="12" font-family="sans-serif" fill="#111">歩道</text>
+<rect x="12" y="54" width="26" height="12" fill="#d6d6d6"/>
+<text x="46" y="64" font-size="12" font-family="sans-serif" fill="#111">車道</text>
+</g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">R6／非幹線・信号なし・T字路・右折レーンなし（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問6</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow two"><div class="a">→</div><div class="l">右折</div></div>
+  <div class="ph-warn">⚠ この交差点は二段階右折が必要です</div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+  <div class="ph-steps two"><div class="t">二段階右折の手順</div><div class="row"><div class="st"><span class="n">1</span>交差点を左端で直進する</div><div class="st"><span class="n">2</span>右方向を向いて停止する</div><div class="st"><span class="n">3</span>安全を確認して進む<br>（信号がある場合は<br>青になってから）</div></div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+<rect width="620" height="480" fill="#fff"/>
+<g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+<rect x="0" y="0" width="230" height="170"/>
+<rect x="370" y="0" width="250" height="170"/>
+<rect x="0" y="310" width="230" height="170"/>
+<rect x="370" y="310" width="250" height="170"/>
+</g>
+<g fill="#ececec">
+<rect x="230" y="0" width="18" height="480"/>
+<rect x="352" y="0" width="18" height="480"/>
+<rect x="0" y="170" width="620" height="18"/>
+<rect x="0" y="292" width="620" height="18"/>
+</g>
+<g fill="#d6d6d6">
+<rect x="248" y="0" width="104" height="480"/>
+<rect x="0" y="188" width="620" height="104"/>
+</g>
+<g stroke="#fff" stroke-width="2.5" stroke-dasharray="14 10"><path d="M274 292 V480 M326 292 V480 M0 214 H248 M352 214 H620 M0 266 H248 M352 266 H620 M274 0 V188 M326 0 V188"/></g>
+<g stroke="#e0a800" stroke-width="3"><path d="M300 292 V480 M0 240 H248 M352 240 H620 M300 0 V188"/></g>
+<path d="M274 292 V387" stroke="#fff" stroke-width="3"/>
+<path d="M287 372 V340 q0 -10 10 -10 h14" stroke="#fff" stroke-width="5" fill="none"/>
+<path d="M309 323 l12 7 -12 7 z" fill="#fff"/>
+<g fill="#fff">
+<rect x="252" y="294" width="7" height="14"/><rect x="264" y="294" width="7" height="14"/><rect x="276" y="294" width="7" height="14"/><rect x="288" y="294" width="7" height="14"/><rect x="300" y="294" width="7" height="14"/><rect x="312" y="294" width="7" height="14"/><rect x="324" y="294" width="7" height="14"/><rect x="336" y="294" width="7" height="14"/>
+<rect x="252" y="172" width="7" height="14"/><rect x="264" y="172" width="7" height="14"/><rect x="276" y="172" width="7" height="14"/><rect x="288" y="172" width="7" height="14"/><rect x="300" y="172" width="7" height="14"/><rect x="312" y="172" width="7" height="14"/><rect x="324" y="172" width="7" height="14"/><rect x="336" y="172" width="7" height="14"/>
+<rect x="232" y="192" width="14" height="7"/><rect x="232" y="204" width="14" height="7"/><rect x="232" y="216" width="14" height="7"/><rect x="232" y="228" width="14" height="7"/><rect x="232" y="240" width="14" height="7"/><rect x="232" y="252" width="14" height="7"/><rect x="232" y="264" width="14" height="7"/><rect x="232" y="276" width="14" height="7"/>
+<rect x="354" y="192" width="14" height="7"/><rect x="354" y="204" width="14" height="7"/><rect x="354" y="216" width="14" height="7"/><rect x="354" y="228" width="14" height="7"/><rect x="354" y="240" width="14" height="7"/><rect x="354" y="252" width="14" height="7"/><rect x="354" y="264" width="14" height="7"/><rect x="354" y="276" width="14" height="7"/>
+</g>
+<g stroke="#fff" stroke-width="6"><path d="M248 316 H300 M224 188 V240 M376 240 V292 M300 164 H352"/></g>
+<g transform="translate(192,152)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(374,152)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(192,315)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(374,315)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<path d="M261 394 V176" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M251 176 L261 160 L271 176 z" fill="#1f5fbf"/><path d="M247 155 H275" stroke="#c22" stroke-width="6"/><g><circle cx="233" cy="352" r="12" fill="#1f5fbf"/><text x="233" y="357" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g><path d="M287 201 H544" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M544 191 L560 201 L544 211 z" fill="#1f5fbf"/><g><circle cx="315" cy="175" r="12" fill="#1f5fbf"/><text x="315" y="180" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">2</text></g>
+<path d="M261 392 V364" stroke="#111" stroke-width="3"/>
+<path d="M255 370 L261 360 L267 370 z" fill="#111"/>
+<path d="M252 400 L261 391 L270 400 L261 409 z" fill="#111"/>
+<path d="M246 404 H202" stroke="#111" stroke-width="0.8"/>
+<text x="196" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+<path d="M578 207 V179" stroke="#111" stroke-width="2"/>
+<path d="M578 179 H598 L592 185 L598 191 H578 z" fill="#111"/>
+<circle cx="578" cy="207" r="3" fill="#111"/>
+<path d="M584 200 H612 V134" stroke="#111" stroke-width="0.8" fill="none"/>
+<text x="612" y="128" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">行き先</text>
+<g transform="translate(396,26)"><path d="M8 34 V6" stroke="#111" stroke-width="2"/><path d="M2 12 L8 2 L14 12 z" fill="#111"/><text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text></g>
+<g transform="translate(452,432)"><path d="M0 14 H80" stroke="#111" stroke-width="2"/><path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/><text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text></g>
+<g transform="translate(14,16)">
+<rect width="204" height="132" fill="#fff" stroke="#111" stroke-width="1"/>
+<text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text>
+<rect x="12" y="34" width="26" height="12" fill="#ececec" stroke="#c9c9c9"/>
+<text x="46" y="44" font-size="12" font-family="sans-serif" fill="#111">歩道</text>
+<rect x="12" y="54" width="26" height="12" fill="#d6d6d6"/>
+<text x="46" y="64" font-size="12" font-family="sans-serif" fill="#111">車道</text>
+<g transform="translate(12,72)"><rect x="0" y="2" width="6" height="12" fill="#bbb"/><rect x="9" y="2" width="6" height="12" fill="#bbb"/><rect x="18" y="2" width="6" height="12" fill="#bbb"/></g>
+<text x="46" y="84" font-size="12" font-family="sans-serif" fill="#111">横断歩道</text>
+<path d="M12 100 H38" stroke="#999" stroke-width="5"/>
+<text x="46" y="104" font-size="12" font-family="sans-serif" fill="#111">停止線</text>
+<g transform="translate(12,113)"><rect width="26" height="11" rx="2" fill="#333"/><circle cx="6" cy="5.5" r="3.2" fill="#d94040"/><circle cx="13" cy="5.5" r="3.2" fill="#e0a800"/><circle cx="20" cy="5.5" r="3.2" fill="#3a9b52"/></g>
+<text x="46" y="123" font-size="12" font-family="sans-serif" fill="#111">信号機</text>
+</g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">R2／幹線・信号あり・十字路・右折レーンあり（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問7</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow"><div class="a">↑</div><div class="l">直進</div></div>
+  <div class="ph-gbanner"><span>踏切</span><span class="d">30 m先</span></div>
+  <div class="ph-steps gd"><div class="t">踏切の手順</div><div class="row"><div class="st"><span class="n">1</span>踏切の直前で停止</div><div class="st"><span class="n">2</span>左右の安全を確認</div><div class="st"><span class="n">3</span>通過</div></div><div class="ph-note">信号機のある踏切では、信号の表示に従って進行できます</div></div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+  
+  <rect width="620" height="480" fill="#fff"/>
+  <g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+    <rect x="0" y="0" width="264" height="480"/>
+    <rect x="336" y="0" width="284" height="480"/>
+  </g>
+  <g fill="#ececec">
+    <rect x="264" y="0" width="12" height="480"/>
+    <rect x="324" y="0" width="12" height="480"/>
+  </g>
+  <rect x="276" y="0" width="48" height="480" fill="#d6d6d6"/>
+  <g stroke="#fff" stroke-width="2.5" stroke-dasharray="12 9">
+    <path d="M300 0 V194 M300 286 V480"/>
+  </g>
+
+  <rect x="0" y="218" width="620" height="44" fill="#e3ded2"/>
+  <g stroke="#b9b0a0" stroke-width="3"><path d="M6 222 V258"/><path d="M20 222 V258"/><path d="M34 222 V258"/><path d="M48 222 V258"/><path d="M62 222 V258"/><path d="M76 222 V258"/><path d="M90 222 V258"/><path d="M104 222 V258"/><path d="M118 222 V258"/><path d="M132 222 V258"/><path d="M146 222 V258"/><path d="M160 222 V258"/><path d="M174 222 V258"/><path d="M188 222 V258"/><path d="M202 222 V258"/><path d="M216 222 V258"/><path d="M230 222 V258"/><path d="M244 222 V258"/><path d="M258 222 V258"/><path d="M272 222 V258"/><path d="M286 222 V258"/><path d="M300 222 V258"/><path d="M314 222 V258"/><path d="M328 222 V258"/><path d="M342 222 V258"/><path d="M356 222 V258"/><path d="M370 222 V258"/><path d="M384 222 V258"/><path d="M398 222 V258"/><path d="M412 222 V258"/><path d="M426 222 V258"/><path d="M440 222 V258"/><path d="M454 222 V258"/><path d="M468 222 V258"/><path d="M482 222 V258"/><path d="M496 222 V258"/><path d="M510 222 V258"/><path d="M524 222 V258"/><path d="M538 222 V258"/><path d="M552 222 V258"/><path d="M566 222 V258"/><path d="M580 222 V258"/><path d="M594 222 V258"/><path d="M608 222 V258"/></g>
+  <g stroke="#5a5a5a" stroke-width="3.5">
+    <path d="M0 231 H620 M0 249 H620"/>
+  </g>
+
+  <g stroke="#fff" stroke-width="6">
+    <path d="M276 278 H300"/>
+    <path d="M300 202 H324"/>
+  </g>
+
+  <g>
+    <g transform="translate(234,272)">
+      <rect width="16" height="16" rx="2" fill="#333"/>
+      <circle cx="4.5" cy="8" r="3" fill="#d94040"/><circle cx="11.5" cy="8" r="3" fill="#d94040"/>
+      <path d="M8 16 V28" stroke="#333" stroke-width="3"/>
+    </g>
+    <g transform="translate(350,178)">
+      <rect width="16" height="16" rx="2" fill="#333"/>
+      <circle cx="4.5" cy="8" r="3" fill="#d94040"/><circle cx="11.5" cy="8" r="3" fill="#d94040"/>
+      <path d="M8 16 V28" stroke="#333" stroke-width="3"/>
+    </g>
+  </g>
+  <path d="M288 394 V82" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M278 82 L288 66 L298 82 z" fill="#1f5fbf"/><path d="M274 284 H302" stroke="#c22" stroke-width="6"/><g><circle cx="324" cy="284" r="12" fill="#1f5fbf"/><text x="324" y="289" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g>
+  
+  <path d="M288 392 V364" stroke="#111" stroke-width="3"/>
+  <path d="M282 370 L288 360 L294 370 z" fill="#111"/>
+  <path d="M279 400 L288 391 L297 400 L288 409 z" fill="#111"/>
+  <path d="M274 404 H230" stroke="#111" stroke-width="0.8"/>
+  <text x="224" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+
+  <path d="M288 52 V24" stroke="#111" stroke-width="2"/>
+  <path d="M288 24 H308 L302 30 L308 36 H288 z" fill="#111"/>
+  <circle cx="288" cy="52" r="3" fill="#111"/>
+  <path d="M294 39 H346" stroke="#111" stroke-width="0.8" fill="none"/>
+  <text x="352" y="34" font-size="14" text-anchor="start" font-family="sans-serif" fill="#111">行き先</text>
+  
+  <g transform="translate(556,26)">
+    <path d="M8 34 V6" stroke="#111" stroke-width="2"/>
+    <path d="M2 12 L8 2 L14 12 z" fill="#111"/>
+    <text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text>
+  </g>
+  <g transform="translate(452,432)">
+    <path d="M0 14 H80" stroke="#111" stroke-width="2"/>
+    <path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/>
+    <text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text>
+  </g>
+  <g transform="translate(14,16)"><rect width="214" height="132" fill="#fff" stroke="#111" stroke-width="1"/><text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text><rect x="12" y="34" width="32" height="13" fill="#ececec" stroke="#c9c9c9"/><text x="52" y="45" font-size="12" font-family="sans-serif" fill="#111">歩道</text><rect x="12" y="58" width="32" height="13" fill="#d6d6d6"/><text x="52" y="69" font-size="12" font-family="sans-serif" fill="#111">車道</text><path d="M12 82 H44" stroke="#999" stroke-width="5"/><text x="52" y="93" font-size="12" font-family="sans-serif" fill="#111">停止線</text><g transform="translate(12,106)"><rect width="14" height="14" rx="2" fill="#333"/><circle cx="4" cy="7" r="2.6" fill="#d94040"/><circle cx="10" cy="7" r="2.6" fill="#d94040"/></g><text x="52" y="117" font-size="12" font-family="sans-serif" fill="#111">踏切の警報機</text></g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">S2／踏切・直進（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／全8問中</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <p class="qno">問8</p>
+
+  <div class="q">
+    <p>先ほどと同じ交差点です。この交差点の手前で、自転車ナビゲーションシステムの画面は左のように表示されます。右の図は、そのとき案内されている走り方を上から見たものです。</p>
+  </div>
+
+  <div class="stim">
+    <div class="phone">
+  <div class="ph-arrow two"><div class="a">→</div><div class="l">右折</div></div>
+  <div class="ph-warn">⚠ この交差点は二段階右折が必要です</div>
+  <div class="ph-dist"><div class="v">30 m</div></div>
+  <div class="ph-steps two"><div class="t">二段階右折の手順</div><div class="row"><div class="st"><span class="n">1</span>交差点を左端で直進する</div><div class="st"><span class="n">2</span>右方向を向いて停止する</div><div class="st"><span class="n">3</span>安全を確認して進む<br>（信号がある場合は<br>青になってから）</div></div></div>
+</div>
+    <div class="map"><svg viewBox="0 0 620 480" xmlns="http://www.w3.org/2000/svg">
+<rect width="620" height="480" fill="#fff"/>
+<g fill="#fbfbfb" stroke="#c9c9c9" stroke-width="1">
+<rect x="0" y="0" width="264" height="204"/>
+<rect x="336" y="0" width="284" height="204"/>
+<rect x="0" y="276" width="264" height="204"/>
+<rect x="336" y="276" width="284" height="204"/>
+</g>
+<g fill="#ececec">
+<rect x="264" y="0" width="12" height="480"/>
+<rect x="324" y="0" width="12" height="480"/>
+<rect x="0" y="204" width="620" height="12"/>
+<rect x="0" y="264" width="620" height="12"/>
+</g>
+<g fill="#d6d6d6">
+<rect x="276" y="0" width="48" height="480"/>
+<rect x="0" y="216" width="620" height="48"/>
+</g>
+<g stroke="#fff" stroke-width="2.5" stroke-dasharray="12 9"><path d="M300 264 V480 M0 240 H276 M324 240 H620 M300 0 V216"/></g>
+<g fill="#fff">
+<rect x="280" y="266" width="7" height="8"/><rect x="292" y="266" width="7" height="8"/><rect x="304" y="266" width="7" height="8"/>
+<rect x="280" y="206" width="7" height="8"/><rect x="292" y="206" width="7" height="8"/><rect x="304" y="206" width="7" height="8"/>
+<rect x="266" y="220" width="8" height="7"/><rect x="266" y="232" width="8" height="7"/><rect x="266" y="244" width="8" height="7"/>
+<rect x="326" y="220" width="8" height="7"/><rect x="326" y="232" width="8" height="7"/><rect x="326" y="244" width="8" height="7"/>
+</g>
+<g stroke="#fff" stroke-width="6"><path d="M276 282 H300 M258 216 V240 M342 240 V264 M300 198 H324"/></g>
+<g transform="translate(226,186)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(340,186)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(226,281)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<g transform="translate(340,281)"><rect width="34" height="13" rx="2" fill="#333"/><circle cx="8" cy="6.5" r="4" fill="#d94040"/><circle cx="17" cy="6.5" r="4" fill="#e0a800"/><circle cx="26" cy="6.5" r="4" fill="#3a9b52"/></g>
+<path d="M288 394 V210" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M278 210 L288 194 L298 210 z" fill="#1f5fbf"/><path d="M274 189 H302" stroke="#c22" stroke-width="6"/><g><circle cx="260" cy="318" r="12" fill="#1f5fbf"/><text x="260" y="323" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">1</text></g><path d="M314 228 H544" stroke="#1f5fbf" stroke-width="7" stroke-linecap="butt"/><path d="M544 218 L560 228 L544 238 z" fill="#1f5fbf"/><g><circle cx="342" cy="202" r="12" fill="#1f5fbf"/><text x="342" y="207" font-size="15" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="#fff">2</text></g>
+<path d="M288 392 V364" stroke="#111" stroke-width="3"/>
+<path d="M282 370 L288 360 L294 370 z" fill="#111"/>
+<path d="M279 400 L288 391 L297 400 L288 409 z" fill="#111"/>
+<path d="M274 404 H230" stroke="#111" stroke-width="0.8"/>
+<text x="224" y="409" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">現在地</text>
+<path d="M578 234 V206" stroke="#111" stroke-width="2"/>
+<path d="M578 206 H598 L592 212 L598 218 H578 z" fill="#111"/>
+<circle cx="578" cy="234" r="3" fill="#111"/>
+<path d="M584 227 H612 V168" stroke="#111" stroke-width="0.8" fill="none"/>
+<text x="612" y="162" font-size="14" text-anchor="end" font-family="sans-serif" fill="#111">行き先</text>
+<g transform="translate(362,26)"><path d="M8 34 V6" stroke="#111" stroke-width="2"/><path d="M2 12 L8 2 L14 12 z" fill="#111"/><text x="22" y="24" font-size="14" font-family="sans-serif" fill="#111">北</text></g>
+<g transform="translate(452,432)"><path d="M0 14 H80" stroke="#111" stroke-width="2"/><path d="M0 8 V20 M80 8 V20" stroke="#111" stroke-width="2"/><text x="86" y="19" font-size="13" font-family="sans-serif" fill="#111">10m</text></g>
+<g transform="translate(14,16)">
+<rect width="204" height="132" fill="#fff" stroke="#111" stroke-width="1"/>
+<text x="12" y="22" font-size="13" font-family="sans-serif" fill="#111">凡例</text>
+<rect x="12" y="34" width="26" height="12" fill="#ececec" stroke="#c9c9c9"/>
+<text x="46" y="44" font-size="12" font-family="sans-serif" fill="#111">歩道</text>
+<rect x="12" y="54" width="26" height="12" fill="#d6d6d6"/>
+<text x="46" y="64" font-size="12" font-family="sans-serif" fill="#111">車道</text>
+<g transform="translate(12,72)"><rect x="0" y="2" width="6" height="12" fill="#bbb"/><rect x="9" y="2" width="6" height="12" fill="#bbb"/><rect x="18" y="2" width="6" height="12" fill="#bbb"/></g>
+<text x="46" y="84" font-size="12" font-family="sans-serif" fill="#111">横断歩道</text>
+<path d="M12 100 H38" stroke="#999" stroke-width="5"/>
+<text x="46" y="104" font-size="12" font-family="sans-serif" fill="#111">停止線</text>
+<g transform="translate(12,113)"><rect width="26" height="11" rx="2" fill="#333"/><circle cx="6" cy="5.5" r="3.2" fill="#d94040"/><circle cx="13" cy="5.5" r="3.2" fill="#e0a800"/><circle cx="20" cy="5.5" r="3.2" fill="#3a9b52"/></g>
+<text x="46" y="123" font-size="12" font-family="sans-serif" fill="#111">信号機</text>
+</g>
+</svg><p class="caption">案内されている走り方</p></div>
+  </div>
+
+  <p class="voice">この案内は音声でも読み上げられます。</p>
+
+  <div class="sec">
+    <h2>この案内が何を伝えようとしているか、理解できましたか</h2>
+    <div class="scale"><label>よく理解<br>できた</label><label>だいたい理解<br>できた</label><label>どちらとも<br>いえない</label><label>あまり理解<br>できなかった</label><label>理解<br>できなかった</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>実際に自転車でこの交差点を通るとき、この案内のとおりに走ると思いますか</h2>
+    <div class="scale"><label>必ずこの<br>とおり走る</label><label>たぶんこの<br>とおり走る</label><label>どちらとも<br>いえない</label><label>たぶんこの<br>とおりには<br>走らない</label><label>このとおりには<br>走らない</label></div>
+  </div>
+
+  <div class="sec">
+    <h2>そう答えた理由があれば、一文で書いてください</h2>
+    <div class="lines"><div></div><div></div></div>
+  </div>
+
+  <p class="foot">R4／非幹線・信号あり・十字路・右折レーンなし（案内あり条件）</p>
+</div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>交差点での走行方法についての調査</h1>
+      <p class="cond">記入用紙B／案内についてのご意見</p>
+    </div>
+    <div class="idbox">通し番号<span></span></div>
+  </div>
+
+  <div class="q">
+    <p>ここまでご覧いただいた案内について、全体としてどう思われたかをお答えください。</p>
+  </div>
+
+  <div class="tam">
+    <h2>案内の役立ち方について</h2>
+    <div class="item"><p>1. この案内があれば、交通違反をしてしまうことを避けやすくなると思う</p><div class="scale"><label>まったく<br>そう思わない</label><label>あまり<br>そう思わない</label><label>どちらとも<br>いえない</label><label>ややそう思う</label><label>強くそう思う</label></div></div><div class="item"><p>2. この案内は、自転車で移動するときに役立つと思う</p><div class="scale"><label>まったく<br>そう思わない</label><label>あまり<br>そう思わない</label><label>どちらとも<br>いえない</label><label>ややそう思う</label><label>強くそう思う</label></div></div><div class="item"><p>3. この案内があれば、知らないうちに違反してしまうことが減ると思う</p><div class="scale"><label>まったく<br>そう思わない</label><label>あまり<br>そう思わない</label><label>どちらとも<br>いえない</label><label>ややそう思う</label><label>強くそう思う</label></div></div>
+  </div>
+
+  <div class="tam">
+    <h2>使ってみたいと思うかについて</h2>
+    <div class="item"><p>4. こうした案内をする自転車ナビが使えるようになったら、使ってみたいと思う</p><div class="scale"><label>まったく<br>そう思わない</label><label>あまり<br>そう思わない</label><label>どちらとも<br>いえない</label><label>ややそう思う</label><label>強くそう思う</label></div></div><div class="item"><p>5. こうした案内をする自転車ナビを、友人にも勧めたいと思う</p><div class="scale"><label>まったく<br>そう思わない</label><label>あまり<br>そう思わない</label><label>どちらとも<br>いえない</label><label>ややそう思う</label><label>強くそう思う</label></div></div>
+  </div>
+
+  <div class="sec">
+    <h2>この案内で分かりにくかった点があれば、書いてください</h2>
+    <div class="lines"><div></div><div></div><div></div></div>
+  </div>
+
+  <div class="sec">
+    <h2>その他、気づいたことがあれば自由に書いてください</h2>
+    <div class="lines"><div></div><div></div><div></div></div>
+  </div>
+
+  <p class="foot">記入は以上です。ご協力ありがとうございました。</p>
+</div>
