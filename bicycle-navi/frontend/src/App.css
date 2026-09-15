@@ -128,6 +128,13 @@
   border-radius: 50%;
 }
 
+/* 案内地点のマーカーは違反より小さい。凡例でも同じ大小関係を保つ。 */
+.map-legend-dot-small {
+  width: 7px;
+  height: 7px;
+  margin: 0 1.5px;
+}
+
 .route-summary {
   display: flex;
   flex-direction: column;
@@ -165,6 +172,12 @@
 .route-summary-ok {
   font-size: 0.9rem;
   color: #2e7d32;
+  font-weight: 500;
+}
+
+.route-summary-guidance {
+  font-size: 0.9rem;
+  color: #7b1fa2;
   font-weight: 500;
 }
 
@@ -263,6 +276,71 @@
 }
 
 .vc-coords {
+  font-size: 0.75rem;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 案内地点（第2層：一時停止・踏切）。違反カードとは別系統の紫で示す。 */
+.guidance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guidance-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+  font-family: inherit;
+  color: inherit;
+}
+
+.guidance-card:hover {
+  background: #f7f7f7;
+}
+
+.guidance-card.focused {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.25);
+}
+
+.gc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.gc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.gc-message {
+  font-size: 0.9rem;
+  color: #1f1f1f;
+  margin: 2px 0;
+}
+
+.gc-coords {
   font-size: 0.75rem;
   color: #888;
   font-variant-numeric: tabular-nums;
