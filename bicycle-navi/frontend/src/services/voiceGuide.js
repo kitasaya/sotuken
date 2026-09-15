@@ -44,7 +44,7 @@ export const buildAnnouncementText = (instruction, isTwoStep = false) => {
   if (isTwoStep) {
     return (
       `${distToText(dist)}二段階右折です。` +
-      "一度左端に寄り、そのまま交差点を直進してから右折してください"
+      "左端に寄って交差点を直進し、右方向を向き停止し、安全を確認して進んでください。信号がある場合は青になってから進んでください。"
     );
   }
 

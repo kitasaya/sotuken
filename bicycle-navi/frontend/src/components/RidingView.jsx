@@ -147,7 +147,7 @@ function TwoStepGuide() {
         </div>
         <div style={styles.twoStepStep}>
           <span style={styles.stepNum}>3</span>
-          <span>信号が青になったら進む</span>
+          <span>安全を確認して進む（信号がある場合は青になってから）</span>
         </div>
       </div>
     </div>
